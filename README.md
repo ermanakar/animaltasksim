@@ -160,19 +160,39 @@ pip install -e .[dev]       # via pyproject optional extras
 
 ---
 
-## CLI (planned)
+## CLI
 
 ```bash
-# Train
-python scripts/train_agent.py --env ibl_2afc --agent sticky_q --steps 50000 --out runs/ibl_stickyq
+# Install
+pip install -e ".[dev]"
 
-# Evaluate
-python scripts/evaluate_agent.py --run runs/ibl_stickyq --report out/ibl_stickyq_report.html
+# Train Sticky-Q on IBL 2AFC (writes runs/ibl_stickyq)
+python scripts/train_agent.py --env ibl_2afc --agent sticky_q --steps 2000 --out runs/ibl_stickyq
 
-# Quick demo (one command convenience)
-make demo_ibl
-make demo_rdm
+# Train Bayesian observer on RDM
+python scripts/train_agent.py --env rdm --agent bayes --steps 1200 --out runs/rdm_bayes
+
+# Train PPO baseline on RDM with a per-step cost
+python scripts/train_agent.py --env rdm --agent ppo --steps 10000 --trials-per-episode 200 --ppo.per-step-cost 0.05 --out runs/rdm_ppo
+
+# Evaluate (writes metrics.json)
+python scripts/evaluate_agent.py --run runs/ibl_stickyq
+
+# Generate HTML report
+python scripts/make_report.py --run runs/ibl_stickyq
+
+# Optional overrides
+python scripts/evaluate_agent.py --log some_agent.ndjson --out reports/some_agent_metrics.json
+python scripts/make_report.py --run runs/ibl_stickyq --log runs/ibl_stickyq/trials.ndjson --metrics runs/ibl_stickyq/metrics.json --out reports/custom.html
 ```
+
+## Running baselines & comparing to reference data
+
+1. Train an agent with `scripts/train_agent.py` to populate `runs/<name>/` with `trials.ndjson` and configs.
+2. Evaluate that log (`scripts/evaluate_agent.py --run <run_dir>`) to produce `metrics.json`.
+3. Generate an HTML report (`scripts/make_report.py --run <run_dir>`) to visualise psychometric/chronometric/history fingerprints alongside the metrics JSON.
+4. Run the same evaluation on reference `.ndjson` logs under `data/ibl/` or `data/macaque/`, then compare the resulting metrics JSON to your agent (e.g. via a notebook or a short Python diff script).
+5. Iterate on hyperparameters (`--sticky_q.stickiness`, `--bayes.sensory_sigma`, `--ppo.per-step-cost`, etc.) until the fingerprints align with target animal ranges.
 
 ---
 
@@ -189,6 +209,25 @@ make demo_rdm
 - **Fingerprints over reward:** we celebrate matched **statistics**, not points scored.
 - **Reproducibility:** fixed seeds, saved configs, exact software versions.
 - **Separation of concerns:** envs, agents, and metrics do not depend on each other.
+
+---
+
+## Roadmap
+
+**v0.1 (MVP)** — IBL 2AFC + Macaque RDM; baselines (Sticky‑Q, Bayesian observer, PPO); evaluation suite & HTML reports.
+
+**v0.2 (next)** — cognitive axes that reuse the same scaffold:
+- **Mouse PRL (flexibility):** reversal blocks with p=0.8/0.2; metrics include trials‑to‑criterion, perseverative/regressive errors, WS/LS asymmetry.
+- **Macaque DMS (working memory):** sample→delay→test; metrics include accuracy vs delay, RT vs delay, lure‑specific errors.
+
+> CLI (planned) examples:
+> ```bash
+> # PRL (as a mode of ibl_2afc)
+> python scripts/train_agent.py --env ibl_2afc --agent sticky_q --steps 15000 --out runs/prl_stickyq --reversal true
+> 
+> # DMS
+> python scripts/train_agent.py --env dms --agent ppo --steps 30000 --out runs/dms_ppo --delays 250,500,1000,2000,3000
+> ```
 
 ---
 

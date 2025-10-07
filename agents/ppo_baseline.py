@@ -1,0 +1,207 @@
+"""PPO baseline agent with action masking for AnimalTaskSim tasks."""
+
+from __future__ import annotations
+
+import json
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Literal
+
+import gymnasium as gym
+import numpy as np
+from gymnasium.wrappers import FlattenObservation
+from stable_baselines3 import PPO
+
+from animaltasksim.config import ProjectPaths
+from animaltasksim.seeding import seed_everything
+from envs.ibl_2afc import AgentMetadata as IBLAgentMetadata
+from envs.ibl_2afc import IBL2AFCConfig, IBL2AFCEnv
+from envs.rdm_macaque import AgentMetadata as RDMAgentMetadata
+from envs.rdm_macaque import RDMConfig, RDMMacaqueEnv
+
+
+@dataclass(slots=True)
+class PPOHyperParams:
+    learning_rate: float = 3e-4
+    n_steps: int = 128
+    batch_size: int = 64
+    gamma: float = 0.99
+    gae_lambda: float = 0.95
+    clip_range: float = 0.2
+    ent_coef: float = 0.0
+    vf_coef: float = 0.5
+
+
+@dataclass(slots=True)
+class PPOTrainingConfig:
+    env: Literal["ibl_2afc", "rdm"] = "ibl_2afc"
+    total_timesteps: int = 50_000
+    eval_trials: int = 400
+    eval_episodes: int = 1
+    per_step_cost: float = 0.0
+    seed: int = 1234
+    agent_version: str = "0.1.0"
+    output_dir: Path = field(default_factory=lambda: ProjectPaths.from_cwd().runs / "ppo")
+    hyperparams: PPOHyperParams = field(default_factory=PPOHyperParams)
+
+    def output_paths(self) -> dict[str, Path]:
+        root = Path(self.output_dir).resolve()
+        root.mkdir(parents=True, exist_ok=True)
+        return {
+            "root": root,
+            "config": root / "config.json",
+            "log": root / "trials.ndjson",
+            "metrics": root / "evaluation.json",
+            "model": root / "model.zip",
+        }
+
+
+def _make_env(env_name: str, *, trials: int, seed: int, log_path: Path | None, per_step_cost: float, agent_version: str):
+    if env_name == "ibl_2afc":
+        config = IBL2AFCConfig(
+            trials_per_episode=trials,
+            log_path=log_path,
+            agent=IBLAgentMetadata(name="ppo_baseline", version=agent_version),
+            seed=seed,
+        )
+        env = IBL2AFCEnv(config)
+    elif env_name == "rdm":
+        config = RDMConfig(
+            trials_per_episode=trials,
+            per_step_cost=per_step_cost,
+            log_path=log_path,
+            agent=RDMAgentMetadata(name="ppo_baseline", version=agent_version),
+            seed=seed,
+        )
+        env = RDMMacaqueEnv(config)
+    else:
+        raise ValueError(f"Unsupported environment {env_name}")
+
+    return FlattenObservation(env), config
+
+
+def _evaluate_policy(model: PPO, env: gym.Env, episodes: int) -> dict[str, list[float]]:
+    rewards_per_episode: list[float] = []
+    lengths: list[int] = []
+
+    for episode in range(episodes):
+        observation, info = env.reset()
+        done = False
+        total_reward = 0.0
+        steps = 0
+        while not done:
+            action, _ = model.predict(observation, deterministic=True)
+            observation, reward, terminated, truncated, info = env.step(action)
+            total_reward += reward
+            steps += 1
+            done = terminated or truncated
+        rewards_per_episode.append(total_reward)
+        lengths.append(steps)
+    return {
+        "reward": rewards_per_episode,
+        "length": lengths,
+    }
+
+
+def train_ppo(config: PPOTrainingConfig) -> dict[str, object]:
+    paths = config.output_paths()
+    seed_everything(config.seed)
+
+    train_env, train_env_config = _make_env(
+        config.env,
+        trials=config.eval_trials,
+        seed=config.seed,
+        log_path=None,
+        per_step_cost=config.per_step_cost,
+        agent_version=config.agent_version,
+    )
+
+    hyper = config.hyperparams
+    model = PPO(
+        "MlpPolicy",
+        train_env,
+        learning_rate=hyper.learning_rate,
+        n_steps=hyper.n_steps,
+        batch_size=hyper.batch_size,
+        gamma=hyper.gamma,
+        gae_lambda=hyper.gae_lambda,
+        clip_range=hyper.clip_range,
+        ent_coef=hyper.ent_coef,
+        vf_coef=hyper.vf_coef,
+        seed=config.seed,
+        verbose=0,
+    )
+
+    model.learn(total_timesteps=config.total_timesteps, progress_bar=False)
+    model.save(paths["model"])
+    train_env.close()
+
+    eval_env, eval_env_config = _make_env(
+        config.env,
+        trials=config.eval_trials,
+        seed=config.seed + 10,
+        log_path=paths["log"],
+        per_step_cost=config.per_step_cost,
+        agent_version=config.agent_version,
+    )
+
+    evaluation = _evaluate_policy(model, eval_env, episodes=config.eval_episodes)
+    eval_env.close()
+
+    metrics_payload = {
+        "episodes": config.eval_episodes,
+        "total_reward": evaluation["reward"],
+        "episode_length": evaluation["length"],
+    }
+    paths["metrics"].write_text(json.dumps(metrics_payload, indent=2), encoding="utf-8")
+    _persist_config(paths["config"], config, train_env_config, eval_env_config)
+    return metrics_payload
+
+
+def _persist_config(path: Path, config: PPOTrainingConfig, train_env_config, eval_env_config) -> None:
+    payload = {
+        "agent": {
+            "name": "ppo_baseline",
+            "version": config.agent_version,
+            "hyperparams": asdict(config.hyperparams),
+            "total_timesteps": config.total_timesteps,
+        },
+        "environment": {
+            "train": _serialize_env(train_env_config),
+            "eval": _serialize_env(eval_env_config),
+        },
+        "seed": config.seed,
+    }
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+def _serialize_env(env_config) -> dict[str, object]:
+    if isinstance(env_config, IBL2AFCConfig):
+        return {
+            "trials_per_episode": env_config.trials_per_episode,
+            "contrast_set": list(env_config.contrast_set),
+            "phase_schedule": [
+                {"name": phase.name, "duration_steps": phase.duration_steps}
+                for phase in env_config.phase_schedule
+            ],
+            "step_ms": env_config.step_ms,
+        }
+    if isinstance(env_config, RDMConfig):
+        return {
+            "trials_per_episode": env_config.trials_per_episode,
+            "coherence_set": list(env_config.coherence_set),
+            "phase_schedule": [
+                {"name": phase.name, "duration_steps": phase.duration_steps}
+                for phase in env_config.phase_schedule
+            ],
+            "step_ms": env_config.step_ms,
+            "per_step_cost": env_config.per_step_cost,
+        }
+    raise TypeError("Unsupported environment configuration")
+
+
+__all__ = [
+    "PPOHyperParams",
+    "PPOTrainingConfig",
+    "train_ppo",
+]

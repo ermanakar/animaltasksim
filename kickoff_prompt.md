@@ -4,13 +4,19 @@ You are a senior coding AI tasked with scaffolding **AnimalTaskSim** — a Pytho
 - Language: Python 3.11, type hints, docstrings, no notebooks for core code.
 - Packages: gymnasium, numpy, scipy, pandas, torch, stable-baselines3, matplotlib, pydantic, pytest, tyro (or argparse).
 - Reproducibility: global seeding, config objects saved to disk.
-- I/O: **All** training/eval writes newline-delimited JSON (`.ndjson`) per trial matching the unified schema below.
+- I/O: **All** training/eval must write newline‑delimited JSON (`.ndjson`) per trial using the unified schema below — **one JSON object per line**, **flush after each write**, and **fail fast** if required fields are missing or types are wrong.
 - Keep CPU-only by default; runs must complete demo configs < 20 minutes.
+- Interfaces are frozen: do **not** change CLI arg names, file paths, or the logging schema without explicit approval.
 
 ## Unified trial-log schema (.ndjson per trial)
-```
-task, session_id, trial_index, stimulus({contrast/side or coherence/dir}), block_prior, action, correct, reward, rt_ms, phase_times, prev, seed, agent({name,version})
-```
+**Required keys per trial:**  
+`task (str)`, `session_id (str uuid)`, `trial_index (int)`,  
+`stimulus (obj)`, `block_prior (obj|null)`, `action (int|string)`, `correct (bool)`, `reward (number)`,  
+`rt_ms (number|null)`, `phase_times (obj|null)`, `prev (obj|null)`, `seed (int)`, `agent (obj{name,version})`
+
+**Example (.ndjson, one JSON object per line):**
+{"task":"IBL2AFC","session_id":"f2c7...","trial_index":0,"stimulus":{"contrast":-0.25},"block_prior":{"p_right":0.2},"action":0,"correct":true,"reward":1.0,"rt_ms":540,"phase_times":{"stim_ms":300,"resp_ms":700},"prev":null,"seed":1234,"agent":{"name":"sticky_q","version":"0.1.0"}}
+{"task":"IBL2AFC","session_id":"f2c7...","trial_index":1,"stimulus":{"contrast":0.5},"block_prior":{"p_right":0.2},"action":1,"correct":true,"reward":1.0,"rt_ms":480,"phase_times":{"stim_ms":300,"resp_ms":620},"prev":{"action":0,"reward":1},"seed":1234,"agent":{"name":"sticky_q","version":"0.1.0"}}
 
 ## Files to create
 ```
@@ -29,6 +35,8 @@ scripts/make_report.py      # CLI to render HTML report from metrics
 tests/test_envs.py
 tests/test_metrics.py
 tests/test_agents.py
+tests/test_schema.py          # validates .ndjson schema on sample logs
+eval/schema_validator.py      # lightweight runtime validator used by tests
 pyproject.toml              # build metadata & deps
 ```
 
@@ -38,7 +46,7 @@ pyproject.toml              # build metadata & deps
 - Observation: dict space
   - `contrast` in [-1,1] (sign = side; |value| = difficulty)
   - optional `phase_onehot` and `t_norm`
-- Action space: Discrete(3) = {left, right, no-op}
+- Action space: Discrete(3) = {left=0, right=1, no-op=2}
 - Reward: +1 correct; 0 otherwise; configurable timeouts & ITI.
 - Episode: fixed N trials per session.
 - Config: contrast set, block schedule, timings, reward sizes.
@@ -49,7 +57,7 @@ pyproject.toml              # build metadata & deps
 - Observation: dict
   - `coherence` ∈ [0,1] signed by direction
   - optional `phase_onehot`, `t_norm`
-- Action space: Discrete(3) = {left, right, hold}
+- Action space: Discrete(3) = {left=0, right=1, hold=2}
 - Reward: +1 correct; optional per-step cost (speed–accuracy tradeoff)
 - Optional collapsing bound via time-varying decision rule / termination.
 - Same logging requirements.
@@ -75,10 +83,8 @@ pyproject.toml              # build metadata & deps
 - **Psychometric**: fit logistic to P(choice=right) vs signed stimulus.
 - **Chronometric (RDM)**: median RT vs coherence; report slope and intercept.
 - **History**: win-stay/lose-shift; sticky-choice; logistic regression kernel over past K trials.
+- History kernel regression: logistic over past K=5 trials (choices & rewards) with standardized predictors.
 - **Bias**: block-prior effect size on choice bias.
-
-### eval/report.py
-- Generate HTML with matplotlib plots: curves + tables; embed JSON metrics.
 
 ## CLIs
 
@@ -96,11 +102,18 @@ pyproject.toml              # build metadata & deps
 - `test_envs.py`: reset/step invariants, phase transitions, action masking.
 - `test_metrics.py`: deterministic toy data → known metric values.
 - `test_agents.py`: smoke tests that produce logs with required fields.
+- `test_schema.py`: load tiny `.ndjson` fixtures and assert fields/types; reject extra/missing keys.
 
 ## Acceptance criteria (for this sprint)
 - `make demo_ibl` trains `sticky_q` on `ibl_2afc` (≤5 minutes) and produces a report with a sensible psychometric curve and non-zero stickiness.
 - `make demo_rdm` trains `ppo` on `rdm` and shows a speed–accuracy tradeoff when per-step cost > 0.
 - All tests pass on CI (GitHub Actions matrix: py3.11, ubuntu-latest).
+- All generated logs pass `tests/test_schema.py` validation.
+- No CLI surface or schema changes from this spec.
 
-## Deliver next
-- Implement the above with clean, documented code. Avoid over-design; keep functions small and pure where possible. Save configs, keep seeds constant, write logs.
+## v0.2 preview (do not implement in this sprint)
+We will extend the benchmark next with:  
+- **Mouse PRL (flexibility):** reversal blocks with p_hi=0.8 / p_lo=0.2; add `block_id`, `is_reversal_trial`, `reversal_index` to logs; metrics include trials‑to‑criterion, perseverative/regressive errors, WS/LS asymmetry.  
+- **Macaque DMS (working memory):** phases `fixation → sample → delay → test → response`; enforce hold during delay; metrics include accuracy/RT vs delay and lure‑specific errors.
+
+Keep current interfaces stable; design with these additions in mind.
