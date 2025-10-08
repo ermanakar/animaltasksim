@@ -166,14 +166,16 @@ pip install -e .[dev]       # via pyproject optional extras
 # Install
 pip install -e ".[dev]"
 
-# Train Sticky-Q on IBL 2AFC (writes runs/ibl_stickyq)
-python scripts/train_agent.py --env ibl_2afc --agent sticky_q --steps 2000 --out runs/ibl_stickyq
+# Train Sticky-GLM on IBL 2AFC (writes runs/ibl_stickyq)
+python scripts/train_agent.py --env ibl_2afc --agent sticky_q --steps 2000 --out runs/ibl_stickyq \
+  --sticky_q.learning-rate 0.05 --sticky_q.temperature 1.0
 
 # Train Bayesian observer on RDM
 python scripts/train_agent.py --env rdm --agent bayes --steps 1200 --out runs/rdm_bayes
 
-# Train PPO baseline on RDM with a per-step cost
-python scripts/train_agent.py --env rdm --agent ppo --steps 10000 --trials-per-episode 200 --ppo.per-step-cost 0.05 --out runs/rdm_ppo
+# Train PPO baseline on RDM with streaming evidence & per-step cost
+python scripts/train_agent.py --env rdm --agent ppo --steps 60000 --trials-per-episode 600 \
+  --ppo.per-step-cost 0.02 --ppo.evidence-gain 0.1 --ppo.momentary-sigma 3.0 --out runs/rdm_ppo
 
 # Evaluate (writes metrics.json)
 python scripts/evaluate_agent.py --run runs/ibl_stickyq

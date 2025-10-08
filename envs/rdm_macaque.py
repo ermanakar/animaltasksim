@@ -27,8 +27,8 @@ STREAMING_PHASES = {"stimulus", "response"}
 
 DEFAULT_PHASE_SCHEDULE = (
     PhaseTiming("fixation", 10),
-    PhaseTiming("stimulus", 40),
-    PhaseTiming("response", 40),
+    PhaseTiming("stimulus", 80),
+    PhaseTiming("response", 120),
     PhaseTiming("outcome", 10),
 )
 
@@ -63,12 +63,12 @@ class RDMConfig:
     include_phase_onehot: bool = False
     include_timing: bool = False
     include_cumulative_evidence: bool = True
-    evidence_gain: float = 3.0
+    evidence_gain: float = 0.05
     momentary_sigma: float = 1.0
     per_step_cost: float = 0.0
-    collapsing_bound: bool = False
+    collapsing_bound: bool = True
     min_bound_steps: int = 5
-    bound_threshold: float = 8.0
+    bound_threshold: float = 3.0
     log_path: Path | None = None
     agent: AgentMetadata = field(default_factory=AgentMetadata)
     seed: int | None = None
@@ -127,7 +127,7 @@ class RDMMacaqueEnv(Env):
         self._signed_coherence: float = 0.0
         self._momentary_evidence: float = 0.0
         self._cumulative_evidence: float = 0.0
-        self._evidence_sampled: bool = False
+        self._response_steps: int = 0
 
     def _build_observation_space(self) -> spaces.Dict:
         space_dict: dict[str, spaces.Space] = {
@@ -155,20 +155,17 @@ class RDMMacaqueEnv(Env):
     def _reset_evidence(self) -> None:
         self._momentary_evidence = 0.0
         self._cumulative_evidence = 0.0
-        self._evidence_sampled = False
 
     def _sample_evidence(self) -> None:
         mean = self.config.evidence_gain * self._signed_coherence
         sample = float(self._rng.normal(loc=mean, scale=self.config.momentary_sigma)) if self._rng else 0.0
         self._momentary_evidence = sample
         self._cumulative_evidence += sample
-        self._evidence_sampled = True
 
     def _maybe_sample_evidence(self) -> None:
         phase_name = self._current_phase_name()
         if phase_name in STREAMING_PHASES:
-            if not self._evidence_sampled:
-                self._sample_evidence()
+            self._sample_evidence()
         else:
             self._momentary_evidence = 0.0
 
@@ -216,6 +213,7 @@ class RDMMacaqueEnv(Env):
         self._prev_action = None
         self._prev_reward = None
         self._prev_correct = None
+        self._response_steps = 0
 
         self._start_new_trial()
         self._maybe_sample_evidence()
@@ -242,6 +240,7 @@ class RDMMacaqueEnv(Env):
         self._correct = False
         self._rt_steps = None
         self._reset_evidence()
+        self._response_steps = 0
 
     def _log_trial(self) -> None:
         if self._logger is None:
@@ -273,11 +272,7 @@ class RDMMacaqueEnv(Env):
         self._prev_correct = self._correct
 
     def _apply_per_step_cost(self, phase_name: str) -> float:
-        if self.config.per_step_cost <= 0.0:
-            return 0.0
-        if phase_name not in STREAMING_PHASES:
-            return 0.0
-        return -self.config.per_step_cost
+        return 0.0
 
     def _process_response(self, action: int) -> None:
         if self._response_captured:
@@ -286,6 +281,10 @@ class RDMMacaqueEnv(Env):
             raise ValueError(f"invalid action {action}")
         if action == ACTION_HOLD:
             return
+        # Enforce a minimum evidence accumulation period before allowing commits.
+        response_steps = self._phase_step_counts.get("response", 0)
+        if response_steps < self.config.min_bound_steps:
+            return
 
         self._response_captured = True
         self._response_action = ACTION_NAMES[action]
@@ -293,7 +292,7 @@ class RDMMacaqueEnv(Env):
 
         expected = ACTION_RIGHT if self._signed_coherence > 0 else ACTION_LEFT if self._signed_coherence < 0 else ACTION_RIGHT
         self._correct = action == expected
-        self._trial_reward = 1.0 if self._correct else 0.0
+        self._trial_reward = 1.0 if self._correct else -1.0
 
         self._phase_step = self._current_phase.duration_steps - 1
 
@@ -316,6 +315,8 @@ class RDMMacaqueEnv(Env):
         reward = 0.0
 
         if phase_name == "response":
+            if not self._response_captured:
+                self._response_steps += 1
             self._process_response(int(action))
         elif phase_name in {"fixation", "stimulus", "outcome"}:
             action = ACTION_HOLD
@@ -326,6 +327,9 @@ class RDMMacaqueEnv(Env):
 
         if phase_name == "outcome" and self._phase_step == 0:
             reward = self._trial_reward
+            if self.config.per_step_cost > 0.0:
+                reward -= self.config.per_step_cost * self._response_steps
+            self._response_steps = 0
 
         self._phase_step_counts[phase_name] += 1
 
@@ -341,15 +345,18 @@ class RDMMacaqueEnv(Env):
                 self._phase_index = len(self._phase_schedule) - 1
                 self._phase_step = self._phase_schedule[-1].duration_steps - 1
                 trial_completed = True
-            else:
-                self._evidence_sampled = False
 
-        if self.config.collapsing_bound and not self._response_captured:
-            if (
-                abs(self._cumulative_evidence) >= self.config.bound_threshold
-                and self._phase_step_counts["response"] >= self.config.min_bound_steps
-            ):
-                self._finalize_without_response()
+        if (
+            self.config.collapsing_bound
+            and not self._response_captured
+            and phase_name == "response"
+            and self._phase_step_counts.get("response", 0) >= self.config.min_bound_steps
+        ):
+            response_steps = self._phase_step_counts.get("response", 0)
+            dynamic_bound = max(0.5, self.config.bound_threshold * np.exp(-0.02 * response_steps))
+            if abs(self._cumulative_evidence) >= dynamic_bound:
+                action = ACTION_RIGHT if self._cumulative_evidence >= 0 else ACTION_LEFT
+                self._process_response(action)
 
         if trial_completed:
             if not self._response_captured:
@@ -372,8 +379,6 @@ class RDMMacaqueEnv(Env):
                 observation = self._build_observation()
                 info = self._default_info()
         else:
-            if self._current_phase_name() in STREAMING_PHASES:
-                self._evidence_sampled = False
             observation = self._build_observation()
             info = self._default_info()
 

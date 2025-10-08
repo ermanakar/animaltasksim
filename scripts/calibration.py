@@ -7,7 +7,8 @@ from typing import Literal
 
 import tyro
 
-from agents.sticky_q import StickyQHyperParams, StickyQTrainingConfig, train_sticky_q
+from agents.ddm_baseline import DDMConfig, DDMBaseline
+from agents.sticky_q import StickyGLMHyperParams, StickyGLMTrainingConfig, train_sticky_q
 from agents.ppo_baseline import PPOHyperParams, PPOTrainingConfig, train_ppo
 from eval.metrics import load_and_compute
 from eval.report import build_report
@@ -19,28 +20,26 @@ class StickyOptions:
     episodes: int = 15
     trials_per_episode: int = 400
     seed: int = 1234
-    learning_rate: float = 0.1
-    discount: float = 0.95
-    epsilon: float = 0.4
-    epsilon_min: float = 0.01
-    epsilon_decay: float = 0.9995
-    stickiness: float = 0.1
+    learning_rate: float = 0.05
+    weight_decay: float = 0.0
+    temperature: float = 1.0
+    sample_actions: bool = True
 
 
 @dataclass(slots=True)
 class PPOOptions:
     output: Path = Path("runs/rdm_ppo_calib")
-    total_timesteps: int = 40_000
-    trials_per_episode: int = 400
+    total_timesteps: int = 60_000
+    trials_per_episode: int = 600
     eval_episodes: int = 1
     seed: int = 1234
-    per_step_cost: float = 0.01
-    evidence_gain: float = 2.0
-    momentary_sigma: float = 1.5
+    per_step_cost: float = 0.02
+    evidence_gain: float = 0.05
+    momentary_sigma: float = 1.0
     include_cumulative_evidence: bool = True
-    collapsing_bound: bool = False
+    collapsing_bound: bool = True
     min_bound_steps: int = 5
-    bound_threshold: float = 8.0
+    bound_threshold: float = 3.0
     learning_rate: float = 5e-5
     n_steps: int = 512
     batch_size: int = 256
@@ -52,10 +51,24 @@ class PPOOptions:
 
 
 @dataclass(slots=True)
+class DDMOptions:
+    output: Path = Path("runs/rdm_ddm_baseline")
+    trials_per_episode: int = 600
+    episodes: int = 1
+    seed: int = 42
+    drift_gain: float = 0.1
+    noise: float = 3.0
+    bound: float = 12.0
+    non_decision_ms: float = 100.0
+    per_step_cost: float = 0.02
+
+
+@dataclass(slots=True)
 class Args:
-    mode: Literal["sticky", "ppo", "both"] = "both"
+    mode: Literal["sticky", "ppo", "ddm", "all"] = "all"
     sticky: StickyOptions = field(default_factory=StickyOptions)
     ppo: PPOOptions = field(default_factory=PPOOptions)
+    ddm: DDMOptions = field(default_factory=DDMOptions)
     verbose: bool = True
 
 
@@ -76,15 +89,13 @@ def _summarize_metrics(metrics: dict[str, object]) -> None:
 
 
 def run_sticky(opts: StickyOptions, verbose: bool = True) -> Path:
-    hyper = StickyQHyperParams(
+    hyper = StickyGLMHyperParams(
         learning_rate=opts.learning_rate,
-        discount=opts.discount,
-        epsilon=opts.epsilon,
-        epsilon_min=opts.epsilon_min,
-        epsilon_decay=opts.epsilon_decay,
-        stickiness=opts.stickiness,
+        weight_decay=opts.weight_decay,
+        temperature=opts.temperature,
+        sample_actions=opts.sample_actions,
     )
-    cfg = StickyQTrainingConfig(
+    cfg = StickyGLMTrainingConfig(
         episodes=opts.episodes,
         trials_per_episode=opts.trials_per_episode,
         seed=opts.seed,
@@ -160,12 +171,43 @@ def run_ppo(opts: PPOOptions, verbose: bool = True) -> Path:
     return paths["root"]
 
 
+def run_ddm(opts: DDMOptions, verbose: bool = True) -> Path:
+    cfg = DDMConfig(
+        trials_per_episode=opts.trials_per_episode,
+        episodes=opts.episodes,
+        seed=opts.seed,
+        drift_gain=opts.drift_gain,
+        noise=opts.noise,
+        bound=opts.bound,
+        non_decision_ms=opts.non_decision_ms,
+        per_step_cost=opts.per_step_cost,
+        output_dir=opts.output,
+    )
+    if verbose:
+        _print_heading("Running DDM baseline")
+        print(json.dumps({
+            "trials_per_episode": cfg.trials_per_episode,
+            "bound": cfg.bound,
+            "drift_gain": cfg.drift_gain,
+        }, indent=2))
+    runner = DDMBaseline(cfg)
+    metrics = runner.run()
+    if verbose:
+        _print_heading("DDM metrics")
+        for key, value in metrics.items():
+            print(f"  {key}: {value}")
+        print(f"Artifacts: {cfg.output_paths()['root']}")
+    return cfg.output_paths()["root"]
+
+
 def main() -> None:
     args = tyro.cli(Args)
-    if args.mode in {"sticky", "both"}:
+    if args.mode in {"sticky", "all"}:
         run_sticky(args.sticky, verbose=args.verbose)
-    if args.mode in {"ppo", "both"}:
+    if args.mode in {"ppo", "all"}:
         run_ppo(args.ppo, verbose=args.verbose)
+    if args.mode in {"ddm", "all"}:
+        run_ddm(args.ddm, verbose=args.verbose)
 
 
 if __name__ == "__main__":

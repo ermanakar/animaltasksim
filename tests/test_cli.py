@@ -18,7 +18,7 @@ def _write_log(path) -> None:
         "reward": 1.0,
         "rt_ms": 500.0,
         "phase_times": {"stim_ms": 300, "resp_ms": 700},
-        "prev": None,
+        "prev": {"action": "left", "reward": 0.0, "correct": False},
         "seed": 1,
         "agent": {"name": "tester", "version": "0.0"},
     }

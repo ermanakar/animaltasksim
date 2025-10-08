@@ -49,6 +49,13 @@ def load_trials(path: str | Path) -> pd.DataFrame:
                 continue
             trial = TrialRecord.model_validate_json(raw)
             record = trial.model_dump()
+            task = record.get("task", "").lower()
+            if task in {"ibl2afc", "ibl-2afc", "ibl_2afc"}:
+                record["task"] = "ibl_2afc"
+            elif task in {"rdm", "rdm_task", "rdm_macaque"}:
+                record["task"] = "rdm"
+            else:
+                record["task"] = task
             stim = record.pop("stimulus")
             for key, value in stim.items():
                 record[f"stimulus_{key}"] = value
@@ -115,11 +122,15 @@ def compute_psychometric(df: pd.DataFrame, stimulus_key: str = "contrast") -> Ps
 
 
 def compute_chronometric(df: pd.DataFrame, stimulus_key: str = "coherence") -> ChronometricMetrics:
-    data = df[df["rt_ms"].notnull()].copy()
+    data = df.copy()
+    data["rt_used"] = data["rt_ms"].fillna(0.0)
+    mask = data["rt_used"] > 0.0
+    data = data[mask]
     if data.empty:
         return ChronometricMetrics(np.nan, np.nan, {})
 
     data["difficulty"] = np.abs(data[f"stimulus_{stimulus_key}"])
+    data["rt_used"] = data["rt_used"]
     grouped = data.groupby("difficulty")["rt_ms"].median().sort_index()
     if len(grouped) < 2:
         intercept = float(grouped.iloc[0]) if not grouped.empty else np.nan

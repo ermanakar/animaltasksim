@@ -10,17 +10,15 @@ import tyro
 
 from agents.bayes_observer import BayesParams, BayesTrainingConfig, run_bayesian_observer
 from agents.ppo_baseline import PPOHyperParams, PPOTrainingConfig, train_ppo
-from agents.sticky_q import StickyQHyperParams, StickyQTrainingConfig, train_sticky_q
+from agents.sticky_q import StickyGLMHyperParams, StickyGLMTrainingConfig, train_sticky_q
 
 
 @dataclass(slots=True)
 class StickyQCLIConfig:
-    learning_rate: float = 0.1
-    discount: float = 0.95
-    epsilon: float = 0.2
-    epsilon_min: float = 0.01
-    epsilon_decay: float = 0.995
-    stickiness: float = 1.0
+    learning_rate: float = 0.05
+    weight_decay: float = 0.0
+    temperature: float = 1.0
+    sample_actions: bool = False
 
 
 @dataclass(slots=True)
@@ -32,15 +30,21 @@ class BayesCLIConfig:
 
 @dataclass(slots=True)
 class PPOCLIConfig:
-    learning_rate: float = 3e-4
-    n_steps: int = 128
-    batch_size: int = 64
+    learning_rate: float = 5e-5
+    n_steps: int = 512
+    batch_size: int = 256
     gamma: float = 0.99
     gae_lambda: float = 0.95
     clip_range: float = 0.2
     ent_coef: float = 0.0
     vf_coef: float = 0.5
-    per_step_cost: float = 0.0
+    per_step_cost: float = 0.02
+    evidence_gain: float = 0.05
+    momentary_sigma: float = 1.0
+    include_cumulative_evidence: bool = True
+    collapsing_bound: bool = True
+    min_bound_steps: int = 5
+    bound_threshold: float = 3.0
 
 
 @dataclass(slots=True)
@@ -66,8 +70,8 @@ def _train_sticky_q(args: TrainArgs) -> dict[str, object]:
     if episodes is None:
         episodes = max(1, math.ceil(args.steps / max(1, args.trials_per_episode)))
 
-    hyper = StickyQHyperParams(**asdict(args.sticky_q))
-    config = StickyQTrainingConfig(
+    hyper = StickyGLMHyperParams(**asdict(args.sticky_q))
+    config = StickyGLMTrainingConfig(
         episodes=episodes,
         trials_per_episode=args.trials_per_episode,
         seed=args.seed,
@@ -99,6 +103,12 @@ def _train_bayes(args: TrainArgs) -> dict[str, object]:
 def _train_ppo(args: TrainArgs) -> dict[str, object]:
     ppo_args = asdict(args.ppo)
     per_step_cost = float(ppo_args.pop("per_step_cost"))
+    evidence_gain = float(ppo_args.pop("evidence_gain"))
+    momentary_sigma = float(ppo_args.pop("momentary_sigma"))
+    include_cumulative_evidence = ppo_args.pop("include_cumulative_evidence")
+    collapsing_bound = ppo_args.pop("collapsing_bound")
+    min_bound_steps = int(ppo_args.pop("min_bound_steps"))
+    bound_threshold = float(ppo_args.pop("bound_threshold"))
     hyper = PPOHyperParams(**ppo_args)
     config = PPOTrainingConfig(
         env=args.env,
@@ -106,6 +116,12 @@ def _train_ppo(args: TrainArgs) -> dict[str, object]:
         eval_trials=args.trials_per_episode,
         eval_episodes=args.episodes or 1,
         per_step_cost=per_step_cost,
+        evidence_gain=evidence_gain,
+        momentary_sigma=momentary_sigma,
+        include_cumulative_evidence=include_cumulative_evidence,
+        collapsing_bound=collapsing_bound,
+        min_bound_steps=min_bound_steps,
+        bound_threshold=bound_threshold,
         seed=args.seed,
         agent_version=args.agent_version,
         output_dir=args.out,

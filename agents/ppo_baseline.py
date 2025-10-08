@@ -35,16 +35,16 @@ class PPOHyperParams:
 @dataclass(slots=True)
 class PPOTrainingConfig:
     env: Literal["ibl_2afc", "rdm"] = "ibl_2afc"
-    total_timesteps: int = 50_000
-    eval_trials: int = 400
+    total_timesteps: int = 60_000
+    eval_trials: int = 600
     eval_episodes: int = 1
-    per_step_cost: float = 0.0
-    evidence_gain: float = 3.0
+    per_step_cost: float = 0.02
+    evidence_gain: float = 0.05
     momentary_sigma: float = 1.0
     include_cumulative_evidence: bool = True
-    collapsing_bound: bool = False
+    collapsing_bound: bool = True
     min_bound_steps: int = 5
-    bound_threshold: float = 8.0
+    bound_threshold: float = 3.0
     seed: int = 1234
     agent_version: str = "0.1.0"
     output_dir: Path = field(default_factory=lambda: ProjectPaths.from_cwd().runs / "ppo")
