@@ -24,7 +24,7 @@ from envs.ibl_2afc import (
     IBL2AFCEnv,
 )
 
-StateKey = Tuple[int, int]
+StateKey = Tuple[int, int, int]
 
 
 @dataclass(slots=True)
@@ -78,8 +78,15 @@ class StickyQLearner:
             stim = -1
         else:
             stim = 0
+        magnitude = abs(contrast)
+        if magnitude >= 0.5:
+            mag_bin = 2
+        elif magnitude >= 0.25:
+            mag_bin = 1
+        else:
+            mag_bin = 0
         bias = 1 if block_prior >= 0.5 else 0
-        return (stim, bias)
+        return (stim, mag_bin, bias)
 
     def _ensure_state(self, state: StateKey) -> np.ndarray:
         if state not in self.q_table:
@@ -129,7 +136,6 @@ class StickyQLearner:
             pending_state: StateKey | None = None
             pending_action_idx: int | None = None
             cumulative_reward = 0.0
-            trial_rewards: list[float] = []
             correct_trials = 0
             total_trials = 0
 
@@ -161,10 +167,11 @@ class StickyQLearner:
                     next_state = self._encode_state(next_contrast, next_block_prior)
                     terminal_transition = next_info["phase"] in {"iti", "terminal"}
                     self._update(pending_state, pending_action_idx, reward, None if terminal_transition else next_state)
-                    trial_rewards.append(reward)
-                    if reward > 0:
-                        correct_trials += 1
-                    total_trials += 1
+                    if next_info["phase"] in {"outcome", "iti", "terminal"}:
+                        is_correct = bool(getattr(env, "_correct", reward > 0))
+                        if is_correct:
+                            correct_trials += 1
+                        total_trials += 1
                     pending_state = None
                     pending_action_idx = None
                     self.decay_epsilon()

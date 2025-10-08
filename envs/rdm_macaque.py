@@ -1,4 +1,4 @@
-"""Macaque random-dot motion (RDM) environment."""
+"""Macaque random-dot motion (RDM) environment with streaming evidence."""
 
 from __future__ import annotations
 
@@ -23,10 +23,12 @@ ACTION_NAMES = {
     ACTION_HOLD: "hold",
 }
 
+STREAMING_PHASES = {"stimulus", "response"}
+
 DEFAULT_PHASE_SCHEDULE = (
     PhaseTiming("fixation", 10),
-    PhaseTiming("stimulus", 20),
-    PhaseTiming("response", 30),
+    PhaseTiming("stimulus", 40),
+    PhaseTiming("response", 40),
     PhaseTiming("outcome", 10),
 )
 
@@ -60,9 +62,13 @@ class RDMConfig:
     step_ms: int = 10
     include_phase_onehot: bool = False
     include_timing: bool = False
+    include_cumulative_evidence: bool = True
+    evidence_gain: float = 3.0
+    momentary_sigma: float = 1.0
     per_step_cost: float = 0.0
     collapsing_bound: bool = False
     min_bound_steps: int = 5
+    bound_threshold: float = 8.0
     log_path: Path | None = None
     agent: AgentMetadata = field(default_factory=AgentMetadata)
     seed: int | None = None
@@ -76,6 +82,10 @@ class RDMConfig:
         _validate_coherences(self.coherence_set)
         if self.collapsing_bound and self.min_bound_steps <= 0:
             raise ValueError("min_bound_steps must be positive when collapsing_bound is enabled")
+        if self.momentary_sigma <= 0:
+            raise ValueError("momentary_sigma must be positive")
+        if self.bound_threshold <= 0:
+            raise ValueError("bound_threshold must be positive")
 
 
 class RDMMacaqueEnv(Env):
@@ -113,11 +123,20 @@ class RDMMacaqueEnv(Env):
         self._rt_steps: int | None = None
         self._prev_action: str | None = None
         self._prev_reward: float | None = None
+        self._prev_correct: bool | None = None
+        self._signed_coherence: float = 0.0
+        self._momentary_evidence: float = 0.0
+        self._cumulative_evidence: float = 0.0
+        self._evidence_sampled: bool = False
 
     def _build_observation_space(self) -> spaces.Dict:
         space_dict: dict[str, spaces.Space] = {
-            "coherence": spaces.Box(low=-1.0, high=1.0, shape=(), dtype=np.float32)
+            "coherence": spaces.Box(low=-np.inf, high=np.inf, shape=(), dtype=np.float32)
         }
+        if self.config.include_cumulative_evidence:
+            space_dict["cumulative_evidence"] = spaces.Box(
+                low=-np.inf, high=np.inf, shape=(), dtype=np.float32
+            )
         if self.config.include_phase_onehot:
             space_dict["phase_onehot"] = spaces.Box(
                 low=0.0, high=1.0, shape=(len(self._phase_schedule),), dtype=np.float32
@@ -133,12 +152,32 @@ class RDMMacaqueEnv(Env):
     def _current_phase_name(self) -> str:
         return self._current_phase.name
 
-    def _build_observation(self) -> dict[str, np.ndarray | float]:
+    def _reset_evidence(self) -> None:
+        self._momentary_evidence = 0.0
+        self._cumulative_evidence = 0.0
+        self._evidence_sampled = False
+
+    def _sample_evidence(self) -> None:
+        mean = self.config.evidence_gain * self._signed_coherence
+        sample = float(self._rng.normal(loc=mean, scale=self.config.momentary_sigma)) if self._rng else 0.0
+        self._momentary_evidence = sample
+        self._cumulative_evidence += sample
+        self._evidence_sampled = True
+
+    def _maybe_sample_evidence(self) -> None:
         phase_name = self._current_phase_name()
-        coherence = 0.0
-        if phase_name in {"stimulus", "response", "outcome"}:
-            coherence = float(self._stimulus.get("coherence", 0.0))
-        obs: dict[str, np.ndarray | float] = {"coherence": np.float32(coherence)}
+        if phase_name in STREAMING_PHASES:
+            if not self._evidence_sampled:
+                self._sample_evidence()
+        else:
+            self._momentary_evidence = 0.0
+
+    def _build_observation(self) -> dict[str, np.ndarray | float]:
+        obs: dict[str, np.ndarray | float] = {
+            "coherence": np.float32(self._momentary_evidence)
+        }
+        if self.config.include_cumulative_evidence:
+            obs["cumulative_evidence"] = np.float32(self._cumulative_evidence)
         if self.config.include_phase_onehot:
             onehot = np.zeros(len(self._phase_schedule), dtype=np.float32)
             onehot[self._phase_index] = 1.0
@@ -176,8 +215,10 @@ class RDMMacaqueEnv(Env):
         self._rt_steps = None
         self._prev_action = None
         self._prev_reward = None
+        self._prev_correct = None
 
         self._start_new_trial()
+        self._maybe_sample_evidence()
         return self._build_observation(), self._default_info()
 
     def _start_new_trial(self) -> None:
@@ -187,6 +228,7 @@ class RDMMacaqueEnv(Env):
         coherence_value = magnitude * sign
         if magnitude == 0.0:
             coherence_value = 0.0
+        self._signed_coherence = coherence_value
         self._stimulus = {
             "coherence": coherence_value,
             "direction": "right" if coherence_value > 0 else "left" if coherence_value < 0 else "none",
@@ -199,6 +241,7 @@ class RDMMacaqueEnv(Env):
         self._trial_reward = 0.0
         self._correct = False
         self._rt_steps = None
+        self._reset_evidence()
 
     def _log_trial(self) -> None:
         if self._logger is None:
@@ -220,18 +263,21 @@ class RDMMacaqueEnv(Env):
             "phase_times": phase_times,
             "prev": None
             if self._prev_action is None
-            else {"action": self._prev_action, "reward": self._prev_reward},
+            else {"action": self._prev_action, "reward": self._prev_reward, "correct": self._prev_correct},
             "seed": int(self._seed or 0),
             "agent": self.config.agent.to_dict(),
         }
         self._logger.log(record)
         self._prev_action = self._response_action
         self._prev_reward = float(self._trial_reward)
+        self._prev_correct = self._correct
 
-    def _apply_per_step_cost(self, reward: float) -> float:
+    def _apply_per_step_cost(self, phase_name: str) -> float:
         if self.config.per_step_cost <= 0.0:
-            return reward
-        return reward - self.config.per_step_cost
+            return 0.0
+        if phase_name not in STREAMING_PHASES:
+            return 0.0
+        return -self.config.per_step_cost
 
     def _process_response(self, action: int) -> None:
         if self._response_captured:
@@ -245,8 +291,7 @@ class RDMMacaqueEnv(Env):
         self._response_action = ACTION_NAMES[action]
         self._rt_steps = self._phase_step + 1
 
-        coherence = float(self._stimulus.get("coherence", 0.0))
-        expected = ACTION_RIGHT if coherence > 0 else ACTION_LEFT if coherence < 0 else ACTION_RIGHT
+        expected = ACTION_RIGHT if self._signed_coherence > 0 else ACTION_LEFT if self._signed_coherence < 0 else ACTION_RIGHT
         self._correct = action == expected
         self._trial_reward = 1.0 if self._correct else 0.0
 
@@ -265,23 +310,19 @@ class RDMMacaqueEnv(Env):
         if self._terminated:
             raise RuntimeError("Episode already terminated; call reset().")
 
+        self._maybe_sample_evidence()
+
         phase_name = self._current_phase_name()
         reward = 0.0
 
         if phase_name == "response":
             self._process_response(int(action))
-            if (
-                self.config.collapsing_bound
-                and not self._response_captured
-                and (self._phase_step + 1) >= self.config.min_bound_steps
-            ):
-                self._finalize_without_response()
-                self._phase_step = self._current_phase.duration_steps - 1
-            reward = self._apply_per_step_cost(0.0)
-        elif phase_name in {"fixation", "stimulus"}:
+        elif phase_name in {"fixation", "stimulus", "outcome"}:
             action = ACTION_HOLD
         else:
             action = ACTION_HOLD
+
+        reward += self._apply_per_step_cost(phase_name)
 
         if phase_name == "outcome" and self._phase_step == 0:
             reward = self._trial_reward
@@ -300,6 +341,15 @@ class RDMMacaqueEnv(Env):
                 self._phase_index = len(self._phase_schedule) - 1
                 self._phase_step = self._phase_schedule[-1].duration_steps - 1
                 trial_completed = True
+            else:
+                self._evidence_sampled = False
+
+        if self.config.collapsing_bound and not self._response_captured:
+            if (
+                abs(self._cumulative_evidence) >= self.config.bound_threshold
+                and self._phase_step_counts["response"] >= self.config.min_bound_steps
+            ):
+                self._finalize_without_response()
 
         if trial_completed:
             if not self._response_captured:
@@ -318,9 +368,12 @@ class RDMMacaqueEnv(Env):
             else:
                 self._trial_index += 1
                 self._start_new_trial()
+                self._maybe_sample_evidence()
                 observation = self._build_observation()
                 info = self._default_info()
         else:
+            if self._current_phase_name() in STREAMING_PHASES:
+                self._evidence_sampled = False
             observation = self._build_observation()
             info = self._default_info()
 
@@ -328,6 +381,8 @@ class RDMMacaqueEnv(Env):
 
     def _terminal_observation(self) -> dict[str, np.ndarray | float]:
         obs: dict[str, np.ndarray | float] = {"coherence": np.float32(0.0)}
+        if self.config.include_cumulative_evidence:
+            obs["cumulative_evidence"] = np.float32(0.0)
         if self.config.include_phase_onehot:
             obs["phase_onehot"] = np.zeros(len(self._phase_schedule), dtype=np.float32)
         if self.config.include_timing:

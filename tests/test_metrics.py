@@ -30,6 +30,7 @@ def _make_psychometric_df() -> pd.DataFrame:
                 "rt_ms": 500.0,
                 "prev_action": "right" if i > 0 else None,
                 "prev_reward": 1.0 if i > 0 and contrast > 0 else 0.0,
+                "prev_correct": 1.0 if i > 0 and contrast > 0 else 0.0,
             }
             for i in range(right)
         )
@@ -45,6 +46,7 @@ def _make_psychometric_df() -> pd.DataFrame:
                 "rt_ms": 500.0,
                 "prev_action": "left" if i > 0 else None,
                 "prev_reward": 1.0 if i > 0 and contrast < 0 else 0.0,
+                "prev_correct": 1.0 if i > 0 and contrast < 0 else 0.0,
             }
             for i in range(left)
         )
@@ -69,8 +71,9 @@ def _make_chronometric_df() -> pd.DataFrame:
                     "action": "right",
                     "reward": 1.0,
                     "rt_ms": rt,
-                    "prev_action": "right" if idx > 0 else None,
-                    "prev_reward": 1.0 if idx > 0 else None,
+                "prev_action": "right" if idx > 0 else None,
+                "prev_reward": 1.0 if idx > 0 else None,
+                "prev_correct": 1.0 if idx > 0 else None,
                 }
             )
             idx += 1
@@ -90,6 +93,7 @@ def _make_history_df() -> pd.DataFrame:
                 "rt_ms": 520.0,
                 "prev_action": None,
                 "prev_reward": None,
+                "prev_correct": None,
             },
             {
                 "task": "ibl_2afc",
@@ -101,6 +105,7 @@ def _make_history_df() -> pd.DataFrame:
                 "rt_ms": 500.0,
                 "prev_action": "left",
                 "prev_reward": 1.0,
+                "prev_correct": 1.0,
             },
             {
                 "task": "ibl_2afc",
@@ -112,6 +117,7 @@ def _make_history_df() -> pd.DataFrame:
                 "rt_ms": 480.0,
                 "prev_action": "left",
                 "prev_reward": 0.0,
+                "prev_correct": 0.0,
             },
             {
                 "task": "ibl_2afc",
@@ -123,6 +129,7 @@ def _make_history_df() -> pd.DataFrame:
                 "rt_ms": 460.0,
                 "prev_action": "right",
                 "prev_reward": 1.0,
+                "prev_correct": 1.0,
             },
         ]
     )
@@ -148,3 +155,4 @@ def test_history_metrics_win_stay_and_betas():
     assert metrics.win_stay > 0.5
     assert metrics.sticky_choice > 0.5
     assert np.isfinite(metrics.prev_choice_beta)
+    assert np.isfinite(metrics.prev_correct_beta)

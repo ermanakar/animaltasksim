@@ -35,7 +35,7 @@ class HistoryMetrics:
     lose_shift: float
     sticky_choice: float
     prev_choice_beta: float
-    prev_reward_beta: float
+    prev_correct_beta: float
 
 
 def load_trials(path: str | Path) -> pd.DataFrame:
@@ -59,6 +59,9 @@ def load_trials(path: str | Path) -> pd.DataFrame:
             else:
                 record["prev_action"] = None
                 record["prev_reward"] = None
+                record["prev_correct"] = None
+            record.setdefault("prev_reward", None)
+            record.setdefault("prev_correct", None)
             records.append(record)
     if not records:
         return pd.DataFrame()
@@ -140,8 +143,11 @@ def compute_history_metrics(df: pd.DataFrame) -> HistoryMetrics:
     data["same_as_prev"] = same
 
     valid_prev = data[data["prev_action"].notnull()].copy()
-    win_trials = valid_prev[valid_prev["prev_reward"].fillna(0) > 0]
-    lose_trials = valid_prev[valid_prev["prev_reward"].fillna(0) <= 0]
+    if "prev_correct" not in valid_prev or valid_prev["prev_correct"].isnull().all():
+        return HistoryMetrics(float("nan"), float("nan"), float("nan"), float("nan"), float("nan"))
+    valid_prev["prev_correct"] = valid_prev["prev_correct"].fillna(0.0)
+    win_trials = valid_prev[valid_prev["prev_correct"] > 0.5]
+    lose_trials = valid_prev[valid_prev["prev_correct"] <= 0.5]
 
     def _ratio(values: pd.Series, transform: Callable[[pd.Series], pd.Series] | None = None) -> float:
         if values.empty:
@@ -162,8 +168,8 @@ def compute_history_metrics(df: pd.DataFrame) -> HistoryMetrics:
         return HistoryMetrics(win_stay, lose_shift, sticky, float("nan"), float("nan"))
 
     prev_choice = np.where(logistic_subset["prev_action"] == "right", 1.0, -1.0)
-    prev_reward = logistic_subset["prev_reward"].fillna(0.0).astype(float).to_numpy()
-    X = np.column_stack([np.ones(len(logistic_subset)), prev_choice, prev_reward])
+    prev_correct = logistic_subset["prev_correct"].fillna(0.0).astype(float).to_numpy()
+    X = np.column_stack([np.ones(len(logistic_subset)), prev_choice, prev_correct])
     y = logistic_subset["right_choice"].values.astype(float)
 
     def _neg_loglik(theta: np.ndarray) -> float:
@@ -175,11 +181,11 @@ def compute_history_metrics(df: pd.DataFrame) -> HistoryMetrics:
     res = minimize(_neg_loglik, x0=np.zeros(X.shape[1]), method="BFGS")
     if not res.success:
         prev_choice_beta = float("nan")
-        prev_reward_beta = float("nan")
+        prev_correct_beta = float("nan")
     else:
-        _, prev_choice_beta, prev_reward_beta = res.x
+        _, prev_choice_beta, prev_correct_beta = res.x
 
-    return HistoryMetrics(win_stay, lose_shift, sticky, float(prev_choice_beta), float(prev_reward_beta))
+    return HistoryMetrics(win_stay, lose_shift, sticky, float(prev_choice_beta), float(prev_correct_beta))
 
 
 def compute_all_metrics(df: pd.DataFrame, task: str) -> dict[str, object]:

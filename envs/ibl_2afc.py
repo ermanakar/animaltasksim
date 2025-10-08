@@ -143,6 +143,7 @@ class IBL2AFCEnv(Env):
         self._block_prior: float = 0.5
         self._prev_action: str | None = None
         self._prev_reward: float | None = None
+        self._prev_correct: bool | None = None
         self._terminated: bool = False
         self._seed: int | None = None
 
@@ -215,6 +216,7 @@ class IBL2AFCEnv(Env):
         self._rt_steps = None
         self._prev_action = None
         self._prev_reward = None
+        self._prev_correct = None
         self._terminated = False
 
         self._start_new_trial()
@@ -298,13 +300,14 @@ class IBL2AFCEnv(Env):
             "phase_times": phase_times,
             "prev": None
             if self._prev_action is None
-            else {"action": self._prev_action, "reward": self._prev_reward},
+            else {"action": self._prev_action, "reward": self._prev_reward, "correct": self._prev_correct},
             "seed": int(self._seed or 0),
             "agent": self.config.agent.to_dict(),
         }
         self._logger.log(record)
         self._prev_action = self._response_action
         self._prev_reward = float(self._trial_reward)
+        self._prev_correct = self._correct
 
     def step(self, action: int):  # type: ignore[override]
         if self._terminated:

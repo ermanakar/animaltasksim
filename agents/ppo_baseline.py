@@ -39,6 +39,12 @@ class PPOTrainingConfig:
     eval_trials: int = 400
     eval_episodes: int = 1
     per_step_cost: float = 0.0
+    evidence_gain: float = 3.0
+    momentary_sigma: float = 1.0
+    include_cumulative_evidence: bool = True
+    collapsing_bound: bool = False
+    min_bound_steps: int = 5
+    bound_threshold: float = 8.0
     seed: int = 1234
     agent_version: str = "0.1.0"
     output_dir: Path = field(default_factory=lambda: ProjectPaths.from_cwd().runs / "ppo")
@@ -56,7 +62,21 @@ class PPOTrainingConfig:
         }
 
 
-def _make_env(env_name: str, *, trials: int, seed: int, log_path: Path | None, per_step_cost: float, agent_version: str):
+def _make_env(
+    env_name: str,
+    *,
+    trials: int,
+    seed: int,
+    log_path: Path | None,
+    per_step_cost: float,
+    agent_version: str,
+    evidence_gain: float,
+    momentary_sigma: float,
+    include_cumulative_evidence: bool,
+    collapsing_bound: bool,
+    min_bound_steps: int,
+    bound_threshold: float,
+):
     if env_name == "ibl_2afc":
         config = IBL2AFCConfig(
             trials_per_episode=trials,
@@ -72,6 +92,12 @@ def _make_env(env_name: str, *, trials: int, seed: int, log_path: Path | None, p
             log_path=log_path,
             agent=RDMAgentMetadata(name="ppo_baseline", version=agent_version),
             seed=seed,
+            evidence_gain=evidence_gain,
+            momentary_sigma=momentary_sigma,
+            include_cumulative_evidence=include_cumulative_evidence,
+            collapsing_bound=collapsing_bound,
+            min_bound_steps=min_bound_steps,
+            bound_threshold=bound_threshold,
         )
         env = RDMMacaqueEnv(config)
     else:
@@ -84,23 +110,20 @@ def _evaluate_policy(model: PPO, env: gym.Env, episodes: int) -> dict[str, list[
     rewards_per_episode: list[float] = []
     lengths: list[int] = []
 
-    for episode in range(episodes):
-        observation, info = env.reset()
+    for _ in range(episodes):
+        observation, _ = env.reset()
         done = False
         total_reward = 0.0
         steps = 0
         while not done:
             action, _ = model.predict(observation, deterministic=True)
-            observation, reward, terminated, truncated, info = env.step(action)
+            observation, reward, terminated, truncated, _ = env.step(action)
             total_reward += reward
             steps += 1
             done = terminated or truncated
         rewards_per_episode.append(total_reward)
         lengths.append(steps)
-    return {
-        "reward": rewards_per_episode,
-        "length": lengths,
-    }
+    return {"reward": rewards_per_episode, "length": lengths}
 
 
 def train_ppo(config: PPOTrainingConfig) -> dict[str, object]:
@@ -114,6 +137,12 @@ def train_ppo(config: PPOTrainingConfig) -> dict[str, object]:
         log_path=None,
         per_step_cost=config.per_step_cost,
         agent_version=config.agent_version,
+        evidence_gain=config.evidence_gain,
+        momentary_sigma=config.momentary_sigma,
+        include_cumulative_evidence=config.include_cumulative_evidence,
+        collapsing_bound=config.collapsing_bound,
+        min_bound_steps=config.min_bound_steps,
+        bound_threshold=config.bound_threshold,
     )
 
     hyper = config.hyperparams
@@ -143,6 +172,12 @@ def train_ppo(config: PPOTrainingConfig) -> dict[str, object]:
         log_path=paths["log"],
         per_step_cost=config.per_step_cost,
         agent_version=config.agent_version,
+        evidence_gain=config.evidence_gain,
+        momentary_sigma=config.momentary_sigma,
+        include_cumulative_evidence=config.include_cumulative_evidence,
+        collapsing_bound=config.collapsing_bound,
+        min_bound_steps=config.min_bound_steps,
+        bound_threshold=config.bound_threshold,
     )
 
     evaluation = _evaluate_policy(model, eval_env, episodes=config.eval_episodes)
@@ -196,6 +231,12 @@ def _serialize_env(env_config) -> dict[str, object]:
             ],
             "step_ms": env_config.step_ms,
             "per_step_cost": env_config.per_step_cost,
+            "evidence_gain": env_config.evidence_gain,
+            "momentary_sigma": env_config.momentary_sigma,
+            "include_cumulative_evidence": env_config.include_cumulative_evidence,
+            "collapsing_bound": env_config.collapsing_bound,
+            "min_bound_steps": env_config.min_bound_steps,
+            "bound_threshold": env_config.bound_threshold,
         }
     raise TypeError("Unsupported environment configuration")
 

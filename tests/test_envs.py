@@ -171,18 +171,20 @@ def test_rdm_env_response_and_logging(rdm_config):
     log_path = rdm_config.log_path
     assert log_path is not None
     obs, info = env.reset()
+    assert "coherence" in obs
+    assert "cumulative_evidence" in obs
 
     # fixation
     obs, reward, terminated, truncated, info = env.step(ACTION_HOLD)
     assert reward == 0.0
     # stimulus
     obs, reward, terminated, truncated, info = env.step(ACTION_HOLD)
-    assert reward == 0.0
+    assert reward == pytest.approx(-rdm_config.per_step_cost, rel=1e-6)
     # response (match stimulus direction)
     direction = env._stimulus["direction"]
     chosen = RDM_ACTION_RIGHT if direction == "right" or direction == "none" else RDM_ACTION_LEFT
     obs, reward, terminated, truncated, info = env.step(chosen)
-    assert reward < 0  # per-step cost applied
+    assert reward <= 0  # per-step cost applied during decision
     # outcome delivers main reward
     obs, reward, terminated, truncated, info = env.step(ACTION_HOLD)
     assert terminated is True
