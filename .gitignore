@@ -6,3 +6,7 @@ __pycache__/
 runs/
 out/
 
+CALIBRATION_REPORT.md
+CALIBRATION_SUMMARY.md
+RDM_ENVIRONMENT_ANALYSIS.md
+data/macaque/roitman_pyddm/roitman_rts.csv

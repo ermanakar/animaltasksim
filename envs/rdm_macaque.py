@@ -57,7 +57,7 @@ class AgentMetadata:
 @dataclass(slots=True)
 class RDMConfig:
     trials_per_episode: int = 300
-    coherence_set: tuple[float, ...] = (0.0, 0.125, 0.25, 0.5, 0.75, 1.0)
+    coherence_set: tuple[float, ...] = (0.0, 0.032, 0.064, 0.128, 0.256, 0.512)  # Match Roitman coherences
     phase_schedule: tuple[PhaseTiming, ...] = DEFAULT_PHASE_SCHEDULE
     step_ms: int = 10
     include_phase_onehot: bool = False
@@ -67,8 +67,13 @@ class RDMConfig:
     momentary_sigma: float = 1.0
     per_step_cost: float = 0.0
     collapsing_bound: bool = True
-    min_bound_steps: int = 5
+    min_bound_steps: int = 20  # 200ms minimum RT (matches Roitman data)
     bound_threshold: float = 3.0
+    # Confidence-based reward shaping parameters
+    use_confidence_reward: bool = False  # Enable new reward structure
+    confidence_bonus_weight: float = 1.0  # Multiplier for confidence bonus
+    base_time_cost: float = 0.0001  # Base per-step cost
+    time_cost_growth: float = 0.01  # How much time cost grows with steps
     log_path: Path | None = None
     agent: AgentMetadata = field(default_factory=AgentMetadata)
     seed: int | None = None
@@ -274,6 +279,38 @@ class RDMMacaqueEnv(Env):
     def _apply_per_step_cost(self, phase_name: str) -> float:
         return 0.0
 
+    def _compute_confidence_based_reward(self, correct: bool, response_steps: int) -> float:
+        """
+        Compute reward with confidence bonus and adaptive time cost.
+        
+        Encourages agent to:
+        - Build strong evidence before committing (confidence bonus)
+        - Commit quickly when evidence is strong (high coherence)
+        - Wait longer when evidence is weak (low coherence)
+        - Not wait forever (time cost grows with steps)
+        """
+        # Base reward for correctness
+        base_reward = 1.0 if correct else 0.0
+        
+        # Confidence = strength of cumulative evidence at commit time
+        # Higher coherence → faster accumulation → higher confidence for same wait time
+        max_steps = self._phase_schedule[2].duration_steps  # response phase duration
+        max_possible_evidence = max_steps * self.config.evidence_gain * 0.512  # highest coherence
+        confidence = abs(self._cumulative_evidence) / max(max_possible_evidence, 0.01)
+        confidence = float(np.clip(confidence, 0.0, 1.0))
+        
+        # Confidence bonus (only rewarded if correct)
+        confidence_bonus = 0.0
+        if correct:
+            confidence_bonus = self.config.confidence_bonus_weight * confidence
+        
+        # Adaptive time cost: cheap early, expensive late
+        # This creates urgency without forcing premature commits
+        time_cost = self.config.base_time_cost * response_steps * (1.0 + self.config.time_cost_growth * response_steps)
+        
+        reward = base_reward * (1.0 + confidence_bonus) - time_cost
+        return float(reward)
+
     def _process_response(self, action: int) -> None:
         if self._response_captured:
             return
@@ -292,7 +329,12 @@ class RDMMacaqueEnv(Env):
 
         expected = ACTION_RIGHT if self._signed_coherence > 0 else ACTION_LEFT if self._signed_coherence < 0 else ACTION_RIGHT
         self._correct = action == expected
-        self._trial_reward = 1.0 if self._correct else -1.0
+        
+        # Use confidence-based reward if enabled, otherwise simple correct/incorrect
+        if self.config.use_confidence_reward:
+            self._trial_reward = self._compute_confidence_based_reward(self._correct, response_steps)
+        else:
+            self._trial_reward = 1.0 if self._correct else -1.0
 
         self._phase_step = self._current_phase.duration_steps - 1
 

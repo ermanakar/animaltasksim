@@ -196,6 +196,42 @@ python scripts/make_report.py --run runs/ibl_stickyq --log runs/ibl_stickyq/tria
 4. Run the same evaluation on reference `.ndjson` logs under `data/ibl/` or `data/macaque/`, then compare the resulting metrics JSON to your agent (e.g. via a notebook or a short Python diff script).
 5. Iterate on hyperparameters (`--sticky_q.stickiness`, `--bayes.sensory_sigma`, `--ppo.per-step-cost`, etc.) until the fingerprints align with target animal ranges.
 
+### Calibration helper (recommended workflow)
+
+You can automate the training → evaluate → report loop using the calibration script:
+
+```bash
+# Run GLM, PPO, and DDM baselines with default settings
+python scripts/calibration.py --mode all
+
+# Sticky-GLM only (adjust hyperparameters inline)
+python scripts/calibration.py --mode sticky \
+  --sticky.output runs/ibl_stickyq_calib_tuned \
+  --sticky.episodes 20 \
+  --sticky.learning-rate 0.03 \
+  --sticky.weight-decay 0.001 \
+  --sticky.temperature 1.1
+
+# PPO (RDM) only with streaming evidence and collapsing bounds
+python scripts/calibration.py --mode ppo \
+  --ppo.output runs/rdm_ppo_calib_experiment \
+  --ppo.total-timesteps 180000 \
+  --ppo.trials-per-episode 900 \
+  --ppo.per-step-cost 0.025 \
+  --ppo.evidence-gain 0.01 \
+  --ppo.momentary-sigma 5.0 \
+  --ppo.bound-threshold 3.5
+
+# Analytical DDM baseline for the RDM task
+python scripts/calibration.py --mode ddm \
+  --ddm.output runs/rdm_ddm_baseline \
+  --ddm.trials-per-episode 600 \
+  --ddm.bound 12.0 \
+  --ddm.drift-gain 0.1
+```
+
+Each run writes `metrics.json` and `report.html` into the chosen `runs/<name>/` directory so you can compare fingerprints quickly.
+
 ---
 
 ## Milestones (time-boxed)

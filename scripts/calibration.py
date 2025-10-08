@@ -38,8 +38,14 @@ class PPOOptions:
     momentary_sigma: float = 1.0
     include_cumulative_evidence: bool = True
     collapsing_bound: bool = True
-    min_bound_steps: int = 5
+    min_bound_steps: int = 20
     bound_threshold: float = 3.0
+    # Confidence-based reward parameters
+    use_confidence_reward: bool = False
+    confidence_bonus_weight: float = 1.0
+    base_time_cost: float = 0.0001
+    time_cost_growth: float = 0.01
+    # PPO hyperparameters
     learning_rate: float = 5e-5
     n_steps: int = 512
     batch_size: int = 256
@@ -144,6 +150,10 @@ def run_ppo(opts: PPOOptions, verbose: bool = True) -> Path:
         collapsing_bound=opts.collapsing_bound,
         min_bound_steps=opts.min_bound_steps,
         bound_threshold=opts.bound_threshold,
+        use_confidence_reward=opts.use_confidence_reward,
+        confidence_bonus_weight=opts.confidence_bonus_weight,
+        base_time_cost=opts.base_time_cost,
+        time_cost_growth=opts.time_cost_growth,
         seed=opts.seed,
         output_dir=opts.output,
         hyperparams=hyper,
