@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import math
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Literal
 
@@ -53,9 +53,9 @@ class TrainArgs:
     seed: int = 1234
     out: Path = Path("runs/ibl_stickyq")
     agent_version: str = "0.1.0"
-    sticky_q: StickyQCLIConfig = StickyQCLIConfig()
-    bayes: BayesCLIConfig = BayesCLIConfig()
-    ppo: PPOCLIConfig = PPOCLIConfig()
+    sticky_q: StickyQCLIConfig = field(default_factory=StickyQCLIConfig)
+    bayes: BayesCLIConfig = field(default_factory=BayesCLIConfig)
+    ppo: PPOCLIConfig = field(default_factory=PPOCLIConfig)
 
 
 def _train_sticky_q(args: TrainArgs) -> dict[str, object]:
