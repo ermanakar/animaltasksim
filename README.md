@@ -7,7 +7,22 @@ AnimalTaskSim is a **benchmark** for reproducing classic animal behavioral tasks
 > 1) **Mouse 2AFC visual decision (IBL-style)**  
 > 2) **Macaque random-dot motion discrimination (RDM)**
 
-We aim to make “replication with teeth” the standard: codify the task, train the agent under the same constraints, then grade it with the *same* metrics labs use.
+We aim to make "replication with teeth" the standard: codify the task, train the agent under the same constraints, then grade it with the *same* metrics labs use.
+
+---
+
+## 📊 Results & Findings
+
+**TL;DR:** We achieved excellent matches on some metrics (99% bias accuracy, 100% win-stay rate) but completely failed others (RT dynamics). RL agents optimize reward too efficiently, finding shortcuts that animals don't use.
+
+**Read the full analysis:** [**FINDINGS.md**](FINDINGS.md)
+
+**View interactive dashboards:**
+- [Mouse 2AFC (Sticky-GLM v21)](runs/ibl_final_dashboard.html) - 99% bias match, 79% history match
+- [Macaque RDM (PPO v24)](runs/rdm_final_dashboard.html) - 100% win-stay match, RT dynamics failed
+- [Macaque RDM (DDM v2)](runs/rdm_ddm_dashboard.html) - Best RT dynamics (81% intercept match)
+
+**Key insight:** Behavioral replication requires architectural constraints (like DDM's evidence accumulation), not just reward shaping. Future work: hybrid DDM+LSTM architecture.
 
 ---
 
