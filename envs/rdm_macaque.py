@@ -74,6 +74,9 @@ class RDMConfig:
     confidence_bonus_weight: float = 1.0  # Multiplier for confidence bonus
     base_time_cost: float = 0.0001  # Base per-step cost
     time_cost_growth: float = 0.01  # How much time cost grows with steps
+    # RT shaping: reward RTs in realistic range (target 400-800ms)
+    target_rt_steps: int = 60  # ~600ms at 10ms/step
+    rt_tolerance: float = 30.0  # Gaussian width for RT bonus
     log_path: Path | None = None
     agent: AgentMetadata = field(default_factory=AgentMetadata)
     seed: int | None = None
@@ -174,8 +177,8 @@ class RDMMacaqueEnv(Env):
         else:
             self._momentary_evidence = 0.0
 
-    def _build_observation(self) -> dict[str, np.ndarray | float]:
-        obs: dict[str, np.ndarray | float] = {
+    def _build_observation(self) -> dict[str, np.ndarray | float | np.floating]:  # type: ignore[return]
+        obs: dict[str, np.ndarray | float | np.floating] = {  # type: ignore[misc]
             "coherence": np.float32(self._momentary_evidence)
         }
         if self.config.include_cumulative_evidence:
@@ -308,7 +311,14 @@ class RDMMacaqueEnv(Env):
         # This creates urgency without forcing premature commits
         time_cost = self.config.base_time_cost * response_steps * (1.0 + self.config.time_cost_growth * response_steps)
         
-        reward = base_reward * (1.0 + confidence_bonus) - time_cost
+        # RT shaping bonus: reward RTs near target (e.g., 600ms = 60 steps)
+        # Gaussian bonus peaking at target_rt_steps with width rt_tolerance
+        rt_bonus = 0.0
+        if correct and self.config.target_rt_steps > 0 and self.config.rt_tolerance > 0:
+            rt_deviation = abs(response_steps - self.config.target_rt_steps)
+            rt_bonus = 0.5 * np.exp(-(rt_deviation ** 2) / (2 * self.config.rt_tolerance ** 2))
+        
+        reward = base_reward * (1.0 + confidence_bonus + rt_bonus) - time_cost
         return float(reward)
 
     def _process_response(self, action: int) -> None:
@@ -426,8 +436,8 @@ class RDMMacaqueEnv(Env):
 
         return observation, reward, terminated, truncated, info
 
-    def _terminal_observation(self) -> dict[str, np.ndarray | float]:
-        obs: dict[str, np.ndarray | float] = {"coherence": np.float32(0.0)}
+    def _terminal_observation(self) -> dict[str, np.ndarray | float | np.floating]:  # type: ignore[return]
+        obs: dict[str, np.ndarray | float | np.floating] = {"coherence": np.float32(0.0)}  # type: ignore[misc]
         if self.config.include_cumulative_evidence:
             obs["cumulative_evidence"] = np.float32(0.0)
         if self.config.include_phase_onehot:

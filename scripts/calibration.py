@@ -47,6 +47,8 @@ class PPOOptions:
     confidence_bonus_weight: float = 1.0
     base_time_cost: float = 0.0001
     time_cost_growth: float = 0.01
+    target_rt_steps: int = 60
+    rt_tolerance: float = 30.0
     # PPO hyperparameters
     learning_rate: float = 5e-5
     n_steps: int = 512
@@ -158,6 +160,8 @@ def run_ppo(opts: PPOOptions, verbose: bool = True) -> Path:
         confidence_bonus_weight=opts.confidence_bonus_weight,
         base_time_cost=opts.base_time_cost,
         time_cost_growth=opts.time_cost_growth,
+        target_rt_steps=opts.target_rt_steps,
+        rt_tolerance=opts.rt_tolerance,
         seed=opts.seed,
         output_dir=opts.output,
         hyperparams=hyper,

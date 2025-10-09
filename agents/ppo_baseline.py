@@ -50,6 +50,8 @@ class PPOTrainingConfig:
     confidence_bonus_weight: float = 1.0
     base_time_cost: float = 0.0001
     time_cost_growth: float = 0.01
+    target_rt_steps: int = 60
+    rt_tolerance: float = 30.0
     seed: int = 1234
     agent_version: str = "0.1.0"
     output_dir: Path = field(default_factory=lambda: ProjectPaths.from_cwd().runs / "ppo")
@@ -85,6 +87,8 @@ def _make_env(
     confidence_bonus_weight: float = 1.0,
     base_time_cost: float = 0.0001,
     time_cost_growth: float = 0.01,
+    target_rt_steps: int = 60,
+    rt_tolerance: float = 30.0,
 ):
     if env_name == "ibl_2afc":
         config = IBL2AFCConfig(
@@ -111,6 +115,8 @@ def _make_env(
             confidence_bonus_weight=confidence_bonus_weight,
             base_time_cost=base_time_cost,
             time_cost_growth=time_cost_growth,
+            target_rt_steps=target_rt_steps,
+            rt_tolerance=rt_tolerance,
         )
         env = RDMMacaqueEnv(config)
     else:
@@ -160,6 +166,8 @@ def train_ppo(config: PPOTrainingConfig) -> dict[str, object]:
         confidence_bonus_weight=config.confidence_bonus_weight,
         base_time_cost=config.base_time_cost,
         time_cost_growth=config.time_cost_growth,
+        target_rt_steps=config.target_rt_steps,
+        rt_tolerance=config.rt_tolerance,
     )
 
     hyper = config.hyperparams
@@ -199,6 +207,8 @@ def train_ppo(config: PPOTrainingConfig) -> dict[str, object]:
         confidence_bonus_weight=config.confidence_bonus_weight,
         base_time_cost=config.base_time_cost,
         time_cost_growth=config.time_cost_growth,
+        target_rt_steps=config.target_rt_steps,
+        rt_tolerance=config.rt_tolerance,
     )
 
     evaluation = _evaluate_policy(model, eval_env, episodes=config.eval_episodes)
