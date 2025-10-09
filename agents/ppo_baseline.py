@@ -43,8 +43,13 @@ class PPOTrainingConfig:
     momentary_sigma: float = 1.0
     include_cumulative_evidence: bool = True
     collapsing_bound: bool = True
-    min_bound_steps: int = 5
+    min_bound_steps: int = 20
     bound_threshold: float = 3.0
+    # Confidence-based reward parameters
+    use_confidence_reward: bool = False
+    confidence_bonus_weight: float = 1.0
+    base_time_cost: float = 0.0001
+    time_cost_growth: float = 0.01
     seed: int = 1234
     agent_version: str = "0.1.0"
     output_dir: Path = field(default_factory=lambda: ProjectPaths.from_cwd().runs / "ppo")
@@ -76,6 +81,10 @@ def _make_env(
     collapsing_bound: bool,
     min_bound_steps: int,
     bound_threshold: float,
+    use_confidence_reward: bool = False,
+    confidence_bonus_weight: float = 1.0,
+    base_time_cost: float = 0.0001,
+    time_cost_growth: float = 0.01,
 ):
     if env_name == "ibl_2afc":
         config = IBL2AFCConfig(
@@ -98,6 +107,10 @@ def _make_env(
             collapsing_bound=collapsing_bound,
             min_bound_steps=min_bound_steps,
             bound_threshold=bound_threshold,
+            use_confidence_reward=use_confidence_reward,
+            confidence_bonus_weight=confidence_bonus_weight,
+            base_time_cost=base_time_cost,
+            time_cost_growth=time_cost_growth,
         )
         env = RDMMacaqueEnv(config)
     else:
@@ -108,7 +121,7 @@ def _make_env(
 
 def _evaluate_policy(model: PPO, env: gym.Env, episodes: int) -> dict[str, list[float]]:
     rewards_per_episode: list[float] = []
-    lengths: list[int] = []
+    lengths: list[float] = []
 
     for _ in range(episodes):
         observation, _ = env.reset()
@@ -118,11 +131,11 @@ def _evaluate_policy(model: PPO, env: gym.Env, episodes: int) -> dict[str, list[
         while not done:
             action, _ = model.predict(observation, deterministic=True)
             observation, reward, terminated, truncated, _ = env.step(action)
-            total_reward += reward
+            total_reward += float(reward)
             steps += 1
             done = terminated or truncated
         rewards_per_episode.append(total_reward)
-        lengths.append(steps)
+        lengths.append(float(steps))
     return {"reward": rewards_per_episode, "length": lengths}
 
 
@@ -143,6 +156,10 @@ def train_ppo(config: PPOTrainingConfig) -> dict[str, object]:
         collapsing_bound=config.collapsing_bound,
         min_bound_steps=config.min_bound_steps,
         bound_threshold=config.bound_threshold,
+        use_confidence_reward=config.use_confidence_reward,
+        confidence_bonus_weight=config.confidence_bonus_weight,
+        base_time_cost=config.base_time_cost,
+        time_cost_growth=config.time_cost_growth,
     )
 
     hyper = config.hyperparams
@@ -178,6 +195,10 @@ def train_ppo(config: PPOTrainingConfig) -> dict[str, object]:
         collapsing_bound=config.collapsing_bound,
         min_bound_steps=config.min_bound_steps,
         bound_threshold=config.bound_threshold,
+        use_confidence_reward=config.use_confidence_reward,
+        confidence_bonus_weight=config.confidence_bonus_weight,
+        base_time_cost=config.base_time_cost,
+        time_cost_growth=config.time_cost_growth,
     )
 
     evaluation = _evaluate_policy(model, eval_env, episodes=config.eval_episodes)

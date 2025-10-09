@@ -3,6 +3,7 @@ README.md
 pyproject.toml
 agents/__init__.py
 agents/bayes_observer.py
+agents/ddm_baseline.py
 agents/ppo_baseline.py
 agents/sticky_q.py
 animaltasksim/__init__.py
@@ -19,14 +20,16 @@ envs/ibl_2afc.py
 envs/rdm_macaque.py
 envs/utils_timing.py
 eval/__init__.py
-eval/metrics.py
-eval/report.py
-eval/schema_validator.py
 scripts/__init__.py
+scripts/calibration.py
 scripts/evaluate_agent.py
+scripts/ibl_to_ndjson.py
+scripts/make_dashboard.py
 scripts/make_report.py
+scripts/roitman_csv_to_ndjson.py
 scripts/train_agent.py
 tests/test_agents.py
+tests/test_cli.py
 tests/test_envs.py
 tests/test_metrics.py
 tests/test_report.py
