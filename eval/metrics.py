@@ -75,6 +75,17 @@ def load_trials(path: str | Path) -> pd.DataFrame:
     df = pd.DataFrame.from_records(records)
     df.sort_values(["session_id", "trial_index"], inplace=True)
     df.reset_index(drop=True, inplace=True)
+    
+    # Normalize actions: handle both string ("left"/"right") and numeric (0=right, 1=left) formats
+    if "action" in df.columns:
+        # Convert numeric actions to strings if present
+        df["action"] = df["action"].apply(lambda x: "left" if x == 1 else ("right" if x == 0 else x))
+        # Also normalize prev_action if present
+        if "prev_action" in df.columns:
+            df["prev_action"] = df["prev_action"].apply(
+                lambda x: "left" if x == 1 else ("right" if x == 0 else x) if pd.notna(x) else x
+            )
+    
     return df
 
 
@@ -139,7 +150,9 @@ def compute_chronometric(df: pd.DataFrame, stimulus_key: str = "coherence") -> C
     x = grouped.index.values.astype(float)
     y = grouped.values.astype(float)
     slope, intercept = np.polyfit(x, y, deg=1)
-    return ChronometricMetrics(float(intercept), float(slope), {float(k): float(v) for k, v in grouped.items()})
+    # Convert grouped dict keys/values explicitly to avoid type issues
+    rt_dict: dict[float, float] = {float(k): float(v) for k, v in grouped.items()}  # type: ignore[arg-type]
+    return ChronometricMetrics(float(intercept), float(slope), rt_dict)
 
 
 def compute_history_metrics(df: pd.DataFrame) -> HistoryMetrics:
@@ -156,7 +169,8 @@ def compute_history_metrics(df: pd.DataFrame) -> HistoryMetrics:
     valid_prev = data[data["prev_action"].notnull()].copy()
     if "prev_correct" not in valid_prev or valid_prev["prev_correct"].isnull().all():
         return HistoryMetrics(float("nan"), float("nan"), float("nan"), float("nan"), float("nan"))
-    valid_prev["prev_correct"] = valid_prev["prev_correct"].fillna(0.0)
+    # Fix FutureWarning by explicitly converting to float before fillna
+    valid_prev["prev_correct"] = valid_prev["prev_correct"].astype(float).fillna(0.0)
     win_trials = valid_prev[valid_prev["prev_correct"] > 0.5]
     lose_trials = valid_prev[valid_prev["prev_correct"] <= 0.5]
 

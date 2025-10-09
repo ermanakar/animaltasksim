@@ -29,6 +29,8 @@ class StickyGLMHyperParams:
     weight_decay: float = 0.0
     temperature: float = 1.0
     sample_actions: bool = False  # if False, take argmax
+    side_bias: float = 0.0  # Additive bias toward right (positive) or left (negative)
+    lapse_high: float = 0.0  # Probability of random choice on high-coherence trials
 
 
 @dataclass(slots=True)
@@ -74,8 +76,11 @@ class StickyGLMLearner:
             return 0
         return 1 if block_prior >= 0.5 else 0
 
-    def _prob_right(self, features: np.ndarray) -> float:
+    def _prob_right(self, features: np.ndarray, apply_bias: bool = False) -> float:
         logit = float(np.dot(self.weights, features)) / self.temperature
+        # Apply side bias only during action selection, not learning
+        if apply_bias:
+            logit += self.hyper.side_bias
         if logit >= 0:
             z = np.exp(-logit)
             return 1.0 / (1.0 + z)
@@ -83,7 +88,8 @@ class StickyGLMLearner:
         return z / (1.0 + z)
 
     def _update(self, features: np.ndarray, label: int) -> None:
-        prob = self._prob_right(features)
+        # Use prob WITHOUT bias for learning (so agent doesn't learn away the bias)
+        prob = self._prob_right(features, apply_bias=False)
         grad = (prob - label) * features + self.hyper.weight_decay * self.weights
         self.weights -= self.hyper.learning_rate * grad
 
@@ -120,11 +126,19 @@ class StickyGLMLearner:
                     contrast = float(observation.get("contrast", 0.0))
                     block_prior = float(info.get("block_prior", 0.5))
                     features = self._features(contrast, prev_action_feature)
-                    prob_right = self._prob_right(features)
-                    if self.hyper.sample_actions:
+                    # Apply bias during action selection
+                    prob_right = self._prob_right(features, apply_bias=True)
+                    
+                    # Apply attentional lapse on high-coherence trials
+                    is_high_coherence = abs(contrast) > 0.5
+                    if is_high_coherence and np.random.random() < self.hyper.lapse_high:
+                        # Random lapse: choose randomly
+                        action = ACTION_RIGHT if np.random.random() < 0.5 else ACTION_LEFT
+                    elif self.hyper.sample_actions:
                         action = ACTION_RIGHT if np.random.random() < prob_right else ACTION_LEFT
                     else:
                         action = ACTION_RIGHT if prob_right >= 0.5 else ACTION_LEFT
+                    
                     prev_action_feature = 1.0 if action == ACTION_RIGHT else -1.0
                     pending_features = features
                     pending_label = self._label(contrast, block_prior)

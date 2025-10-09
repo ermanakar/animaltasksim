@@ -24,6 +24,8 @@ class StickyOptions:
     weight_decay: float = 0.0
     temperature: float = 1.0
     sample_actions: bool = True
+    side_bias: float = 0.0
+    lapse_high: float = 0.0
 
 
 @dataclass(slots=True)
@@ -100,6 +102,8 @@ def run_sticky(opts: StickyOptions, verbose: bool = True) -> Path:
         weight_decay=opts.weight_decay,
         temperature=opts.temperature,
         sample_actions=opts.sample_actions,
+        side_bias=opts.side_bias,
+        lapse_high=opts.lapse_high,
     )
     cfg = StickyGLMTrainingConfig(
         episodes=opts.episodes,
