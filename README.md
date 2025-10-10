@@ -11,6 +11,7 @@ AnimalTaskSim benchmarks AI agents on classic animal decision-making tasks using
 ---
 
 **Current scope (v0.1):**
+
 - IBL-style mouse visual 2AFC task
 - Macaque random-dot motion discrimination task
 - Baseline agents: Sticky-Q, Bayesian observer, PPO
@@ -53,7 +54,7 @@ Each command respects deterministic seeding, persists `config.json`, and emits s
 
 ## Repository Layout
 
-```
+```text
 animal-task-sim/
 ├─ envs/                # Gymnasium tasks + timing utilities
 ├─ agents/              # Sticky-Q, Bayesian observer, PPO, hybrid DDM agents
@@ -68,12 +69,14 @@ animal-task-sim/
 
 ## Task Snapshots
 
-**Mouse 2AFC (IBL)**
+### Mouse 2AFC (IBL)
+
 - Discrete (`left`, `right`, `no-op`) actions; contrast-driven observations in [-1, 1].
 - Block priors and lapse regimes match the reference dataset; priors hidden by default.
 - Sessions run for fixed trial counts and log per-phase timing.
 
-**Macaque RDM**
+### Macaque RDM
+
 - Motion coherence observations with optional go-cue phases.
 - Actions: `left`, `right`, `hold`, with optional per-step costs.
 - Supports collapsing bounds and chronometric metrics for RT alignment.
