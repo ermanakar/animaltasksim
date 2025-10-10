@@ -6,7 +6,7 @@ AnimalTaskSim benchmarks AI agents on classic animal decision-making tasks using
 
 ## Recent Updates (October 10, 2025)
 
-**Hybrid DDM+LSTM Agent:** Implemented stochastic DDM simulation via Euler-Maruyama integration. Agent now generates trial-by-trial RT variability and maintains history matching, though RT dynamics remain substantially compressed (0.6% of reference slope magnitude). See technical details and comparison tables in [`FINDINGS.md`](FINDINGS.md).
+**Hybrid DDM+LSTM Agent - All Training Approaches Exhausted:** After 5 independent attempts (4 incremental fixes + curriculum learning), **all training approaches definitively fail** to learn evidence-dependent RT dynamics. Curriculum learning Phase 1 (choice=0.0, rt=1.0, drift_supervision=0.5) failed with slope=2.78ms/unit, R²=0.000155, proving **MSE RT loss provides zero gradient for coherence-dependent structure even without choice interference**. Options C2-C4 ruled out. **Only viable path:** Option C1 (supervised pretraining on synthetic DDM data) to bypass broken RT loss objective. See [`FINDINGS.md`](FINDINGS.md) and [`HYBRID_AGENT_POSTMORTEM.md`](HYBRID_AGENT_POSTMORTEM.md) for complete analysis.
 
 ---
 

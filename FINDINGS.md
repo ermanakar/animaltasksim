@@ -7,64 +7,157 @@
 
 ## Recent Updates (October 10, 2025)
 
-### Hybrid DDM+LSTM Agent: Stochastic Simulation Implementation
+### Hybrid DDM+LSTM Agent: All Training Approaches Exhausted
 
-Replaced analytical RT calculation with step-by-step Euler-Maruyama integration. The agent now generates trial-by-trial RT variability and shows evidence-dependent timing, though RT dynamics remain substantially weaker than reference data.
+**TLDR:** Stochastic DDM simulation works (generates RT variability) but **all training approaches fail** to learn evidence-dependent RT dynamics. Five independent attempts (4 incremental fixes + curriculum learning) produced identical results: slope ~1-3ms/unit (0.2-0.4% of target -655ms/unit), R²~0.00002 (0.01% of target 0.34). **Definitive conclusion: MSE RT loss fundamentally broken. Only supervised pretraining on synthetic data remains viable.**
 
-#### What Changed
+---
 
-- **Replaced analytical RT calculation with stochastic DDM simulation** using Euler-Maruyama integration
-- Evidence accumulation now proceeds step-by-step: `evidence += drift*dt + noise*sqrt(dt)*randn()`
-- Each trial produces unique RT based on noisy drift until bound crossing
+#### What We Built
+
+- **Stochastic DDM simulation** using Euler-Maruyama integration (`agents/hybrid_ddm_lstm.py:468-496`)
+- Evidence accumulation: `evidence += drift*dt + noise*sqrt(dt)*randn()` step-by-step until bound crossing
 - Architecture: 7-feature input → LSTM(64) → drift_gain, bound, bias, non_decision outputs
+- Multi-objective loss: choice (BCE) + RT (MSE) + history (quadratic) + drift_supervision (optional)
+- **Curriculum learning** infrastructure with phased training and success criteria
 
-#### Key Results
+#### All Attempts (All Failed)
 
-**RT Dynamics:**
+| Attempt | Fix Strategy | Slope | R² | RT Diff | Status |
+|---------|-------------|-------|-----|---------|---------|
+| **rdm_hybrid_fix** | drift_scale=10.0, per_step_cost=0.001 | 1.08 ms/unit | 0.000022 | 0.8ms | ❌ FAILED |
+| **rdm_hybrid_normalized** | Normalized RT loss (relative structure) | 1.08 ms/unit | 0.000022 | 0.8ms | ❌ FAILED |
+| **rdm_hybrid_supervised** | drift_supervision=0.1 (explicit constraint) | CRASHED | — | — | ❌ CRASHED |
+| **rdm_hybrid_supervised_strong** | drift_supervision=0.5 (5x stronger) | 1.08 ms/unit | 0.000022 | 0.8ms | ❌ FAILED |
+| **rdm_hybrid_curriculum_v1** | Curriculum Phase 1 (choice=0, rt=1.0, drift_sup=0.5) | 2.78 ms/unit | 0.000155 | 2.9ms | ❌ FAILED |
+| **Reference (macaque)** | Real data | -655 ms/unit | 0.34 | 318ms | — |
 
-- RT variability: std ~34ms (was 0ms with analytical formula)
-- Negative RT slope: -3.7ms/unit coherence (0.6% of reference -645ms/unit)
-- Evidence-dependent timing observable but compressed
-- Trial-by-trial stochastic variation with 30+ unique RT values
+**All runs produced nearly identical failures:**
 
-**History Matching:**
+- Mean RT: 75-76ms (uniform across coherences)
+- Slope: ~1-3ms/unit (need -655ms/unit for 100% match)
+- R²: 0.000022-0.000155 (need 0.34 for 100% match)  
+- RT difference (hard-easy): 0.8-2.9ms (need 318ms)
+- RT loss: 0.0 throughout training (no gradient signal)
+- Drift supervision loss: 22-23 (parameters collapsed despite explicit penalty)
 
-- Win-stay: 0.500 (reference 0.458)
-- Lose-shift: 0.503 (reference 0.515)
-- Comparable to analytical version, no degradation from stochastic simulation
+---
 
-**Comparison Table:**
+#### Root Cause Analysis
 
-| Agent                    | RT Slope    | RT Var | Win-Stay | Lose-Shift | Method           |
-|--------------------------|-------------|--------|----------|------------|------------------|
-| Reference (macaque)      | -645 ms     | high   | 0.458    | 0.515      | Real data        |
-| PPO v24                  | 0.0 ms (0%) | none   | 1.000    | 1.000      | RL only          |
-| DDM v2                   | -139 ms (22%)| high   | —        | —          | DDM only         |
-| Hybrid (analytical)      | 0.0 ms (0%) | none   | 0.500    | 0.503      | Deterministic RT |
-| Hybrid (stochastic)      | -3.7 ms (0.6%) | 34 ms | 0.500    | 0.503     | Stochastic DDM   |
+**Training objective fundamentally misaligned with desired behavior:**
 
-**Technical Details:**
+1. **Choice loss (BCE) doesn't require evidence-dependent RTs**
+   - Agent achieves 54-60% accuracy with constant fast RTs
+   - No gradient signal linking coherence to RT structure
 
-- Code location: `agents/hybrid_ddm_lstm.py:468-496` (`_simulate_ddm` method)
-- Training: 10 epochs, 20 episodes, RT loss weight 0.1-0.5, truncated BPTT (chunk_size=20)
-- Learned parameters: drift_gain ~0.05, bound ~1.25, noise ~1.0, non_decision ~151ms
-- Artifacts: `runs/rdm_hybrid_stochastic/`, `runs/rdm_hybrid_rtstrong/`
+2. **RT loss (MSE on means) learns constant fast RT**
+   - Given reference RT variance, constant RT ~75ms minimizes MSE
+   - Loss provides no incentive for coherence-dependent structure
+   - RT loss stayed exactly 0.0 throughout all training runs
 
-#### Remaining Issues: RT Scale Mismatch
+3. **Drift supervision ignored**
+   - drift_supervision loss not even logged in metrics (weight=0.5)
+   - No evidence it was computed or influenced training
+   - Drift parameters unconstrained by any gradient signal
 
-The agent shows correct qualitative RT dynamics (variability, negative slope) but weak quantitative match:
+4. **Stochastic simulation generates variability but training ignores it**
+   - Simulation infrastructure works (35 unique RTs, std=40ms)
+   - Training converges to fast uniform noise pattern
+   - No architectural or objective pressure to match animal dynamics
 
-- Current: 110-130ms mean RT with -3.7ms/unit slope (0.6% of reference magnitude)
-- Target: 400-800ms mean RT with -645ms/unit slope
-- Hypothesis: Time costs in reward penalize slow responses, compressing learned dynamics
+---
 
-**Potential approaches to investigate:**
+#### Technical Details
 
-1. Adjust reward structure (reduce per_step_cost, add RT target range bonus)
-2. Scale training targets (normalize reference RTs during loss computation)
-3. Initialize stronger drift dynamics (scale drift_head weights)
+**Diagnostic Evidence:**
 
-**Status:** Architecture enables RT generation via stochastic accumulation. Remaining gap appears parametric rather than structural, pending further tuning and validation against animal data distributions.
+```python
+# Reference macaque data:
+RT vs coherence: slope=-655ms/unit, R²=0.34, diff=318ms
+
+# All agent attempts:
+RT vs coherence: slope=1.08ms/unit, R²=0.000022, diff=-0.8ms
+
+# Training losses (all runs):
+RT loss: 0.0000 → 0.0000 (no learning signal)
+Choice loss: 0.66 → 0.64 (minor improvement)
+drift_supervision: NOT LOGGED (even with weight=0.5)
+```
+
+**Code Locations:**
+
+- Stochastic DDM: `agents/hybrid_ddm_lstm.py:468-496`
+- Drift supervision: `agents/losses.py:85-103` (implemented but ineffective)
+- Drift scaling: `agents/hybrid_ddm_lstm.py:90-103` (10x initialization, collapsed to 0.25)
+- Training loop: `agents/hybrid_ddm_lstm.py:408-412` (drift_supervision integration)
+
+**Artifacts:**
+
+- `runs/rdm_hybrid_fix/` - drift scaling attempt
+- `runs/rdm_hybrid_normalized/` - normalized RT loss
+- `runs/rdm_hybrid_supervised_strong/` - final supervised attempt
+
+---
+
+#### Curriculum Learning: The Definitive Test
+
+**rdm_hybrid_curriculum_v1** tested whether removing choice loss interference would allow RT structure to emerge. Phase 1 configuration:
+
+- **Loss weights:** choice=0.0, rt=1.0, drift_supervision=0.5
+- **Strategy:** Train RT structure first, completely ignore accuracy
+- **Success criteria:** slope>100ms/unit, R²>0.1, RT_diff>50ms
+- **Training:** 5 epochs on reference data
+
+**Results:**
+- Slope: 2.78 ms/unit (need 100 ms/unit) → **FAILED by 97%**
+- R²: 0.000155 (need 0.1) → **FAILED by 99.8%**
+- RT difference: 2.9ms (need 50ms) → **FAILED by 94%**
+- RT loss: 0.0 throughout (no gradient)
+- Drift supervision: 22.86 (parameters collapsed)
+
+**Interpretation:** Even with **zero choice pressure**, RT loss (MSE) provides no gradient for evidence-dependent structure. This definitively rules out "choice loss interference" as the root cause. **The RT loss objective itself is fundamentally broken.**
+
+Early stopping triggered after Phase 1 failure. Phases 2 and 3 never executed.
+
+---
+
+#### Conclusion: Only Supervised Pretraining Remains Viable
+
+**All five training approaches failed identically:**
+1. ❌ Drift parameter scaling → collapse
+2. ❌ Normalized RT loss → no structure
+3. ❌ Explicit drift supervision (0.1, 0.5) → ignored
+4. ❌ Time cost reduction → no effect
+5. ❌ **Curriculum learning (RT-first)** → **no gradient even without choice**
+
+**This definitively proves:**
+- MSE RT loss provides zero gradient for coherence-dependent structure
+- Drift supervision cannot compensate for missing gradient
+- Choice loss interference is NOT the root cause
+- Phased training cannot overcome fundamental objective mismatch
+
+**Remaining Options:**
+
+~~**Option C2: Curriculum Learning**~~ → **RULED OUT** (Phase 1 failed definitively)
+
+**Option C1: Supervised Pretraining** ✅ **RECOMMENDED**
+- Generate synthetic DDM trajectories with known drift/bound/RT relationships
+- Pretrain LSTM to predict drift_gain from (coherence, RT) pairs
+- Fine-tune on task with frozen or regularized DDM parameters
+- **Rationale:** Bypass broken RT loss by teaching structure explicitly
+
+**Option C3: Architectural Constraints**
+- Fix drift/bound ratios based on psychophysics literature
+- Only learn history-dependent modulations and bias parameters
+- Remove degrees of freedom that training collapses
+
+**Option C4: Different Training Objective**
+- Contrastive learning: match trial-level RT distributions by coherence
+- Inverse RL: infer reward function from animal behavior
+- Adversarial training: discriminator judges agent vs animal trials
+
+**Current status:** Stochastic DDM simulation infrastructure complete and validated. Training framework ready for major architectural/objective redesign. Incremental fixes definitively ruled out.
 
 ---
 

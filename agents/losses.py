@@ -15,12 +15,14 @@ class LossWeights:
     choice: float = 1.0
     rt: float = 1.0
     history: float = 0.0
+    drift_supervision: float = 0.0
 
     def clamp_non_negative(self) -> None:
         """Ensure weights remain non-negative."""
         self.choice = max(0.0, float(self.choice))
         self.rt = max(0.0, float(self.rt))
         self.history = max(0.0, float(self.history))
+        self.drift_supervision = max(0.0, float(self.drift_supervision))
 
 
 def choice_loss(probs: torch.Tensor, targets: torch.Tensor, mask: torch.Tensor | None = None) -> torch.Tensor:
@@ -45,9 +47,21 @@ def choice_loss(probs: torch.Tensor, targets: torch.Tensor, mask: torch.Tensor |
 
 
 def rt_loss(predicted: torch.Tensor, targets: torch.Tensor, mask: torch.Tensor | None = None) -> torch.Tensor:
-    """Mean-squared error loss on reaction times (scaled to seconds)."""
-
-    loss = ((predicted - targets) / 1000.0) ** 2
+    """Mean-squared error loss on reaction times (scaled to seconds).
+    
+    Uses relative RT loss to focus on RT structure rather than absolute scale.
+    This helps when agent RTs are in a different range than reference data.
+    """
+    
+    # Normalize both predicted and target RTs by their means
+    # This makes the loss focus on the shape of RT-coherence relationship
+    pred_mean = predicted.mean() + 1e-6  # Avoid division by zero
+    target_mean = targets.mean() + 1e-6
+    
+    pred_normalized = predicted / pred_mean
+    target_normalized = targets / target_mean
+    
+    loss = (pred_normalized - target_normalized) ** 2
     if mask is not None:
         loss = loss * mask
     normaliser = loss.numel() if mask is None else torch.clamp(mask.sum(), min=1.0)
@@ -68,4 +82,24 @@ def history_penalty(pred: torch.Tensor, target: torch.Tensor, mask: torch.Tensor
     return loss.sum() / normaliser
 
 
-__all__ = ["LossWeights", "choice_loss", "rt_loss", "history_penalty"]
+def drift_supervision_loss(drift_gain: torch.Tensor, target_gain: float = 5.0) -> torch.Tensor:
+    """Penalize drift_gain parameters that are too weak to produce RT dynamics.
+    
+    Parameters
+    ----------
+    drift_gain:
+        Predicted drift_gain values from the model.
+    target_gain:
+        Target drift_gain magnitude (default 5.0 for reasonable SNR at high coherence).
+    
+    Returns
+    -------
+    loss:
+        Quadratic penalty for drift_gain values below target.
+    """
+    # Only penalize if drift_gain is below target (allow it to be higher)
+    loss = torch.clamp(target_gain - drift_gain, min=0.0) ** 2
+    return loss.mean()
+
+
+__all__ = ["LossWeights", "choice_loss", "rt_loss", "history_penalty", "drift_supervision_loss"]

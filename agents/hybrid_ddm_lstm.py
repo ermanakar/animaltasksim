@@ -39,6 +39,49 @@ class HybridDDMPaths:
 
 
 @dataclass(slots=True)
+class CurriculumPhase:
+    """Configuration for a single curriculum learning phase."""
+
+    name: str
+    epochs: int
+    loss_weights: LossWeights
+    success_criteria: dict[str, float] = field(default_factory=dict)
+    # Success criteria keys: 'min_slope_abs', 'min_r2', 'min_rt_diff_abs'
+
+
+@dataclass(slots=True)
+class CurriculumConfig:
+    """Multi-phase curriculum learning schedule."""
+
+    phases: List[CurriculumPhase] = field(default_factory=list)
+    allow_early_stopping: bool = True
+    checkpoint_each_phase: bool = True
+
+    @staticmethod
+    def default_rt_first() -> CurriculumConfig:
+        """Default 3-phase curriculum: RT structure → gradual choice → full balance."""
+        phase1 = CurriculumPhase(
+            name="phase1_rt_only",
+            epochs=5,
+            loss_weights=LossWeights(choice=0.0, rt=1.0, history=0.0, drift_supervision=0.5),
+            success_criteria={"min_slope_abs": 100.0, "min_r2": 0.1, "min_rt_diff_abs": 50.0},
+        )
+        phase2 = CurriculumPhase(
+            name="phase2_add_choice",
+            epochs=5,
+            loss_weights=LossWeights(choice=0.3, rt=0.8, history=0.05, drift_supervision=0.3),
+            success_criteria={"min_slope_abs": 80.0, "min_r2": 0.08},
+        )
+        phase3 = CurriculumPhase(
+            name="phase3_full_balance",
+            epochs=5,
+            loss_weights=LossWeights(choice=1.0, rt=0.5, history=0.1, drift_supervision=0.1),
+            success_criteria={},  # Final phase, no hard criteria
+        )
+        return CurriculumConfig(phases=[phase1, phase2, phase3])
+
+
+@dataclass(slots=True)
 class HybridTrainingConfig:
     """Training and rollout configuration for the hybrid agent."""
 
@@ -57,6 +100,8 @@ class HybridTrainingConfig:
     max_trials_per_session: int | None = None
     min_commit_steps: int = 5
     max_commit_steps: int = 120
+    drift_scale: float = 10.0  # Scale drift_head initialization to enable stronger evidence effects
+    curriculum: CurriculumConfig | None = None  # If set, use curriculum learning
 
     def output_paths(self) -> HybridDDMPaths:
         out = Path(self.output_dir).resolve()
@@ -87,7 +132,7 @@ class SessionBatch:
 class HybridDDMModel(nn.Module):
     """Controller that maps history-aware features to DDM parameters."""
 
-    def __init__(self, feature_dim: int, hidden_size: int, device: torch.device) -> None:
+    def __init__(self, feature_dim: int, hidden_size: int, device: torch.device, drift_scale: float = 10.0) -> None:
         super().__init__()
         self.hidden_size = hidden_size
         self.device = device
@@ -99,6 +144,11 @@ class HybridDDMModel(nn.Module):
         self.log_noise = nn.Parameter(torch.tensor(0.0, dtype=torch.float32))
         self._min_bound = 0.5
         self._min_non_decision = 150.0  # ms
+        
+        # Initialize drift_head with stronger weights to enable evidence-dependent RTs
+        with torch.no_grad():
+            self.drift_head.weight.data *= drift_scale
+            self.drift_head.bias.data *= drift_scale
 
     def init_state(self, batch_size: int = 1) -> tuple[torch.Tensor, torch.Tensor]:
         h = torch.zeros(batch_size, self.hidden_size, device=self.device)
@@ -141,7 +191,12 @@ class HybridDDMTrainer:
         if not self.sessions:
             raise RuntimeError("No reference sessions found for training.")
         self.feature_dim = self.sessions[0].features.shape[1]
-        self.model = HybridDDMModel(self.feature_dim, self.config.hidden_size, self.device)
+        self.model = HybridDDMModel(
+            self.feature_dim, 
+            self.config.hidden_size, 
+            self.device,
+            drift_scale=self.config.drift_scale
+        )
         self.model.to(self.device)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.config.learning_rate)
 
@@ -285,11 +340,14 @@ class HybridDDMTrainer:
     # ------------------------------------------------------------------
     # Training loop
     # ------------------------------------------------------------------
-    def train(self) -> dict[str, list[float]]:
+    def train(self, loss_weights: LossWeights | None = None) -> dict[str, list[float]]:
+        """Train for config.epochs using given or default loss weights."""
+        weights = loss_weights if loss_weights is not None else self.config.loss_weights
         metrics: dict[str, list[float]] = {
             "epoch_choice_loss": [],
             "epoch_rt_loss": [],
             "epoch_history_penalty": [],
+            "epoch_drift_supervision": [],
             "noise": [],
             "mean_bound": [],
         }
@@ -297,6 +355,7 @@ class HybridDDMTrainer:
             epoch_choice = 0.0
             epoch_rt = 0.0
             epoch_hist = 0.0
+            epoch_drift_sup = 0.0
             session_count = 0
             # Shuffle sessions using random.shuffle for type compatibility
             shuffled_sessions = list(self.sessions)
@@ -316,6 +375,7 @@ class HybridDDMTrainer:
                 rt_weight = 0.0
 
                 prob_buffer: list[float] = []
+                drift_gain_buffer: list[torch.Tensor] = []  # Collect for supervision
                 
                 # Truncated BPTT: detach every N trials to prevent gradient explosion
                 tbptt_chunk_size = 20
@@ -331,6 +391,9 @@ class HybridDDMTrainer:
                     drift = out["drift_gain"] * coherence
                     bound = out["bound"]
                     noise = out["noise"]
+                    
+                    # Collect drift_gain for supervision loss
+                    drift_gain_buffer.append(out["drift_gain"])
 
                     score = 2.0 * drift * bound / (noise**2)
                     score = torch.nan_to_num(score, nan=0.0, posinf=10.0, neginf=-10.0)
@@ -374,11 +437,11 @@ class HybridDDMTrainer:
                     total_rt_loss = total_rt_loss / rt_weight
 
                 total_loss = (
-                    self.config.loss_weights.choice * total_choice_loss
-                    + self.config.loss_weights.rt * total_rt_loss
+                    weights.choice * total_choice_loss
+                    + weights.rt * total_rt_loss
                 )
 
-                if self.config.loss_weights.history > 0.0:
+                if weights.history > 0.0:
                     pred_win_stay, pred_lose_shift = self._estimate_history(prob_buffer, session)
                     history_vec = torch.tensor([pred_win_stay, pred_lose_shift], device=self.device)
                     target_vec = torch.tensor(
@@ -386,9 +449,17 @@ class HybridDDMTrainer:
                     )
                     mask = torch.tensor([1.0, 1.0], device=self.device)
                     hist_loss = history_penalty(history_vec, target_vec, mask)
-                    total_loss = total_loss + self.config.loss_weights.history * hist_loss
+                    total_loss = total_loss + weights.history * hist_loss
                 else:
                     hist_loss = torch.zeros(1, device=self.device)
+
+                # Drift supervision: penalize weak drift parameters
+                drift_sup_loss = torch.zeros(1, device=self.device)
+                if weights.drift_supervision > 0.0 and drift_gain_buffer:
+                    from agents.losses import drift_supervision_loss
+                    drift_gains = torch.cat(drift_gain_buffer)
+                    drift_sup_loss = drift_supervision_loss(drift_gains, target_gain=5.0)
+                    total_loss = total_loss + weights.drift_supervision * drift_sup_loss
 
                 total_loss.backward()
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=5.0)
@@ -405,11 +476,13 @@ class HybridDDMTrainer:
                 epoch_choice += float(total_choice_loss.detach().cpu())
                 epoch_rt += float(total_rt_loss.detach().cpu())
                 epoch_hist += float(hist_loss.detach().cpu())
+                epoch_drift_sup += float(drift_sup_loss.detach().cpu())
                 session_count += 1
 
             metrics["epoch_choice_loss"].append(epoch_choice / max(session_count, 1))
             metrics["epoch_rt_loss"].append(epoch_rt / max(session_count, 1))
             metrics["epoch_history_penalty"].append(epoch_hist / max(session_count, 1))
+            metrics["epoch_drift_supervision"].append(epoch_drift_sup / max(session_count, 1))
             noise_value = torch.exp(torch.nan_to_num(self.model.log_noise, nan=0.0)).detach().cpu()
             metrics["noise"].append(float(noise_value))
             metrics["mean_bound"].append(self._estimate_mean_bound())
@@ -509,7 +582,7 @@ class HybridDDMTrainer:
             log_path=paths.log,
             agent=AgentMetadata(name="hybrid_ddm", version=self.config.agent_version),
             seed=self.config.seed,
-            per_step_cost=0.02,
+            per_step_cost=0.001,  # Reduced from 0.02 to allow slower RTs matching animal data
             evidence_gain=0.05,
             momentary_sigma=1.0,
             collapsing_bound=True,
@@ -667,9 +740,194 @@ class HybridDDMTrainer:
         torch.save(self.model.state_dict(), paths.model)
 
 
+def _evaluate_phase_success(
+    trials_path: Path,
+    criteria: dict[str, float],
+    reference_path: Path,
+) -> tuple[bool, dict[str, float]]:
+    """Evaluate whether phase success criteria are met."""
+    from scipy import stats as scipy_stats
+    
+    # Load agent trials
+    trials: list[dict] = []
+    with open(trials_path) as f:
+        for line in f:
+            trials.append(json.loads(line))
+    
+    if not trials:
+        return False, {}
+    
+    rts = np.array([t['rt_ms'] for t in trials])
+    coherences = np.array([t['stimulus']['coherence'] for t in trials])
+    abs_coh = np.abs(coherences)
+    
+    # Compute RT-coherence metrics
+    linreg_result = scipy_stats.linregress(abs_coh, rts)
+    slope_val = float(linreg_result.slope)
+    r_val = float(linreg_result.rvalue)
+    r2_val = r_val ** 2
+    rt_diff = float(np.abs(rts[abs_coh < 0.05].mean() - rts[abs_coh > 0.5].mean()))
+    
+    metrics = {
+        "slope_abs": abs(slope_val),
+        "r2": r2_val,
+        "rt_diff_abs": rt_diff,
+    }
+    
+    # Check criteria
+    success = True
+    if "min_slope_abs" in criteria and metrics["slope_abs"] < criteria["min_slope_abs"]:
+        success = False
+    if "min_r2" in criteria and metrics["r2"] < criteria["min_r2"]:
+        success = False
+    if "min_rt_diff_abs" in criteria and metrics["rt_diff_abs"] < criteria["min_rt_diff_abs"]:
+        success = False
+    
+    return success, metrics
+
+
+def train_hybrid_curriculum(config: HybridTrainingConfig) -> dict:
+    """Train using curriculum learning with phased loss weights."""
+    if config.curriculum is None:
+        raise ValueError("Curriculum config required for curriculum training")
+    
+    curriculum = config.curriculum
+    trainer = HybridDDMTrainer(config)
+    paths = config.output_paths()
+    
+    # Track all phase metrics with proper types
+    cumulative_metrics: dict[str, list[float]] = {
+        "epoch_choice_loss": [],
+        "epoch_rt_loss": [],
+        "epoch_history_penalty": [],
+        "epoch_drift_supervision": [],
+        "noise": [],
+        "mean_bound": [],
+    }
+    phase_results: list[dict] = []
+    
+    for phase_idx, phase in enumerate(curriculum.phases):
+        print(f"\n{'='*80}")
+        print(f"Starting {phase.name} (Phase {phase_idx + 1}/{len(curriculum.phases)})")
+        print(f"Loss weights: {asdict(phase.loss_weights)}")
+        print(f"Epochs: {phase.epochs}")
+        print(f"Success criteria: {phase.success_criteria}")
+        print(f"{'='*80}\n")
+        
+        # Temporarily update config for this phase
+        original_epochs = trainer.config.epochs
+        trainer.config.epochs = phase.epochs
+        
+        # Train with phase-specific loss weights
+        phase_metrics = trainer.train(loss_weights=phase.loss_weights)
+        
+        # Restore original epochs
+        trainer.config.epochs = original_epochs
+        
+        # Append phase metrics to cumulative tracking
+        for key in phase_metrics:
+            if key in cumulative_metrics:
+                cumulative_metrics[key].extend(phase_metrics[key])
+        
+        # Save intermediate checkpoint if requested
+        if curriculum.checkpoint_each_phase:
+            phase_checkpoint_path = paths.root / f"model_{phase.name}.pt"
+            torch.save(trainer.model.state_dict(), phase_checkpoint_path)
+            print(f"Saved checkpoint: {phase_checkpoint_path}")
+        
+        # Evaluate phase success
+        if phase.success_criteria and phase_idx < len(curriculum.phases) - 1:
+            # Do a quick rollout to temp path for evaluation
+            temp_paths = HybridDDMPaths(
+                root=paths.root,
+                config=paths.config,
+                log=paths.root / f"trials_{phase.name}_eval.ndjson",
+                metrics=paths.metrics,
+                model=paths.model,
+            )
+            # Save original episodes, do quick eval rollout
+            original_episodes = trainer.config.episodes
+            trainer.config.episodes = 5
+            _ = trainer.rollout(temp_paths)
+            trainer.config.episodes = original_episodes
+            
+            success, eval_metrics = _evaluate_phase_success(
+                temp_paths.log,
+                phase.success_criteria,
+                config.reference_log,
+            )
+            
+            phase_result: dict = {
+                "name": phase.name,
+                "epochs": phase.epochs,
+                "loss_weights": asdict(phase.loss_weights),
+                "success": success,
+                "metrics": eval_metrics,
+                "criteria": phase.success_criteria,
+            }
+            phase_results.append(phase_result)
+            
+            print(f"\n{phase.name} Evaluation:")
+            print(f"  Metrics: {eval_metrics}")
+            print(f"  Criteria: {phase.success_criteria}")
+            print(f"  Success: {'✓ PASSED' if success else '✗ FAILED'}\n")
+            
+            # Early stopping if criteria not met
+            if not success and curriculum.allow_early_stopping:
+                print(f"⚠️  Phase {phase.name} failed to meet success criteria.")
+                print(f"   Stopping curriculum early. Consider:")
+                print(f"   - Adjusting phase {phase.name} hyperparameters")
+                print(f"   - Lowering success criteria")
+                print(f"   - Trying supervised pretraining (Option C1)")
+                break
+        else:
+            # Last phase or no criteria
+            phase_result = {
+                "name": phase.name,
+                "epochs": phase.epochs,
+                "loss_weights": asdict(phase.loss_weights),
+                "success": True,  # Final phase always succeeds
+                "metrics": {},
+                "criteria": {},
+            }
+            phase_results.append(phase_result)
+    
+    # Final rollout with completed model
+    print(f"\n{'='*80}")
+    print("Running final rollout...")
+    print(f"{'='*80}\n")
+    rollout_stats = trainer.rollout(paths)
+    
+    # Save final state
+    trainer.save(paths, cumulative_metrics, rollout_stats)
+    
+    # Save phase summary
+    phase_summary_path = paths.root / "curriculum_phases.json"
+    with open(phase_summary_path, "w") as f:
+        json.dump({"phases": phase_results}, f, indent=2)
+    print(f"\nSaved curriculum phase summary: {phase_summary_path}")
+    
+    # Return results
+    return {
+        "training_metrics": cumulative_metrics,
+        "rollout_stats": rollout_stats,
+        "phases": phase_results,
+        "paths": {
+            "log": str(paths.log),
+            "config": str(paths.config),
+            "metrics": str(paths.metrics),
+            "model": str(paths.model),
+        },
+    }
+
+
 def train_hybrid(config: HybridTrainingConfig) -> dict[str, object]:
     """High-level entry point used by CLI/tests."""
-
+    
+    # Use curriculum training if configured
+    if config.curriculum is not None:
+        return train_hybrid_curriculum(config)
+    
     trainer = HybridDDMTrainer(config)
     paths = config.output_paths()
     training_metrics = trainer.train()
@@ -687,4 +945,4 @@ def train_hybrid(config: HybridTrainingConfig) -> dict[str, object]:
     }
 
 
-__all__ = ["HybridTrainingConfig", "HybridDDMTrainer", "train_hybrid", "LossWeights"]
+__all__ = ["HybridTrainingConfig", "HybridDDMTrainer", "train_hybrid", "train_hybrid_curriculum", "LossWeights", "CurriculumConfig", "CurriculumPhase"]

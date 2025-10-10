@@ -19,6 +19,7 @@ class LossWeightArgs:
     choice: float = 1.0
     rt: float = 1.0
     history: float = 0.0
+    drift_supervision: float = 0.0
 
 
 @dataclass(slots=True)
@@ -37,6 +38,7 @@ class TrainHybridArgs:
     max_trials_per_session: int | None = None
     min_commit_steps: int = 5
     max_commit_steps: int = 120
+    drift_scale: float = 10.0
     loss_weights: LossWeightArgs = field(default_factory=LossWeightArgs)
 
 
@@ -58,6 +60,7 @@ def main(args: TrainHybridArgs) -> None:
         max_trials_per_session=args.max_trials_per_session,
         min_commit_steps=args.min_commit_steps,
         max_commit_steps=args.max_commit_steps,
+        drift_scale=args.drift_scale,
     )
     result = train_hybrid(config)
     print(result)
