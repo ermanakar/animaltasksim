@@ -2,10 +2,19 @@
 
 AnimalTaskSim benchmarks AI agents on classic animal decision-making tasks using task-faithful environments, public reference data, and a schema-locked evaluation stack. The project focuses on matching animal **behavioral fingerprints**—psychometric, chronometric, history, and lapse patterns—rather than raw reward.
 
+---
+
+## Recent Updates (October 10, 2025)
+
+**Hybrid DDM+LSTM Agent:** Implemented stochastic DDM simulation via Euler-Maruyama integration. Agent now generates trial-by-trial RT variability and maintains history matching, though RT dynamics remain substantially compressed (0.6% of reference slope magnitude). See technical details and comparison tables in [`FINDINGS.md`](FINDINGS.md).
+
+---
+
 **Current scope (v0.1):**
 - IBL-style mouse visual 2AFC task
 - Macaque random-dot motion discrimination task
 - Baseline agents: Sticky-Q, Bayesian observer, PPO
+- **NEW: Hybrid DDM+LSTM agent** with stochastic evidence accumulation
 - Metrics, reports, and `.ndjson` logs that align agents with rodent/primate data
 
 Read the full benchmark recap in [`FINDINGS.md`](FINDINGS.md). Dashboards are stored under `runs/` for interactive inspection.
@@ -30,6 +39,9 @@ pip install -e ".[dev]"
 # Train a baseline agent (writes runs/<name>/)
 python scripts/train_agent.py --env ibl_2afc --agent sticky_q --steps 2000 --out runs/ibl_stickyq
 
+# Train the hybrid DDM+LSTM agent (uses macaque reference data)
+python scripts/train_hybrid.py --output_dir runs/rdm_hybrid --epochs 5 --episodes 10
+
 # Evaluate fingerprints and generate a report
 python scripts/evaluate_agent.py --run runs/ibl_stickyq
 python scripts/make_report.py --run runs/ibl_stickyq
@@ -44,7 +56,7 @@ Each command respects deterministic seeding, persists `config.json`, and emits s
 ```
 animal-task-sim/
 ├─ envs/                # Gymnasium tasks + timing utilities
-├─ agents/              # Sticky-Q, Bayesian observer, PPO baselines
+├─ agents/              # Sticky-Q, Bayesian observer, PPO, hybrid DDM agents
 ├─ eval/                # Metrics, schema validator, HTML report tooling
 ├─ scripts/             # Train / evaluate / report CLIs (frozen interfaces)
 ├─ data/                # Reference animal logs and helpers

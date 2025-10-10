@@ -5,6 +5,62 @@
 
 ---
 
+## Recent Updates (October 10, 2025)
+
+### Hybrid DDM+LSTM Agent: Stochastic Simulation Implementation
+
+Replaced analytical RT calculation with step-by-step Euler-Maruyama integration. The agent now generates trial-by-trial RT variability and shows evidence-dependent timing, though RT dynamics remain substantially weaker than reference data.
+
+#### What Changed
+- **Replaced analytical RT calculation with stochastic DDM simulation** using Euler-Maruyama integration
+- Evidence accumulation now proceeds step-by-step: `evidence += drift*dt + noise*sqrt(dt)*randn()`
+- Each trial produces unique RT based on noisy drift until bound crossing
+- Architecture: 7-feature input → LSTM(64) → drift_gain, bound, bias, non_decision outputs
+
+#### Key Results
+
+**RT Dynamics:**
+- RT variability: std ~34ms (was 0ms with analytical formula)
+- Negative RT slope: -3.7ms/unit coherence (0.6% of reference -645ms/unit)
+- Evidence-dependent timing observable but compressed
+- Trial-by-trial stochastic variation with 30+ unique RT values
+
+**History Matching:**
+- Win-stay: 0.500 (reference 0.458)
+- Lose-shift: 0.503 (reference 0.515)
+- Comparable to analytical version, no degradation from stochastic simulation
+
+**Comparison Table:**
+
+| Agent                    | RT Slope    | RT Var | Win-Stay | Lose-Shift | Method           |
+|--------------------------|-------------|--------|----------|------------|------------------|
+| Reference (macaque)      | -645 ms     | high   | 0.458    | 0.515      | Real data        |
+| PPO v24                  | 0.0 ms (0%) | none   | 1.000    | 1.000      | RL only          |
+| DDM v2                   | -139 ms (22%)| high   | —        | —          | DDM only         |
+| Hybrid (analytical)      | 0.0 ms (0%) | none   | 0.500    | 0.503      | Deterministic RT |
+| Hybrid (stochastic)      | -3.7 ms (0.6%) | 34 ms | 0.500    | 0.503     | Stochastic DDM   |
+
+**Technical Details:**
+- Code location: `agents/hybrid_ddm_lstm.py:468-496` (`_simulate_ddm` method)
+- Training: 10 epochs, 20 episodes, RT loss weight 0.1-0.5, truncated BPTT (chunk_size=20)
+- Learned parameters: drift_gain ~0.05, bound ~1.25, noise ~1.0, non_decision ~151ms
+- Artifacts: `runs/rdm_hybrid_stochastic/`, `runs/rdm_hybrid_rtstrong/`
+
+#### Remaining Issues: RT Scale Mismatch
+The agent shows correct qualitative RT dynamics (variability, negative slope) but weak quantitative match:
+- Current: 110-130ms mean RT with -3.7ms/unit slope (0.6% of reference magnitude)
+- Target: 400-800ms mean RT with -645ms/unit slope
+- Hypothesis: Time costs in reward penalize slow responses, compressing learned dynamics
+
+**Potential approaches to investigate:**
+1. Adjust reward structure (reduce per_step_cost, add RT target range bonus)
+2. Scale training targets (normalize reference RTs during loss computation)
+3. Initialize stronger drift dynamics (scale drift_head weights)
+
+**Status:** Architecture enables RT generation via stochastic accumulation. Remaining gap appears parametric rather than structural, pending further tuning and validation against animal data distributions.
+
+---
+
 ## Executive Summary
 
 AnimalTaskSim measures how closely AI agents reproduce animal behavioral fingerprints on two classic tasks. Baseline agents match several bias and history statistics but diverge on reaction-time dynamics and lapse patterns. Architectural inductive biases, not just reward shaping, remain the limiting factor.
