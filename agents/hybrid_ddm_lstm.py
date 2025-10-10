@@ -14,6 +14,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from agents.losses import LossWeights, choice_loss, history_penalty, rt_loss
+from agents.wfpt_loss import wfpt_loss
 from animaltasksim.config import ProjectPaths
 from animaltasksim.seeding import seed_everything
 from envs.rdm_macaque import (
@@ -137,10 +138,17 @@ class HybridDDMModel(nn.Module):
         self.hidden_size = hidden_size
         self.device = device
         self.lstm = nn.LSTMCell(feature_dim, hidden_size)
+        # DDM parameter heads
         self.drift_head = nn.Linear(hidden_size, 1)
         self.bound_head = nn.Linear(hidden_size, 1)
         self.bias_head = nn.Linear(hidden_size, 1)
         self.non_decision_head = nn.Linear(hidden_size, 1)
+        
+        # CRITICAL CALIBRATION: Initialize drift_head bias for realistic drift_gain scale
+        # Target: drift_gain ~ 10-15 to match macaque RT dynamics (RT ~ 500-800ms)
+        # Formula: drift_gain = softplus(bias) + 1e-3
+        # For drift_gain ≈ 12: need bias ≈ 2.5
+        nn.init.constant_(self.drift_head.bias, 2.5)
         self.log_noise = nn.Parameter(torch.tensor(0.0, dtype=torch.float32))
         self._min_bound = 0.5
         self._min_non_decision = 150.0  # ms
@@ -213,27 +221,43 @@ class HybridDDMTrainer:
         df.sort_values(["session_id", "trial_index"], inplace=True)
 
         sessions: list[SessionBatch] = []
+        
+        # CRITICAL FIX: Split data into mini-batches for more frequent gradient updates
+        # Previously: 1 session → 1 update per epoch → 15 total updates → NO LEARNING
+        # Now: Split into chunks → many updates per epoch → proper gradient descent
+        batch_size = self.config.max_trials_per_session if self.config.max_trials_per_session else 100
+        
         for session_id, group in df.groupby("session_id", sort=False):
             trials = group.copy()
-            if self.config.max_trials_per_session is not None:
-                trials = trials.iloc[: self.config.max_trials_per_session]
-            if trials.empty:
-                continue
+            
+            # Split this session into multiple mini-batches
+            n_trials = len(trials)
+            n_batches = max(1, (n_trials + batch_size - 1) // batch_size)
+            
+            for batch_idx in range(n_batches):
+                start_idx = batch_idx * batch_size
+                end_idx = min(start_idx + batch_size, n_trials)
+                batch_trials = trials.iloc[start_idx:end_idx]
+                
+                if batch_trials.empty:
+                    continue
 
-            features, choice, choice_mask, rt_ms, rt_mask, correct = self._session_to_arrays(trials)
-            win_stay, lose_shift = self._session_history_stats(trials)
-            sessions.append(
-                SessionBatch(
-                    features=features,
-                    choice=choice,
-                    choice_mask=choice_mask,
-                    rt_ms=rt_ms,
-                    rt_mask=rt_mask,
-                    correct=correct,
-                    win_stay_target=float(win_stay),
-                    lose_shift_target=float(lose_shift),
+                features, choice, choice_mask, rt_ms, rt_mask, correct = self._session_to_arrays(batch_trials)
+                win_stay, lose_shift = self._session_history_stats(batch_trials)
+                sessions.append(
+                    SessionBatch(
+                        features=features,
+                        choice=choice,
+                        choice_mask=choice_mask,
+                        rt_ms=rt_ms,
+                        rt_mask=rt_mask,
+                        correct=correct,
+                        win_stay_target=float(win_stay),
+                        lose_shift_target=float(lose_shift),
+                    )
                 )
-            )
+                if self.config.max_sessions is not None and len(sessions) >= self.config.max_sessions:
+                    break
             if self.config.max_sessions is not None and len(sessions) >= self.config.max_sessions:
                 break
         return sessions
@@ -348,6 +372,8 @@ class HybridDDMTrainer:
             "epoch_rt_loss": [],
             "epoch_history_penalty": [],
             "epoch_drift_supervision": [],
+            "epoch_drift_magnitude": [],
+            "epoch_wfpt_loss": [],
             "noise": [],
             "mean_bound": [],
         }
@@ -356,6 +382,8 @@ class HybridDDMTrainer:
             epoch_rt = 0.0
             epoch_hist = 0.0
             epoch_drift_sup = 0.0
+            epoch_drift_mag = 0.0
+            epoch_wfpt = 0.0
             session_count = 0
             # Shuffle sessions using random.shuffle for type compatibility
             shuffled_sessions = list(self.sessions)
@@ -376,6 +404,15 @@ class HybridDDMTrainer:
 
                 prob_buffer: list[float] = []
                 drift_gain_buffer: list[torch.Tensor] = []  # Collect for supervision
+                
+                # Buffers for WFPT loss (collect all DDM params + observed choice/RT)
+                wfpt_choice_buffer: list[torch.Tensor] = []
+                wfpt_rt_buffer: list[torch.Tensor] = []
+                wfpt_drift_buffer: list[torch.Tensor] = []
+                wfpt_bound_buffer: list[torch.Tensor] = []
+                wfpt_bias_buffer: list[torch.Tensor] = []
+                wfpt_noise_buffer: list[torch.Tensor] = []
+                wfpt_nondecision_buffer: list[torch.Tensor] = []
                 
                 # Truncated BPTT: detach every N trials to prevent gradient explosion
                 tbptt_chunk_size = 20
@@ -430,6 +467,18 @@ class HybridDDMTrainer:
                         loss_r = rt_loss(predicted_rt, rt_ms[idx : idx + 1], rt_mask[idx : idx + 1])
                         total_rt_loss = total_rt_loss + loss_r
                         rt_weight += float(rt_mask[idx].detach().cpu())
+                    
+                    # Collect for WFPT loss (only for valid choice+RT trials)
+                    if choice_mask[idx] > 0 and rt_mask[idx] > 0:
+                        # Convert choice from {-1, 1} or {0, 1} to {0, 1}
+                        choice_binary = (choice[idx] + 1.0) / 2.0 if choice[idx] < 0.5 else choice[idx]
+                        wfpt_choice_buffer.append(choice_binary.unsqueeze(0))
+                        wfpt_rt_buffer.append(rt_ms[idx].unsqueeze(0))
+                        wfpt_drift_buffer.append(drift.unsqueeze(0))
+                        wfpt_bound_buffer.append(bound.unsqueeze(0))
+                        wfpt_bias_buffer.append(out["bias"].unsqueeze(0))
+                        wfpt_noise_buffer.append(noise.unsqueeze(0))
+                        wfpt_nondecision_buffer.append(out["non_decision_ms"].unsqueeze(0))
 
                 if choice_weight > 0:
                     total_choice_loss = total_choice_loss / choice_weight
@@ -461,6 +510,37 @@ class HybridDDMTrainer:
                     drift_sup_loss = drift_supervision_loss(drift_gains, target_gain=5.0)
                     total_loss = total_loss + weights.drift_supervision * drift_sup_loss
 
+                # Drift magnitude regularization: anchor drift_gain scale to prevent collapse
+                drift_mag_loss = torch.zeros(1, device=self.device)
+                if weights.drift_magnitude > 0.0 and drift_gain_buffer:
+                    drift_gains = torch.cat(drift_gain_buffer)
+                    # Target: drift_gain ≈ 12 (from softplus(2.5) + 0.001)
+                    drift_mag_loss = torch.mean((drift_gains - 12.0) ** 2)
+                    total_loss = total_loss + weights.drift_magnitude * drift_mag_loss
+
+                # WFPT likelihood loss: statistically correct DDM objective
+                wfpt_loss_val = torch.zeros(1, device=self.device)
+                if weights.wfpt > 0.0 and wfpt_choice_buffer:
+                    wfpt_choices = torch.cat(wfpt_choice_buffer)
+                    wfpt_rts = torch.cat(wfpt_rt_buffer)
+                    wfpt_drifts = torch.cat(wfpt_drift_buffer)
+                    wfpt_bounds = torch.cat(wfpt_bound_buffer)
+                    wfpt_biases = torch.cat(wfpt_bias_buffer)
+                    wfpt_noises = torch.cat(wfpt_noise_buffer)
+                    wfpt_nondecisions = torch.cat(wfpt_nondecision_buffer)
+                    
+                    wfpt_loss_val = wfpt_loss(
+                        choice=wfpt_choices,
+                        rt_ms=wfpt_rts,
+                        drift=wfpt_drifts,
+                        bound=wfpt_bounds,
+                        bias=wfpt_biases,
+                        noise=wfpt_noises,
+                        non_decision_ms=wfpt_nondecisions,
+                        weight=1.0,
+                    )
+                    total_loss = total_loss + weights.wfpt * wfpt_loss_val
+
                 total_loss.backward()
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=5.0)
                 self.optimizer.step()
@@ -477,12 +557,16 @@ class HybridDDMTrainer:
                 epoch_rt += float(total_rt_loss.detach().cpu())
                 epoch_hist += float(hist_loss.detach().cpu())
                 epoch_drift_sup += float(drift_sup_loss.detach().cpu())
+                epoch_drift_mag += float(drift_mag_loss.detach().cpu())
+                epoch_wfpt += float(wfpt_loss_val.detach().cpu())
                 session_count += 1
 
             metrics["epoch_choice_loss"].append(epoch_choice / max(session_count, 1))
             metrics["epoch_rt_loss"].append(epoch_rt / max(session_count, 1))
             metrics["epoch_history_penalty"].append(epoch_hist / max(session_count, 1))
             metrics["epoch_drift_supervision"].append(epoch_drift_sup / max(session_count, 1))
+            metrics["epoch_drift_magnitude"].append(epoch_drift_mag / max(session_count, 1))
+            metrics["epoch_wfpt_loss"].append(epoch_wfpt / max(session_count, 1))
             noise_value = torch.exp(torch.nan_to_num(self.model.log_noise, nan=0.0)).detach().cpu()
             metrics["noise"].append(float(noise_value))
             metrics["mean_bound"].append(self._estimate_mean_bound())
@@ -585,7 +669,7 @@ class HybridDDMTrainer:
             per_step_cost=0.001,  # Reduced from 0.02 to allow slower RTs matching animal data
             evidence_gain=0.05,
             momentary_sigma=1.0,
-            collapsing_bound=True,
+            collapsing_bound=False,  # CRITICAL FIX: Disable env's auto-commit so agent's DDM controls timing!
             min_bound_steps=self.config.min_commit_steps,  # Allow model's RT predictions through
         )
         env = RDMMacaqueEnv(env_config)
@@ -763,8 +847,9 @@ def _evaluate_phase_success(
     
     # Compute RT-coherence metrics
     linreg_result = scipy_stats.linregress(abs_coh, rts)
-    slope_val = float(linreg_result.slope)
-    r_val = float(linreg_result.rvalue)
+    # scipy.stats.linregress returns LinregressResult with .slope and .rvalue attributes
+    slope_val = float(linreg_result.slope)  # type: ignore[attr-defined]
+    r_val = float(linreg_result.rvalue)  # type: ignore[attr-defined]
     r2_val = r_val ** 2
     rt_diff = float(np.abs(rts[abs_coh < 0.05].mean() - rts[abs_coh > 0.5].mean()))
     

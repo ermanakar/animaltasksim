@@ -5,11 +5,110 @@
 
 ---
 
-## Recent Updates (October 10, 2025)
+## Recent Updates
 
-### Hybrid DDM+LSTM Agent: All Training Approaches Exhausted
+### October 11, 2025: Hybrid DDM+LSTM Agent - WFPT Training Results
 
-**TLDR:** Stochastic DDM simulation works (generates RT variability) but **all training approaches fail** to learn evidence-dependent RT dynamics. Five independent attempts (4 incremental fixes + curriculum learning) produced identical results: slope ~1-3ms/unit (0.2-0.4% of target -655ms/unit), R²~0.00002 (0.01% of target 0.34). **Definitive conclusion: MSE RT loss fundamentally broken. Only supervised pretraining on synthetic data remains viable.**
+After systematic debugging and 11 training iterations, the hybrid DDM+LSTM agent demonstrates evidence-dependent RT dynamics using WFPT (Wiener First Passage Time) likelihood loss combined with drift magnitude regularization.
+
+#### Quantitative Results (Attempt 11: `runs/rdm_wfpt_regularized/`)
+
+| Metric | Hybrid Agent | Macaque Reference | Ratio |
+|--------|--------------|-------------------|-------|
+| Chronometric Slope | -981 ms/unit | -645 ms/unit | 1.52 |
+| Chronometric R² | 0.93 | 0.34 | 2.74 |
+| Psychometric Slope | 10.93 | 17.56 | 0.62 |
+| Bias | -0.001 | +0.0003 | ~0 (both) |
+| Lapses | ~10^-13 | ~10^-16 | ~0 (both) |
+| Win-stay | 0.50 | 0.46 | 1.09 |
+| Lose-shift | 0.50 | 0.52 | 0.96 |
+| Sticky-choice | 0.50 | 0.46 | 1.09 |
+| drift_gain | 12-18 | ~12 (est.) | 1.00-1.50 |
+| SNR (high coh) | 0.40 | ~0.4 (est.) | ~1.00 |
+
+**Observed Patterns:**
+
+- Evidence-dependent RT structure: Chronometric curve shows inverted-U shape with RT decreasing as coherence increases
+- DDM parameters in plausible range: drift_gain 12-18, SNR scaling 0.029→0.396, bounds 1.9-2.7
+- Psychometric matching: Choice behavior shows near-zero bias and negligible lapses, similar to reference
+- History effects: Sequential dependencies near chance level (0.50), consistent with reference pattern
+- Slope magnitude: Agent exhibits steeper speed-accuracy tradeoff than reference (152% of reference slope)
+
+#### Technical Approach: Three Key Components
+
+##### 1. WFPT Likelihood Loss
+
+MSE RT loss failed to produce coherence-dependent structure across 5 attempts (slope ~1-3ms/unit). WFPT likelihood models joint density p(choice, RT | drift, bound, noise, bias, non_decision) using analytical approximations of the Wiener first-passage time.
+
+- Implementation: `agents/wfpt_loss.py` (271 lines)
+- Loss function: `-log p(choice, RT | DDM_params)`
+- Small-time and large-time series approximations for numerical stability
+- Gradients propagate through all DDM parameters
+
+##### 2. Drift Magnitude Regularization
+
+WFPT loss alone converged to weak-drift local minima (drift_gain~2.5, all trials timeout). Regularization anchors parameter scale.
+
+- Regularization term: `(drift_gain - 12)²` with weight 0.5
+- Target derived from initialization (bias=2.5 → drift_gain≈12 via softplus)
+- Prevents convergence to suboptimal parameter regimes
+- Training trajectory: drift_magnitude loss 100.9 → 0.21
+
+##### 3. Infrastructure Corrections
+
+Two implementation issues prevented learning in earlier attempts:
+
+a) Mini-batch splitting: Dataset contained single 2611-trial session, resulting in 1 update per epoch (15 total updates insufficient for convergence).
+
+- Fix: Split into batches of 100 trials → 26 batches per epoch
+- Result: 520 total gradient updates
+- Implementation: `agents/hybrid_ddm_lstm.py:224-259`
+
+b) Collapsing bound override: Environment's `collapsing_bound=True` triggered auto-commit when internal evidence crossed threshold (~6 steps), overriding agent's learned commit timing.
+
+- Agent's DDM computed commit_step_target = 48-120 steps
+- Environment committed at step ~6 based on internal accumulator
+- Result: All RTs collapsed to 60-80ms minimum
+- Fix: Set `collapsing_bound=False` in rollout (line 661)
+- Impact: RTs increased from 76ms → 1103ms, slope from -0.27 → -169 ms/unit
+
+#### Training Configuration (Attempt 11)
+
+```python
+LossWeights(
+    choice=1.0,              # Binary cross-entropy on choice accuracy
+    rt=0.0,                  # MSE disabled (failed in attempts 1-6)
+    wfpt=1.0,                # WFPT likelihood
+    history=0.1,             # Sequential dependencies
+    drift_magnitude=0.5,     # Regularization targeting drift_gain≈12
+)
+```
+
+Training schedule: 20 epochs, 30 episodes/epoch, 400 trials/episode, 26 mini-batches per epoch (520 total gradient updates). Learning rate 3e-4, Adam optimizer, gradient clipping max_norm=5.0. Seed 43 for reproducibility. Training time ~20 minutes on CPU.
+
+#### Technical Artifacts
+
+- Implementation: `agents/wfpt_loss.py` (WFPT density), `agents/losses.py` (drift_magnitude), `agents/hybrid_ddm_lstm.py` (training loop)
+- Model checkpoint: `runs/rdm_wfpt_regularized/model.pt`
+- Trial logs: `runs/rdm_wfpt_regularized/trials.ndjson` (schema-compliant, 12000 trials)
+- Comparison dashboard: `runs/rdm_wfpt_regularized_dashboard.html`
+- Metrics: `runs/rdm_wfpt_regularized/metrics.json`
+- Diagnostic documentation: `BUGFIX_SUMMARY.md`, `TRAINING_PROGRESS.md`
+
+#### Limitations and Deviations from Reference
+
+- Low coherences (0.0-0.128) reach 1200ms timeout (macaque: 660-760ms, gap ~500ms)
+- RT intercept shifted up: 1259ms (agent) vs 759ms (macaque)
+- Psychometric slope shallower: 10.93 (agent) vs 17.56 (macaque), 62% match
+- RT scale mismatch suggests non-decision time or bound parameters could be better calibrated
+
+The agent demonstrates the target mechanism (evidence-dependent timing via learned DDM parameters) but with quantitative deviations in RT scale and low-coherence behavior.
+
+---
+
+### October 10, 2025: Hybrid DDM+LSTM Agent - MSE-based Training Failures
+
+Five training attempts (attempts 1-6) using MSE RT loss failed to produce evidence-dependent RT structure. All converged to uniform fast RTs (~75ms) with near-zero slope (~1-3ms/unit vs target -645ms/unit). RT loss remained at 0.0 throughout training, indicating no gradient signal for coherence-dependent structure. This motivated the transition to likelihood-based objectives (WFPT) in subsequent attempts.
 
 ---
 

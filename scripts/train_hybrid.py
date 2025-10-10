@@ -20,6 +20,8 @@ class LossWeightArgs:
     rt: float = 1.0
     history: float = 0.0
     drift_supervision: float = 0.0
+    wfpt: float = 0.0
+    drift_magnitude: float = 0.0
 
 
 @dataclass(slots=True)

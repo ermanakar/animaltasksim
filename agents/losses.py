@@ -16,6 +16,8 @@ class LossWeights:
     rt: float = 1.0
     history: float = 0.0
     drift_supervision: float = 0.0
+    wfpt: float = 0.0  # Wiener First Passage Time likelihood loss
+    drift_magnitude: float = 0.0  # Regularization to anchor drift_gain scale
 
     def clamp_non_negative(self) -> None:
         """Ensure weights remain non-negative."""
@@ -23,6 +25,8 @@ class LossWeights:
         self.rt = max(0.0, float(self.rt))
         self.history = max(0.0, float(self.history))
         self.drift_supervision = max(0.0, float(self.drift_supervision))
+        self.wfpt = max(0.0, float(self.wfpt))
+        self.drift_magnitude = max(0.0, float(self.drift_magnitude))
 
 
 def choice_loss(probs: torch.Tensor, targets: torch.Tensor, mask: torch.Tensor | None = None) -> torch.Tensor:

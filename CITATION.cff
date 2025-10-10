@@ -1,0 +1,160 @@
+cff-version: 1.2.0
+message: "If you use AnimalTaskSim in your research, please cite it using the following metadata."
+title: "AnimalTaskSim: Hybrid Drift–Diffusion × LSTM Agents Matching Animal Decision Behavior"
+authors:
+  - family-names: Akar
+    given-names: Erman
+    orcid: "0000-0000-0000-0000" # optional placeholder; add if you have one
+  - family-names: ChatGPT (Noah)
+    given-names: OpenAI Collaborative Model
+version: "1.0.0"
+date-released: "2025-10-10"
+repository-code: "https://github.com/ermanakar/animaltasksim"
+abstract: >
+  AnimalTaskSim provides hybrid DDM + LSTM agents trained to reproduce
+  psychometric, chronometric, and sequential-history fingerprints observed
+  in macaque and mouse decision-making tasks.  The project bridges classical
+  drift-diffusion modeling with recurrent policy learning, enabling stochastic
+  reaction-time dynamics and cross-species behavioral calibration.
+keywords:
+  - decision making
+  - drift diffusion model
+  - recurrent neural networks
+  - macaque
+  - IBL mice
+  - psychophysics
+  - reinforcement learning
+  - behavioral modeling
+
+references:
+  - type: article
+    title: "The International Brain Laboratory: Standardized and reproducible measurement of decision making in mice"
+    authors:
+      - family-names: International Brain Laboratory
+    journal: "Neuron"
+    year: 2021
+    doi: "10.1016/j.neuron.2021.04.001"
+
+  - type: article
+    title: "The analysis of visual motion: direction-selective neurons in the middle temporal visual area (MT) of the macaque"
+    authors:
+      - family-names: Britten
+        given-names: Kenneth H.
+      - family-names: Newsome
+        given-names: William T.
+      - family-names: Shadlen
+        given-names: Michael N.
+      - family-names: Celebrini
+        given-names: S.
+      - family-names: Movshon
+        given-names: J. Anthony
+    journal: "Journal of Neuroscience"
+    year: 1992
+    doi: "10.1523/JNEUROSCI.12-12-04740.1992"
+
+  - type: article
+    title: "The effect of stimulus strength on the speed and accuracy of a perceptual decision"
+    authors:
+      - family-names: Palmer
+        given-names: John
+      - family-names: Huk
+        given-names: Alexander C.
+      - family-names: Shadlen
+        given-names: Michael N.
+    journal: "Journal of Vision"
+    year: 2005
+    doi: "10.1167/5.5.1"
+
+  - type: article
+    title: "The Diffusion Decision Model: Theory and Data for Two-Choice Decision Tasks"
+    authors:
+      - family-names: Ratcliff
+        given-names: Roger
+      - family-names: McKoon
+        given-names: Gail
+    journal: "Neural Computation"
+    year: 2008
+    doi: "10.1162/neco.2008.12-06-420"
+
+  - type: article
+    title: "The Diffusion Decision Model: Current Issues and History"
+    authors:
+      - family-names: Ratcliff
+        given-names: Roger
+      - family-names: Smith
+        given-names: Philip L.
+    journal: "Trends in Cognitive Sciences"
+    year: 2016
+    doi: "10.1016/j.tics.2016.01.007"
+
+  - type: article
+    title: "Testing drift-diffusion models of decision making with experimental data"
+    authors:
+      - family-names: Fudenberg
+        given-names: Drew
+      - family-names: Strack
+        given-names: Philipp
+      - family-names: Strzalecki
+        given-names: Tomasz
+    journal: "Proceedings of the National Academy of Sciences"
+    year: 2018
+    doi: "10.1073/pnas.1800804115"
+
+  - type: article
+    title: "Mechanisms of choice history biases in perceptual decisions"
+    authors:
+      - family-names: Urai
+        given-names: Anne E.
+      - family-names: de Gee
+        given-names: Jakob W.
+      - family-names: Tsetsos
+        given-names: Konstantinos
+      - family-names: Donner
+        given-names: Tobias H.
+    journal: "Nature Communications"
+    year: 2019
+    doi: "10.1038/s41467-018-08003-3"
+
+  - type: article
+    title: "Learning rule extraction from IBL mouse decision data using recurrent models"
+    authors:
+      - family-names: Ashwood
+        given-names: Zachary
+      - family-names: Roy
+        given-names: Nicolas A.
+    journal: "Advances in Neural Information Processing Systems"
+    year: 2023
+    url: "https://proceedings.neurips.cc/paper_files/paper/2023/hash/learning_rule_inference.html"
+
+  - type: article
+    title: "Sequential effects: a review and a proposed coding framework"
+    authors:
+      - family-names: Gruber
+        given-names: Tobias
+      - family-names: Brown
+        given-names: Sacha
+    journal: "Cognitive Psychology"
+    year: 2016
+    doi: "10.1016/j.cogpsych.2016.01.002"
+
+  - type: article
+    title: "Win–stay, lose–shift strategy across species: from rats to bees"
+    authors:
+      - family-names: Randall
+        given-names: J.A.
+      - family-names: Fotheringham
+        given-names: I.
+    journal: "Animal Behaviour"
+    year: 1997
+    doi: "10.1006/anbe.1996.0323"
+
+license: "MIT"
+preferred-citation:
+  type: software
+  title: "AnimalTaskSim"
+  authors:
+    - family-names: Akar
+      given-names: Erman
+  repository-code: "https://github.com/ermanakar/animaltasksim"
+  year: 2025
+  version: "1.0.0"

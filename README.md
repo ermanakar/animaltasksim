@@ -4,9 +4,32 @@ AnimalTaskSim benchmarks AI agents on classic animal decision-making tasks using
 
 ---
 
-## Recent Updates (October 10, 2025)
+## Recent Updates
 
-**Hybrid DDM+LSTM Agent - All Training Approaches Exhausted:** After 5 independent attempts (4 incremental fixes + curriculum learning), **all training approaches definitively fail** to learn evidence-dependent RT dynamics. Curriculum learning Phase 1 (choice=0.0, rt=1.0, drift_supervision=0.5) failed with slope=2.78ms/unit, R²=0.000155, proving **MSE RT loss provides zero gradient for coherence-dependent structure even without choice interference**. Options C2-C4 ruled out. **Only viable path:** Option C1 (supervised pretraining on synthetic DDM data) to bypass broken RT loss objective. See [`FINDINGS.md`](FINDINGS.md) and [`HYBRID_AGENT_POSTMORTEM.md`](HYBRID_AGENT_POSTMORTEM.md) for complete analysis.
+### October 11, 2025 - Hybrid DDM+LSTM Agent Training Results
+
+After systematic debugging of 10+ training attempts, the hybrid agent demonstrates evidence-dependent RT dynamics using WFPT (Wiener First Passage Time) likelihood loss with drift magnitude regularization:
+
+**Quantitative Results (Attempt 11: `runs/rdm_wfpt_regularized/`):**
+
+- **Chronometric slope:** -981 ms/unit (macaque reference: -645 ms/unit, 152% match)
+- **Psychometric slope:** 10.93 (macaque: 17.56, 62% match)
+- **Bias:** -0.001 (macaque: +0.0003, both approximately zero)
+- **Lapses:** ~10^-13 (macaque: ~10^-16, both negligible)
+- **History effects:** win-stay 0.50, lose-shift 0.50, sticky-choice 0.50 (macaque: 0.46, 0.52, 0.46; all near chance)
+- **DDM parameters:** drift_gain 12-18, SNR 0.03-0.40, bounds 1.9-2.7
+
+**Technical approach:**
+
+1. WFPT likelihood loss: Replaces MSE RT loss with joint density p(choice, RT | drift, bound, bias, noise, non_decision)
+2. Drift magnitude regularization: (drift_gain - 12)² term prevents convergence to weak-drift local minima
+3. Infrastructure fixes:
+   - Mini-batch splitting: 2611 trials split into 26 batches of 100 trials (15→520 gradient updates)
+   - Collapsing bound disabled: Environment's auto-commit behavior was overriding agent's learned DDM timing
+
+**Training configuration:** 20 epochs, 520 total gradient updates, loss weights: choice=1.0, wfpt=1.0, history=0.1, drift_magnitude=0.5. Full results in `runs/rdm_wfpt_regularized/` and dashboard at `runs/rdm_wfpt_regularized_dashboard.html`.
+
+**Limitations:** Low coherences (0.0-0.128) timeout at 1200ms vs macaque 660-760ms. Overall RT scale shifted up ~500ms (intercept 1259 vs 759). Core mechanism (evidence-dependent timing via learned DDM) demonstrated. See [`FINDINGS.md`](FINDINGS.md) for complete analysis.
 
 ---
 
