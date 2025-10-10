@@ -110,6 +110,7 @@ drift_supervision: NOT LOGGED (even with weight=0.5)
 - **Training:** 5 epochs on reference data
 
 **Results:**
+
 - Slope: 2.78 ms/unit (need 100 ms/unit) → **FAILED by 97%**
 - R²: 0.000155 (need 0.1) → **FAILED by 99.8%**
 - RT difference: 2.9ms (need 50ms) → **FAILED by 94%**
@@ -125,6 +126,7 @@ Early stopping triggered after Phase 1 failure. Phases 2 and 3 never executed.
 #### Conclusion: Only Supervised Pretraining Remains Viable
 
 **All five training approaches failed identically:**
+
 1. ❌ Drift parameter scaling → collapse
 2. ❌ Normalized RT loss → no structure
 3. ❌ Explicit drift supervision (0.1, 0.5) → ignored
@@ -132,6 +134,7 @@ Early stopping triggered after Phase 1 failure. Phases 2 and 3 never executed.
 5. ❌ **Curriculum learning (RT-first)** → **no gradient even without choice**
 
 **This definitively proves:**
+
 - MSE RT loss provides zero gradient for coherence-dependent structure
 - Drift supervision cannot compensate for missing gradient
 - Choice loss interference is NOT the root cause
@@ -139,20 +142,23 @@ Early stopping triggered after Phase 1 failure. Phases 2 and 3 never executed.
 
 **Remaining Options:**
 
-~~**Option C2: Curriculum Learning**~~ → **RULED OUT** (Phase 1 failed definitively)
+#### ~~Option C2: Curriculum Learning~~ → **RULED OUT** (Phase 1 failed definitively)
 
-**Option C1: Supervised Pretraining** ✅ **RECOMMENDED**
+#### Option C1: Supervised Pretraining ✅ **RECOMMENDED**
+
 - Generate synthetic DDM trajectories with known drift/bound/RT relationships
 - Pretrain LSTM to predict drift_gain from (coherence, RT) pairs
 - Fine-tune on task with frozen or regularized DDM parameters
 - **Rationale:** Bypass broken RT loss by teaching structure explicitly
 
-**Option C3: Architectural Constraints**
+#### Option C3: Architectural Constraints
+
 - Fix drift/bound ratios based on psychophysics literature
 - Only learn history-dependent modulations and bias parameters
 - Remove degrees of freedom that training collapses
 
-**Option C4: Different Training Objective**
+#### Option C4: Different Training Objective
+
 - Contrastive learning: match trial-level RT distributions by coherence
 - Inverse RL: infer reward function from animal behavior
 - Adversarial training: discriminator judges agent vs animal trials
