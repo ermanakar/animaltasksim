@@ -48,6 +48,10 @@ class PPOCLIConfig:
     collapsing_bound: bool = False
     min_bound_steps: int = 5
     bound_threshold: float = 3.0
+    use_avg_reward_time_cost: bool = False
+    avg_reward_alpha: float = 0.05
+    avg_reward_scale: float = 1.0
+    avg_reward_initial_rate: float = 1.0
 
 
 @dataclass(slots=True)
@@ -119,6 +123,10 @@ def _train_ppo(args: TrainArgs) -> dict[str, object]:
     collapsing_bound = ppo_args.pop("collapsing_bound")
     min_bound_steps = int(ppo_args.pop("min_bound_steps"))
     bound_threshold = float(ppo_args.pop("bound_threshold"))
+    use_avg_reward_time_cost = bool(ppo_args.pop("use_avg_reward_time_cost"))
+    avg_reward_alpha = float(ppo_args.pop("avg_reward_alpha"))
+    avg_reward_scale = float(ppo_args.pop("avg_reward_scale"))
+    avg_reward_initial_rate = float(ppo_args.pop("avg_reward_initial_rate"))
     hyper = PPOHyperParams(**ppo_args)
     config = PPOTrainingConfig(
         env=args.env,
@@ -132,6 +140,10 @@ def _train_ppo(args: TrainArgs) -> dict[str, object]:
         collapsing_bound=collapsing_bound,
         min_bound_steps=min_bound_steps,
         bound_threshold=bound_threshold,
+        use_avg_reward_time_cost=use_avg_reward_time_cost,
+        avg_reward_alpha=avg_reward_alpha,
+        avg_reward_scale=avg_reward_scale,
+        avg_reward_initial_rate=avg_reward_initial_rate,
         seed=args.seed,
         agent_version=args.agent_version,
         output_dir=args.out,

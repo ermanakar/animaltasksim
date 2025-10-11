@@ -52,6 +52,10 @@ class PPOTrainingConfig:
     time_cost_growth: float = 0.01
     target_rt_steps: int = 60
     rt_tolerance: float = 30.0
+    use_avg_reward_time_cost: bool = False
+    avg_reward_alpha: float = 0.05
+    avg_reward_scale: float = 1.0
+    avg_reward_initial_rate: float = 1.0
     seed: int = 1234
     agent_version: str = "0.1.0"
     output_dir: Path = field(default_factory=lambda: ProjectPaths.from_cwd().runs / "ppo")
@@ -89,6 +93,10 @@ def _make_env(
     time_cost_growth: float = 0.01,
     target_rt_steps: int = 60,
     rt_tolerance: float = 30.0,
+    use_avg_reward_time_cost: bool = False,
+    avg_reward_alpha: float = 0.05,
+    avg_reward_scale: float = 1.0,
+    avg_reward_initial_rate: float = 1.0,
 ):
     if env_name == "ibl_2afc":
         config = IBL2AFCConfig(
@@ -117,6 +125,10 @@ def _make_env(
             time_cost_growth=time_cost_growth,
             target_rt_steps=target_rt_steps,
             rt_tolerance=rt_tolerance,
+            use_avg_reward_time_cost=use_avg_reward_time_cost,
+            avg_reward_alpha=avg_reward_alpha,
+            avg_reward_scale=avg_reward_scale,
+            avg_reward_initial_rate=avg_reward_initial_rate,
         )
         env = RDMMacaqueEnv(config)
     else:
@@ -168,6 +180,10 @@ def train_ppo(config: PPOTrainingConfig) -> dict[str, object]:
         time_cost_growth=config.time_cost_growth,
         target_rt_steps=config.target_rt_steps,
         rt_tolerance=config.rt_tolerance,
+        use_avg_reward_time_cost=config.use_avg_reward_time_cost,
+        avg_reward_alpha=config.avg_reward_alpha,
+        avg_reward_scale=config.avg_reward_scale,
+        avg_reward_initial_rate=config.avg_reward_initial_rate,
     )
 
     hyper = config.hyperparams
@@ -209,6 +225,10 @@ def train_ppo(config: PPOTrainingConfig) -> dict[str, object]:
         time_cost_growth=config.time_cost_growth,
         target_rt_steps=config.target_rt_steps,
         rt_tolerance=config.rt_tolerance,
+        use_avg_reward_time_cost=config.use_avg_reward_time_cost,
+        avg_reward_alpha=config.avg_reward_alpha,
+        avg_reward_scale=config.avg_reward_scale,
+        avg_reward_initial_rate=config.avg_reward_initial_rate,
     )
 
     evaluation = _evaluate_policy(model, eval_env, episodes=config.eval_episodes)
@@ -274,6 +294,10 @@ def _serialize_env(env_config) -> dict[str, object]:
             "time_cost_growth": env_config.time_cost_growth,
             "target_rt_steps": env_config.target_rt_steps,
             "rt_tolerance": env_config.rt_tolerance,
+            "use_avg_reward_time_cost": env_config.use_avg_reward_time_cost,
+            "avg_reward_alpha": env_config.avg_reward_alpha,
+            "avg_reward_scale": env_config.avg_reward_scale,
+            "avg_reward_initial_rate": env_config.avg_reward_initial_rate,
         }
     raise TypeError("Unsupported environment configuration")
 

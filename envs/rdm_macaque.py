@@ -12,6 +12,7 @@ from gymnasium import Env, spaces
 from gymnasium.utils import seeding
 
 from animaltasksim.logging import NDJSONTrialLogger
+from animaltasksim.time_cost import AverageRewardTimeCost
 from envs.utils_timing import PhaseTiming, ensure_phase_names
 
 ACTION_LEFT = 0
@@ -77,6 +78,10 @@ class RDMConfig:
     # RT shaping: reward RTs in realistic range (target 400-800ms)
     target_rt_steps: int = 60  # ~600ms at 10ms/step
     rt_tolerance: float = 30.0  # Gaussian width for RT bonus
+    use_avg_reward_time_cost: bool = False
+    avg_reward_alpha: float = 0.05
+    avg_reward_scale: float = 1.0
+    avg_reward_initial_rate: float = 1.0
     log_path: Path | None = None
     agent: AgentMetadata = field(default_factory=AgentMetadata)
     seed: int | None = None
@@ -94,6 +99,13 @@ class RDMConfig:
             raise ValueError("momentary_sigma must be positive")
         if self.bound_threshold <= 0:
             raise ValueError("bound_threshold must be positive")
+        if self.use_avg_reward_time_cost:
+            if not (0.0 < self.avg_reward_alpha <= 1.0):
+                raise ValueError("avg_reward_alpha must fall within (0, 1]")
+            if self.avg_reward_scale < 0.0:
+                raise ValueError("avg_reward_scale must be non-negative")
+            if self.avg_reward_initial_rate < 0.0:
+                raise ValueError("avg_reward_initial_rate must be non-negative")
 
 
 class RDMMacaqueEnv(Env):
@@ -114,6 +126,18 @@ class RDMMacaqueEnv(Env):
         self._logger: NDJSONTrialLogger | None = None
         if self.config.log_path is not None:
             self._logger = NDJSONTrialLogger(self.config.log_path)
+
+        step_seconds = self.config.step_ms / 1000.0
+        self._time_cost_controller = (
+            AverageRewardTimeCost(
+                step_seconds=step_seconds,
+                alpha=self.config.avg_reward_alpha,
+                scale=self.config.avg_reward_scale,
+                initial_rate=self.config.avg_reward_initial_rate,
+            )
+            if self.config.use_avg_reward_time_cost
+            else None
+        )
 
         self._rng: np.random.Generator | None = None
         self._seed: int | None = None
@@ -136,6 +160,9 @@ class RDMMacaqueEnv(Env):
         self._momentary_evidence: float = 0.0
         self._cumulative_evidence: float = 0.0
         self._response_steps: int = 0
+        self._cumulative_reward_trial: float = 0.0
+        self._elapsed_steps_in_trial: int = 0
+        self._base_trial_reward: float = 0.0
 
     def _build_observation_space(self) -> spaces.Dict:
         space_dict: dict[str, spaces.Space] = {
@@ -223,6 +250,9 @@ class RDMMacaqueEnv(Env):
         self._prev_correct = None
         self._response_steps = 0
 
+        if self._time_cost_controller is not None:
+            self._time_cost_controller.reset()
+
         self._start_new_trial()
         self._maybe_sample_evidence()
         return self._build_observation(), self._default_info()
@@ -249,6 +279,9 @@ class RDMMacaqueEnv(Env):
         self._rt_steps = None
         self._reset_evidence()
         self._response_steps = 0
+        self._cumulative_reward_trial = 0.0
+        self._elapsed_steps_in_trial = 0
+        self._base_trial_reward = 0.0
 
     def _log_trial(self) -> None:
         if self._logger is None:
@@ -342,9 +375,12 @@ class RDMMacaqueEnv(Env):
         
         # Use confidence-based reward if enabled, otherwise simple correct/incorrect
         if self.config.use_confidence_reward:
-            self._trial_reward = self._compute_confidence_based_reward(self._correct, response_steps)
+            reward = self._compute_confidence_based_reward(self._correct, response_steps)
         else:
-            self._trial_reward = 1.0 if self._correct else -1.0
+            reward = 1.0 if self._correct else -1.0
+
+        self._base_trial_reward = float(reward)
+        self._trial_reward = float(reward)
 
         self._phase_step = self._current_phase.duration_steps - 1
 
@@ -356,6 +392,7 @@ class RDMMacaqueEnv(Env):
         self._trial_reward = 0.0
         self._rt_steps = None
         self._correct = False
+        self._base_trial_reward = 0.0
 
     def step(self, action: int):  # type: ignore[override]
         if self._terminated:
@@ -365,6 +402,7 @@ class RDMMacaqueEnv(Env):
 
         phase_name = self._current_phase_name()
         reward = 0.0
+        self._elapsed_steps_in_trial += 1
 
         if phase_name == "response":
             if not self._response_captured:
@@ -375,14 +413,22 @@ class RDMMacaqueEnv(Env):
         else:
             action = ACTION_HOLD
 
+        if self._time_cost_controller is not None and phase_name != "outcome":
+            penalty = self._time_cost_controller.step_penalty()
+            if penalty:
+                reward -= penalty
+
         reward += self._apply_per_step_cost(phase_name)
 
         if phase_name == "outcome" and self._phase_step == 0:
-            reward = self._trial_reward
+            final_reward = self._base_trial_reward
             if self.config.per_step_cost > 0.0:
-                reward -= self.config.per_step_cost * self._response_steps
+                final_reward -= self.config.per_step_cost * self._response_steps
+            reward += final_reward
             self._response_steps = 0
+            self._base_trial_reward = float(final_reward)
 
+        self._cumulative_reward_trial += reward
         self._phase_step_counts[phase_name] += 1
 
         terminated = False
@@ -413,7 +459,15 @@ class RDMMacaqueEnv(Env):
         if trial_completed:
             if not self._response_captured:
                 self._finalize_without_response()
+            final_reward = float(self._cumulative_reward_trial)
+            self._trial_reward = final_reward
+            if self._time_cost_controller is not None:
+                self._time_cost_controller.update(final_reward, self._elapsed_steps_in_trial)
             self._log_trial()
+            self._elapsed_steps_in_trial = 0
+            self._cumulative_reward_trial = 0.0
+            self._base_trial_reward = 0.0
+            self._response_steps = 0
             terminated = (self._trial_index + 1) >= self.config.trials_per_episode
             if terminated:
                 self._terminated = True
