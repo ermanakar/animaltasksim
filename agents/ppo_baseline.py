@@ -56,6 +56,8 @@ class PPOTrainingConfig:
     avg_reward_alpha: float = 0.05
     avg_reward_scale: float = 1.0
     avg_reward_initial_rate: float = 1.0
+    include_urgency_feature: bool = False
+    urgency_slope: float = 1.0
     seed: int = 1234
     agent_version: str = "0.1.0"
     output_dir: Path = field(default_factory=lambda: ProjectPaths.from_cwd().runs / "ppo")
@@ -97,6 +99,8 @@ def _make_env(
     avg_reward_alpha: float = 0.05,
     avg_reward_scale: float = 1.0,
     avg_reward_initial_rate: float = 1.0,
+    include_urgency_feature: bool = False,
+    urgency_slope: float = 1.0,
 ):
     if env_name == "ibl_2afc":
         config = IBL2AFCConfig(
@@ -129,6 +133,8 @@ def _make_env(
             avg_reward_alpha=avg_reward_alpha,
             avg_reward_scale=avg_reward_scale,
             avg_reward_initial_rate=avg_reward_initial_rate,
+            include_urgency_feature=include_urgency_feature,
+            urgency_slope=urgency_slope,
         )
         env = RDMMacaqueEnv(config)
     else:
@@ -184,6 +190,8 @@ def train_ppo(config: PPOTrainingConfig) -> dict[str, object]:
         avg_reward_alpha=config.avg_reward_alpha,
         avg_reward_scale=config.avg_reward_scale,
         avg_reward_initial_rate=config.avg_reward_initial_rate,
+        include_urgency_feature=config.include_urgency_feature,
+        urgency_slope=config.urgency_slope,
     )
 
     hyper = config.hyperparams
@@ -229,6 +237,8 @@ def train_ppo(config: PPOTrainingConfig) -> dict[str, object]:
         avg_reward_alpha=config.avg_reward_alpha,
         avg_reward_scale=config.avg_reward_scale,
         avg_reward_initial_rate=config.avg_reward_initial_rate,
+        include_urgency_feature=config.include_urgency_feature,
+        urgency_slope=config.urgency_slope,
     )
 
     evaluation = _evaluate_policy(model, eval_env, episodes=config.eval_episodes)
@@ -298,6 +308,8 @@ def _serialize_env(env_config) -> dict[str, object]:
             "avg_reward_alpha": env_config.avg_reward_alpha,
             "avg_reward_scale": env_config.avg_reward_scale,
             "avg_reward_initial_rate": env_config.avg_reward_initial_rate,
+            "include_urgency_feature": env_config.include_urgency_feature,
+            "urgency_slope": env_config.urgency_slope,
         }
     raise TypeError("Unsupported environment configuration")
 

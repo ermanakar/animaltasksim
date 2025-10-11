@@ -52,6 +52,8 @@ class PPOCLIConfig:
     avg_reward_alpha: float = 0.05
     avg_reward_scale: float = 1.0
     avg_reward_initial_rate: float = 1.0
+    include_urgency_feature: bool = False
+    urgency_slope: float = 1.0
 
 
 @dataclass(slots=True)
@@ -127,6 +129,8 @@ def _train_ppo(args: TrainArgs) -> dict[str, object]:
     avg_reward_alpha = float(ppo_args.pop("avg_reward_alpha"))
     avg_reward_scale = float(ppo_args.pop("avg_reward_scale"))
     avg_reward_initial_rate = float(ppo_args.pop("avg_reward_initial_rate"))
+    include_urgency_feature = bool(ppo_args.pop("include_urgency_feature"))
+    urgency_slope = float(ppo_args.pop("urgency_slope"))
     hyper = PPOHyperParams(**ppo_args)
     config = PPOTrainingConfig(
         env=args.env,
@@ -144,6 +148,8 @@ def _train_ppo(args: TrainArgs) -> dict[str, object]:
         avg_reward_alpha=avg_reward_alpha,
         avg_reward_scale=avg_reward_scale,
         avg_reward_initial_rate=avg_reward_initial_rate,
+    include_urgency_feature=include_urgency_feature,
+    urgency_slope=urgency_slope,
         seed=args.seed,
         agent_version=args.agent_version,
         output_dir=args.out,

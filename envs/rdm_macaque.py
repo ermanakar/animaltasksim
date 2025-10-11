@@ -82,6 +82,8 @@ class RDMConfig:
     avg_reward_alpha: float = 0.05
     avg_reward_scale: float = 1.0
     avg_reward_initial_rate: float = 1.0
+    include_urgency_feature: bool = False
+    urgency_slope: float = 1.0
     log_path: Path | None = None
     agent: AgentMetadata = field(default_factory=AgentMetadata)
     seed: int | None = None
@@ -106,6 +108,8 @@ class RDMConfig:
                 raise ValueError("avg_reward_scale must be non-negative")
             if self.avg_reward_initial_rate < 0.0:
                 raise ValueError("avg_reward_initial_rate must be non-negative")
+        if self.include_urgency_feature and self.urgency_slope < 0.0:
+            raise ValueError("urgency_slope must be non-negative")
 
 
 class RDMMacaqueEnv(Env):
@@ -119,6 +123,9 @@ class RDMMacaqueEnv(Env):
         self._phase_schedule = self.config.phase_schedule
         self._phase_names = ensure_phase_names(self._phase_schedule)
         self._coherences = _validate_coherences(self.config.coherence_set)
+        self._response_phase = next((p for p in self._phase_schedule if p.name == "response"), None)
+        if self._response_phase is None:
+            raise ValueError("phase_schedule must include a 'response' phase")
 
         self.action_space = spaces.Discrete(3)
         self.observation_space = self._build_observation_space()
@@ -172,6 +179,8 @@ class RDMMacaqueEnv(Env):
             space_dict["cumulative_evidence"] = spaces.Box(
                 low=-np.inf, high=np.inf, shape=(), dtype=np.float32
             )
+        if self.config.include_urgency_feature:
+            space_dict["urgency"] = spaces.Box(low=0.0, high=np.inf, shape=(), dtype=np.float32)
         if self.config.include_phase_onehot:
             space_dict["phase_onehot"] = spaces.Box(
                 low=0.0, high=1.0, shape=(len(self._phase_schedule),), dtype=np.float32
@@ -204,12 +213,26 @@ class RDMMacaqueEnv(Env):
         else:
             self._momentary_evidence = 0.0
 
+    def _current_urgency(self) -> float:
+        if not self.config.include_urgency_feature:
+            return 0.0
+        if self._current_phase_name() != "response":
+            return 0.0
+        response_phase = self._response_phase
+        if response_phase is None:
+            return 0.0
+        duration = max(response_phase.duration_steps - 1, 1)
+        normalized = min(1.0, max(0.0, self._phase_step / duration))
+        return float(self.config.urgency_slope * normalized)
+
     def _build_observation(self) -> dict[str, np.ndarray | float | np.floating]:  # type: ignore[return]
         obs: dict[str, np.ndarray | float | np.floating] = {  # type: ignore[misc]
             "coherence": np.float32(self._momentary_evidence)
         }
         if self.config.include_cumulative_evidence:
             obs["cumulative_evidence"] = np.float32(self._cumulative_evidence)
+        if self.config.include_urgency_feature:
+            obs["urgency"] = np.float32(self._current_urgency())
         if self.config.include_phase_onehot:
             onehot = np.zeros(len(self._phase_schedule), dtype=np.float32)
             onehot[self._phase_index] = 1.0
@@ -494,6 +517,8 @@ class RDMMacaqueEnv(Env):
         obs: dict[str, np.ndarray | float | np.floating] = {"coherence": np.float32(0.0)}  # type: ignore[misc]
         if self.config.include_cumulative_evidence:
             obs["cumulative_evidence"] = np.float32(0.0)
+        if self.config.include_urgency_feature:
+            obs["urgency"] = np.float32(0.0)
         if self.config.include_phase_onehot:
             obs["phase_onehot"] = np.zeros(len(self._phase_schedule), dtype=np.float32)
         if self.config.include_timing:
