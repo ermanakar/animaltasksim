@@ -60,6 +60,7 @@ class TrainArgs:
     seed: int = 1234
     out: Path = Path("runs/ibl_stickyq")
     agent_version: str = "0.1.0"
+    sticky_min_response_latency_steps: int | None = None
     sticky_q: StickyQCLIConfig = field(default_factory=StickyQCLIConfig)
     bayes: BayesCLIConfig = field(default_factory=BayesCLIConfig)
     ppo: PPOCLIConfig = field(default_factory=PPOCLIConfig)
@@ -74,7 +75,10 @@ def _train_sticky_q(args: TrainArgs) -> dict[str, object]:
         episodes = max(1, math.ceil(args.steps / max(1, args.trials_per_episode)))
 
     sticky_kwargs = asdict(args.sticky_q)
-    min_latency = int(sticky_kwargs.pop("min_response_latency_steps"))
+    configured_latency = int(sticky_kwargs.pop("min_response_latency_steps"))
+    min_latency = configured_latency
+    if args.sticky_min_response_latency_steps is not None:
+        min_latency = max(0, int(args.sticky_min_response_latency_steps))
     hyper = StickyGLMHyperParams(**sticky_kwargs)
     config = StickyGLMTrainingConfig(
         episodes=episodes,

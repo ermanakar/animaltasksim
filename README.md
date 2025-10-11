@@ -37,7 +37,7 @@ Bottom line: the infrastructure now reflects genuine agent behavior, but no curr
 python scripts/train_agent.py \
   --env ibl_2afc --agent sticky_q \
   --steps 8000 --trials-per-episode 400 \
-  --sticky-q.min-response-latency-steps 20 \
+  --sticky-min-response-latency-steps 20 \
   --out runs/ibl_stickyq_latency
 
 # Macaque PPO baseline (collapsing bound disabled by default)
