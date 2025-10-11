@@ -8,6 +8,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [0.1.1] - 2025-10-11
 
+### Dashboard Plotting Fixed for IBL Task
+
+#### Fixed
+
+- **Dashboard chronometric and accuracy plots now support both contrast and coherence** (`eval/dashboard.py`)
+  - Previously `_plot_chronometric_comparison()` and `_plot_accuracy_by_coherence()` only checked for `stimulus_coherence`
+  - IBL mouse task uses `stimulus_contrast`, causing plots to show "No coherence data" error
+  - Both functions now auto-detect stimulus column (contrast or coherence)
+  - Use absolute values for difficulty binning (handles signed contrast ±1.0 and unsigned coherence 0-0.512)
+  - Label axes appropriately: "|Contrast|" for IBL, "|Coherence|" for macaque
+  - Result: All 4 plots (psychometric, chronometric, history, accuracy) now render correctly for both tasks
+
+### Chronometric Analysis Enabled for IBL Task
+
+#### Fixed
+
+- **Chronometric metrics now computed for IBL mouse 2AFC task** (`eval/metrics.py:218`)
+  - Previously only psychometric and history metrics were computed despite RT data being present
+  - Added `compute_chronometric(df, stimulus_key="contrast")` call for IBL task
+  - Function already supported both contrast (signed, ±1.0) and coherence (unsigned, 0-0.512) via `abs()` conversion
+  - IBL reference results: slope -36.43 ms/unit, intercept 300.0 ms, RT range 260-319 ms
+
 ### Hybrid DDM+LSTM Agent - WFPT Training Implementation
 
 #### Added

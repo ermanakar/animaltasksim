@@ -217,6 +217,7 @@ def compute_all_metrics(df: pd.DataFrame, task: str) -> dict[str, object]:
     metrics: dict[str, object] = {}
     if task == "ibl_2afc":
         metrics["psychometric"] = asdict(compute_psychometric(df, stimulus_key="contrast"))
+        metrics["chronometric"] = asdict(compute_chronometric(df, stimulus_key="contrast"))
         metrics["history"] = asdict(compute_history_metrics(df))
     elif task == "rdm":
         metrics["psychometric"] = asdict(compute_psychometric(df, stimulus_key="coherence"))

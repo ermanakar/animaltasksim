@@ -110,21 +110,34 @@ def _plot_chronometric_comparison(
     metrics_agent: dict[str, Any],
     metrics_animal: dict[str, Any],
 ) -> None:
-    """Plot chronometric curves (RT vs coherence)."""
-    if "stimulus_coherence" not in df_agent.columns:
-        ax.text(0.5, 0.5, "No coherence data", ha="center", va="center", transform=ax.transAxes)
+    """Plot chronometric curves (RT vs coherence/contrast)."""
+    # Determine stimulus column
+    if "stimulus_coherence" in df_agent.columns:
+        stim_col = "stimulus_coherence"
+        xlabel = "|Coherence|"
+    elif "stimulus_contrast" in df_agent.columns:
+        stim_col = "stimulus_contrast"
+        xlabel = "|Contrast|"
+    else:
+        ax.text(0.5, 0.5, "No stimulus data", ha="center", va="center", transform=ax.transAxes)
         return
 
-    # Agent RT by coherence
-    grouped_agent = df_agent.groupby("stimulus_coherence").agg(
+    # Use absolute values for difficulty
+    df_agent = df_agent.copy()
+    df_animal = df_animal.copy()
+    df_agent["difficulty"] = df_agent[stim_col].abs()
+    df_animal["difficulty"] = df_animal[stim_col].abs()
+
+    # Agent RT by difficulty
+    grouped_agent = df_agent.groupby("difficulty").agg(
         rt_mean=("rt_ms", "mean"),
         rt_std=("rt_ms", "std"),
         rt_count=("rt_ms", "count"),
     ).reset_index()
     grouped_agent["rt_sem"] = grouped_agent["rt_std"] / np.sqrt(grouped_agent["rt_count"])
 
-    # Animal RT by coherence
-    grouped_animal = df_animal.groupby("stimulus_coherence").agg(
+    # Animal RT by difficulty
+    grouped_animal = df_animal.groupby("difficulty").agg(
         rt_mean=("rt_ms", "mean"),
         rt_std=("rt_ms", "std"),
         rt_count=("rt_ms", "count"),
@@ -133,7 +146,7 @@ def _plot_chronometric_comparison(
 
     # Plot agent
     ax.errorbar(
-        grouped_agent["stimulus_coherence"],
+        grouped_agent["difficulty"],
         grouped_agent["rt_mean"],
         yerr=grouped_agent["rt_sem"],
         fmt="o-",
@@ -147,7 +160,7 @@ def _plot_chronometric_comparison(
 
     # Plot animal
     ax.errorbar(
-        grouped_animal["stimulus_coherence"],
+        grouped_animal["difficulty"],
         grouped_animal["rt_mean"],
         yerr=grouped_animal["rt_sem"],
         fmt="s--",
@@ -159,7 +172,7 @@ def _plot_chronometric_comparison(
         alpha=0.8,
     )
 
-    ax.set_xlabel("|Coherence|", fontsize=11)
+    ax.set_xlabel(xlabel, fontsize=11)
     ax.set_ylabel("Mean RT (ms)", fontsize=11)
     ax.set_title("Chronometric Curves", fontsize=12, fontweight="bold")
     ax.legend(fontsize=9, loc="best")
@@ -205,18 +218,31 @@ def _plot_accuracy_by_coherence(
     df_agent: pd.DataFrame,
     df_animal: pd.DataFrame,
 ) -> None:
-    """Plot accuracy by coherence level."""
-    if "stimulus_coherence" not in df_agent.columns:
-        ax.text(0.5, 0.5, "No coherence data", ha="center", va="center", transform=ax.transAxes)
+    """Plot accuracy by coherence/contrast level."""
+    # Determine stimulus column
+    if "stimulus_coherence" in df_agent.columns:
+        stim_col = "stimulus_coherence"
+        xlabel = "|Coherence|"
+    elif "stimulus_contrast" in df_agent.columns:
+        stim_col = "stimulus_contrast"
+        xlabel = "|Contrast|"
+    else:
+        ax.text(0.5, 0.5, "No stimulus data", ha="center", va="center", transform=ax.transAxes)
         return
 
+    # Use absolute values for difficulty
+    df_agent = df_agent.copy()
+    df_animal = df_animal.copy()
+    df_agent["difficulty"] = df_agent[stim_col].abs()
+    df_animal["difficulty"] = df_animal[stim_col].abs()
+
     # Agent accuracy
-    grouped_agent = df_agent.groupby("stimulus_coherence")["correct"].mean().reset_index()
+    grouped_agent = df_agent.groupby("difficulty")["correct"].mean().reset_index()
     # Animal accuracy
-    grouped_animal = df_animal.groupby("stimulus_coherence")["correct"].mean().reset_index()
+    grouped_animal = df_animal.groupby("difficulty")["correct"].mean().reset_index()
 
     ax.plot(
-        grouped_agent["stimulus_coherence"],
+        grouped_agent["difficulty"],
         grouped_agent["correct"],
         "o-",
         color="tab:blue",
@@ -226,7 +252,7 @@ def _plot_accuracy_by_coherence(
         alpha=0.8,
     )
     ax.plot(
-        grouped_animal["stimulus_coherence"],
+        grouped_animal["difficulty"],
         grouped_animal["correct"],
         "s--",
         color="tab:green",
@@ -236,9 +262,9 @@ def _plot_accuracy_by_coherence(
         alpha=0.8,
     )
 
-    ax.set_xlabel("|Coherence|", fontsize=11)
+    ax.set_xlabel(xlabel, fontsize=11)
     ax.set_ylabel("Accuracy", fontsize=11)
-    ax.set_title("Accuracy vs Coherence", fontsize=12, fontweight="bold")
+    ax.set_title(f"Accuracy vs {xlabel.replace('|', '')}", fontsize=12, fontweight="bold")
     ax.legend(fontsize=9, loc="best")
     ax.grid(True, alpha=0.3)
     ax.set_ylim(0.4, 1.05)
