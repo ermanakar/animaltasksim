@@ -5,318 +5,132 @@
 
 ---
 
-## Recent Updates
+## Context
 
-### October 11, 2025: Hybrid DDM+LSTM Agent - WFPT Training Results
+AnimalTaskSim compares learning agents to real animals on the IBL mouse 2AFC and the Roitman & Shadlen macaque random-dot motion (RDM) tasks. Every run logs one JSON object per trial under a frozen schema, enabling direct comparison of psychometric, chronometric, history, and lapse statistics. The October 2025 round of experiments focused on two priorities:
 
-After systematic debugging and 11 training iterations, the hybrid DDM+LSTM agent demonstrates evidence-dependent RT dynamics using WFPT (Wiener First Passage Time) likelihood loss combined with drift magnitude regularization.
+- Remove simulator shortcuts (auto-commit, implicit latency) that previously inflated agent resemblance.
+- Regenerate baseline runs and document the resulting behavioral gaps using the hardened pipeline.
 
-#### Quantitative Results (Attempt 11: `runs/rdm_wfpt_regularized/`)
-
-| Metric | Hybrid Agent | Macaque Reference | Ratio |
-|--------|--------------|-------------------|-------|
-| Chronometric Slope | -981 ms/unit | -645 ms/unit | 1.52 |
-| Chronometric R² | 0.93 | 0.34 | 2.74 |
-| Psychometric Slope | 10.93 | 17.56 | 0.62 |
-| Bias | -0.001 | +0.0003 | ~0 (both) |
-| Lapses | ~10^-13 | ~10^-16 | ~0 (both) |
-| Win-stay | 0.50 | 0.46 | 1.09 |
-| Lose-shift | 0.50 | 0.52 | 0.96 |
-| Sticky-choice | 0.50 | 0.46 | 1.09 |
-| drift_gain | 12-18 | ~12 (est.) | 1.00-1.50 |
-| SNR (high coh) | 0.40 | ~0.4 (est.) | ~1.00 |
-
-**Observed Patterns:**
-
-- Evidence-dependent RT structure: Chronometric curve shows inverted-U shape with RT decreasing as coherence increases
-- DDM parameters in plausible range: drift_gain 12-18, SNR scaling 0.029→0.396, bounds 1.9-2.7
-- Psychometric matching: Choice behavior shows near-zero bias and negligible lapses, similar to reference
-- History effects: Sequential dependencies near chance level (0.50), consistent with reference pattern
-- Slope magnitude: Agent exhibits steeper speed-accuracy tradeoff than reference (152% of reference slope)
-
-#### Technical Approach: Three Key Components
-
-##### 1. WFPT Likelihood Loss
-
-MSE RT loss failed to produce coherence-dependent structure across 5 attempts (slope ~1-3ms/unit). WFPT likelihood models joint density p(choice, RT | drift, bound, noise, bias, non_decision) using analytical approximations of the Wiener first-passage time.
-
-- Implementation: `agents/wfpt_loss.py` (271 lines)
-- Loss function: `-log p(choice, RT | DDM_params)`
-- Small-time and large-time series approximations for numerical stability
-- Gradients propagate through all DDM parameters
-
-##### 2. Drift Magnitude Regularization
-
-WFPT loss alone converged to weak-drift local minima (drift_gain~2.5, all trials timeout). Regularization anchors parameter scale.
-
-- Regularization term: `(drift_gain - 12)²` with weight 0.5
-- Target derived from initialization (bias=2.5 → drift_gain≈12 via softplus)
-- Prevents convergence to suboptimal parameter regimes
-- Training trajectory: drift_magnitude loss 100.9 → 0.21
-
-##### 3. Infrastructure Corrections
-
-Two implementation issues prevented learning in earlier attempts:
-
-a) Mini-batch splitting: Dataset contained single 2611-trial session, resulting in 1 update per epoch (15 total updates insufficient for convergence).
-
-- Fix: Split into batches of 100 trials → 26 batches per epoch
-- Result: 520 total gradient updates
-- Implementation: `agents/hybrid_ddm_lstm.py:224-259`
-
-b) Collapsing bound override: Environment's `collapsing_bound=True` triggered auto-commit when internal evidence crossed threshold (~6 steps), overriding agent's learned commit timing.
-
-- Agent's DDM computed commit_step_target = 48-120 steps
-- Environment committed at step ~6 based on internal accumulator
-- Result: All RTs collapsed to 60-80ms minimum
-- Fix: Set `collapsing_bound=False` in rollout (line 661)
-- Impact: RTs increased from 76ms → 1103ms, slope from -0.27 → -169 ms/unit
-
-#### Training Configuration (Attempt 11)
-
-```python
-LossWeights(
-    choice=1.0,              # Binary cross-entropy on choice accuracy
-    rt=0.0,                  # MSE disabled (failed in attempts 1-6)
-    wfpt=1.0,                # WFPT likelihood
-    history=0.1,             # Sequential dependencies
-    drift_magnitude=0.5,     # Regularization targeting drift_gain≈12
-)
-```
-
-Training schedule: 20 epochs, 30 episodes/epoch, 400 trials/episode, 26 mini-batches per epoch (520 total gradient updates). Learning rate 3e-4, Adam optimizer, gradient clipping max_norm=5.0. Seed 43 for reproducibility. Training time ~20 minutes on CPU.
-
-#### Technical Artifacts
-
-- Implementation: `agents/wfpt_loss.py` (WFPT density), `agents/losses.py` (drift_magnitude), `agents/hybrid_ddm_lstm.py` (training loop)
-- Model checkpoint: `runs/rdm_wfpt_regularized/model.pt`
-- Trial logs: `runs/rdm_wfpt_regularized/trials.ndjson` (schema-compliant, 12000 trials)
-- Comparison dashboard: `runs/rdm_wfpt_regularized_dashboard.html`
-- Metrics: `runs/rdm_wfpt_regularized/metrics.json`
-- Diagnostic documentation: `BUGFIX_SUMMARY.md`, `TRAINING_PROGRESS.md`
-
-#### Limitations and Deviations from Reference
-
-- Low coherences (0.0-0.128) reach 1200ms timeout (macaque: 660-760ms, gap ~500ms)
-- RT intercept shifted up: 1259ms (agent) vs 759ms (macaque)
-- Psychometric slope shallower: 10.93 (agent) vs 17.56 (macaque), 62% match
-- RT scale mismatch suggests non-decision time or bound parameters could be better calibrated
-
-The agent demonstrates the target mechanism (evidence-dependent timing via learned DDM parameters) but with quantitative deviations in RT scale and low-coherence behavior.
+Fresh evidence comes from `runs/ibl_stickyq_latency/` (Sticky-Q with a 200 ms latency) and `runs/rdm_ppo_latest/` (PPO with collapsing bounds disabled). We also summarize the best-performing hybrid DDM+LSTM run (`runs/rdm_wfpt_regularized/`) to highlight what mechanism-level structure buys us.
 
 ---
 
-### October 10, 2025: Hybrid DDM+LSTM Agent - MSE-based Training Failures
+## Infrastructure Changes
 
-Five training attempts (attempts 1-6) using MSE RT loss failed to produce evidence-dependent RT structure. All converged to uniform fast RTs (~75ms) with near-zero slope (~1-3ms/unit vs target -645ms/unit). RT loss remained at 0.0 throughout training, indicating no gradient signal for coherence-dependent structure. This motivated the transition to likelihood-based objectives (WFPT) in subsequent attempts.
+- **Collapsing bound default**: `envs/rdm_macaque.py` now defaults to `collapsing_bound=False`, forcing agents to manage commitment timing.
+- **Mouse latency hook**: `envs/ibl_2afc.py` exposes `min_response_latency_steps`; agents cannot act until the latency expires, but the environment no longer commits on their behalf.
+- **Config persistence**: `agents/sticky_q.py` and `agents/ppo_baseline.py` serialize latency and reward-tuning fields into each run’s `config.json` for reproducibility.
+- **JSON hygiene**: `scripts/evaluate_agent.py` and `eval/metrics.py` coerce NaN fits to `null`, keeping generated `metrics.json` files schema-compliant and flagging failed regressions explicitly.
 
----
-
-#### What We Built
-
-- **Stochastic DDM simulation** using Euler-Maruyama integration (`agents/hybrid_ddm_lstm.py:468-496`)
-- Evidence accumulation: `evidence += drift*dt + noise*sqrt(dt)*randn()` step-by-step until bound crossing
-- Architecture: 7-feature input → LSTM(64) → drift_gain, bound, bias, non_decision outputs
-- Multi-objective loss: choice (BCE) + RT (MSE) + history (quadratic) + drift_supervision (optional)
-- **Curriculum learning** infrastructure with phased training and success criteria
-
-#### All Attempts (All Failed)
-
-| Attempt | Fix Strategy | Slope | R² | RT Diff | Status |
-|---------|-------------|-------|-----|---------|---------|
-| **rdm_hybrid_fix** | drift_scale=10.0, per_step_cost=0.001 | 1.08 ms/unit | 0.000022 | 0.8ms | ❌ FAILED |
-| **rdm_hybrid_normalized** | Normalized RT loss (relative structure) | 1.08 ms/unit | 0.000022 | 0.8ms | ❌ FAILED |
-| **rdm_hybrid_supervised** | drift_supervision=0.1 (explicit constraint) | CRASHED | — | — | ❌ CRASHED |
-| **rdm_hybrid_supervised_strong** | drift_supervision=0.5 (5x stronger) | 1.08 ms/unit | 0.000022 | 0.8ms | ❌ FAILED |
-| **rdm_hybrid_curriculum_v1** | Curriculum Phase 1 (choice=0, rt=1.0, drift_sup=0.5) | 2.78 ms/unit | 0.000155 | 2.9ms | ❌ FAILED |
-| **Reference (macaque)** | Real data | -655 ms/unit | 0.34 | 318ms | — |
-
-**All runs produced nearly identical failures:**
-
-- Mean RT: 75-76ms (uniform across coherences)
-- Slope: ~1-3ms/unit (need -655ms/unit for 100% match)
-- R²: 0.000022-0.000155 (need 0.34 for 100% match)  
-- RT difference (hard-easy): 0.8-2.9ms (need 318ms)
-- RT loss: 0.0 throughout training (no gradient signal)
-- Drift supervision loss: 22-23 (parameters collapsed despite explicit penalty)
+These corrections ensure that reaction-time metrics reflect agent policy choices, not environment defaults.
 
 ---
 
-#### Root Cause Analysis
+## Mouse IBL 2AFC — Sticky-Q with Latency
 
-**Training objective fundamentally misaligned with desired behavior:**
+- **Run**: `runs/ibl_stickyq_latency/`
+- **Configuration highlights**: `min_response_latency_steps=20` (≈200 ms), 8 000 PPO-style gradient steps, deterministic seed 0.
 
-1. **Choice loss (BCE) doesn't require evidence-dependent RTs**
-   - Agent achieves 54-60% accuracy with constant fast RTs
-   - No gradient signal linking coherence to RT structure
+| Metric | Agent | Reference (IBL) | Gap |
+| --- | --- | --- | --- |
+| Bias | −0.0001 | +0.074 | Matches magnitude but opposite sign (−0.074) |
+| Psychometric slope | 33.3 | 13.2 | 2.5× steeper (overconfident choices) |
+| Median RT (all contrasts) | 210 ms | 300 ms | 90 ms faster despite added latency |
+| RT slope (ms/unit contrast) | −0.2 | −36.4 | Essentially flat (agent commits as soon as allowed) |
+| Win-stay | 0.67 | 0.73 | Under-expresses win streaks |
+| Lose-shift | 0.48 | 0.34 | Overreacts to errors |
 
-2. **RT loss (MSE on means) learns constant fast RT**
-   - Given reference RT variance, constant RT ~75ms minimizes MSE
-   - Loss provides no incentive for coherence-dependent structure
-   - RT loss stayed exactly 0.0 throughout all training runs
+### Interpretation (Mouse)
 
-3. **Drift supervision ignored**
-   - drift_supervision loss not even logged in metrics (weight=0.5)
-   - No evidence it was computed or influenced training
-   - Drift parameters unconstrained by any gradient signal
+- The explicit latency lifts RTs into the right ballpark but does not create a coherence-dependent chronometric curve; Sticky-Q executes immediately when the gate opens.
+- Choice slope remains too steep, indicating over-reliance on stimulus contrast without matching the animals’ lapse and bias mixture.
+- Sequential dependencies still diverge: the agent over-perseverates on losses and under-perseverates on wins, suggesting its simple sticky prior cannot capture the asymmetric IBL history kernel.
 
-4. **Stochastic simulation generates variability but training ignores it**
-   - Simulation infrastructure works (35 unique RTs, std=40ms)
-   - Training converges to fast uniform noise pattern
-   - No architectural or objective pressure to match animal dynamics
-
----
-
-#### Technical Details
-
-**Diagnostic Evidence:**
-
-```python
-# Reference macaque data:
-RT vs coherence: slope=-655ms/unit, R²=0.34, diff=318ms
-
-# All agent attempts:
-RT vs coherence: slope=1.08ms/unit, R²=0.000022, diff=-0.8ms
-
-# Training losses (all runs):
-RT loss: 0.0000 → 0.0000 (no learning signal)
-Choice loss: 0.66 → 0.64 (minor improvement)
-drift_supervision: NOT LOGGED (even with weight=0.5)
-```
-
-**Code Locations:**
-
-- Stochastic DDM: `agents/hybrid_ddm_lstm.py:468-496`
-- Drift supervision: `agents/losses.py:85-103` (implemented but ineffective)
-- Drift scaling: `agents/hybrid_ddm_lstm.py:90-103` (10x initialization, collapsed to 0.25)
-- Training loop: `agents/hybrid_ddm_lstm.py:408-412` (drift_supervision integration)
-
-**Artifacts:**
-
-- `runs/rdm_hybrid_fix/` - drift scaling attempt
-- `runs/rdm_hybrid_normalized/` - normalized RT loss
-- `runs/rdm_hybrid_supervised_strong/` - final supervised attempt
+Artifacts: `trials.ndjson`, `metrics.json`, `report.html`, and `dashboard.html` all live under `runs/ibl_stickyq_latency/`.
 
 ---
 
-#### Curriculum Learning: The Definitive Test
+## Macaque RDM — PPO Baseline Re-evaluation
 
-**rdm_hybrid_curriculum_v1** tested whether removing choice loss interference would allow RT structure to emerge. Phase 1 configuration:
+- **Run**: `runs/rdm_ppo_latest/`
+- **Configuration highlights**: `collapsing_bound=False`, 200 000 timesteps, reward structure identical to prior releases (per-step cost disabled, accuracy reward only).
 
-- **Loss weights:** choice=0.0, rt=1.0, drift_supervision=0.5
-- **Strategy:** Train RT structure first, completely ignore accuracy
-- **Success criteria:** slope>100ms/unit, R²>0.1, RT_diff>50ms
-- **Training:** 5 epochs on reference data
+| Metric | Agent | Reference (Roitman & Shadlen) | Gap |
+| --- | --- | --- | --- |
+| Bias | +0.52 | ≈0 | Large pathological bias persists |
+| Psychometric slope | 50.0 | 17.6 | 2.8× steeper |
+| Median RT | 60 ms | 760 ms | 700 ms too fast |
+| RT slope | 0 ms/unit | −645 ms/unit | No evidence-based slowing |
+| Lapse rate (low coherence) | 0.49 | ~0 | Agent punts half the time to relieve decision pressure |
 
-**Results:**
+### Interpretation (PPO)
 
-- Slope: 2.78 ms/unit (need 100 ms/unit) → **FAILED by 97%**
-- R²: 0.000155 (need 0.1) → **FAILED by 99.8%**
-- RT difference: 2.9ms (need 50ms) → **FAILED by 94%**
-- RT loss: 0.0 throughout (no gradient)
-- Drift supervision: 22.86 (parameters collapsed)
+- Removing the collapsing bound exposes that PPO never learned to delay its response; it fires immediately and relies on random lapses to balance reward, yielding a flat chronometric curve.
+- The positive bias indicates asymmetric value estimates that are not present in macaque behavior. Hyper-parameters that previously looked acceptable were benefiting from environment auto-commit; without it, the shortcomings are obvious.
+- Reward shaping alone is insufficient; structural inductive bias is required to produce realistic RT distributions.
 
-**Interpretation:** Even with **zero choice pressure**, RT loss (MSE) provides no gradient for evidence-dependent structure. This definitively rules out "choice loss interference" as the root cause. **The RT loss objective itself is fundamentally broken.**
-
-Early stopping triggered after Phase 1 failure. Phases 2 and 3 never executed.
-
----
-
-#### Conclusion: Only Supervised Pretraining Remains Viable
-
-**All five training approaches failed identically:**
-
-1. ❌ Drift parameter scaling → collapse
-2. ❌ Normalized RT loss → no structure
-3. ❌ Explicit drift supervision (0.1, 0.5) → ignored
-4. ❌ Time cost reduction → no effect
-5. ❌ **Curriculum learning (RT-first)** → **no gradient even without choice**
-
-**This definitively proves:**
-
-- MSE RT loss provides zero gradient for coherence-dependent structure
-- Drift supervision cannot compensate for missing gradient
-- Choice loss interference is NOT the root cause
-- Phased training cannot overcome fundamental objective mismatch
-
-**Remaining Options:**
-
-#### ~~Option C2: Curriculum Learning~~ → **RULED OUT** (Phase 1 failed definitively)
-
-#### Option C1: Supervised Pretraining ✅ **RECOMMENDED**
-
-- Generate synthetic DDM trajectories with known drift/bound/RT relationships
-- Pretrain LSTM to predict drift_gain from (coherence, RT) pairs
-- Fine-tune on task with frozen or regularized DDM parameters
-- **Rationale:** Bypass broken RT loss by teaching structure explicitly
-
-#### Option C3: Architectural Constraints
-
-- Fix drift/bound ratios based on psychophysics literature
-- Only learn history-dependent modulations and bias parameters
-- Remove degrees of freedom that training collapses
-
-#### Option C4: Different Training Objective
-
-- Contrastive learning: match trial-level RT distributions by coherence
-- Inverse RL: infer reward function from animal behavior
-- Adversarial training: discriminator judges agent vs animal trials
-
-**Current status:** Stochastic DDM simulation infrastructure complete and validated. Training framework ready for major architectural/objective redesign. Incremental fixes definitively ruled out.
+Artifacts: `runs/rdm_ppo_latest/trials.ndjson`, `metrics.json`, `report.html`, `dashboard.html`.
 
 ---
 
-## Executive Summary
+## Macaque RDM — Hybrid DDM+LSTM Reference Point
 
-AnimalTaskSim measures how closely AI agents reproduce animal behavioral fingerprints on two classic tasks. Baseline agents match several bias and history statistics but diverge on reaction-time dynamics and lapse patterns. Architectural inductive biases, not just reward shaping, remain the limiting factor.
+- **Run**: `runs/rdm_wfpt_regularized/`
+- **Objective**: Demonstrate that adding a mechanistic accumulator plus WFPT likelihood yields coherence-dependent RTs, albeit with calibration errors.
 
-- Sticky-GLM (IBL 2AFC): nails contrast bias (99% match) yet under-expresses win-stay (79%) and overproduces high-contrast lapses (731%).
-- PPO (RDM): maximizes reward but collapses RT structure (28% intercept match) and introduces large directional bias (0.247 vs ~0).
-- Drift Diffusion Model (RDM): best RT alignment (81% intercept match) at the cost of overly shallow psychometric slopes (37%).
+| Metric | Hybrid Agent | Reference | Gap |
+| --- | --- | --- | --- |
+| RT intercept | 1.26 s | 0.76 s | 500 ms slower |
+| RT slope | −981 ms/unit | −645 ms/unit | Overshoots desired slope |
+| Psychometric slope | 10.9 | 17.6 | Too shallow |
+| Bias | −0.001 | ≈0 | Matches |
 
-Dashboards for each run live under `runs/` and pair visuals with metric deltas.
+### Interpretation (Hybrid)
 
----
+- Evidence-dependent timing emerges once the agent learns to integrate noisy drift, but calibration is off. The intercept overshoot and shallow choice slope point to non-decision-time and drift-scale mismatches.
+- The run remains the closest match to animal chronometric structure, underscoring the need for explicit accumulation rather than reactive flight to action.
 
-## Task Highlights
-
-### Mouse Visual 2AFC (IBL)
-
-- **Reference benchmarks** (885 trials): slope 13.2, bias 0.074, win-stay 73%, lose-shift 34%, sticky-choice 72%, lapse_high 0.0026.
-- **Sticky-GLM v21** (25 training episodes): slope 18.5 (140%), bias -0.001 (99%), win-stay 58% (79%), lose-shift 34% (99%), sticky-choice 57% (79%), lapse_high 0.019 (731%).
-- **Interpretation:** Linear policy reproduces additive biases but lacks depth in multi-trial history and over-fits stimulus features, yielding excess confident errors on easy trials.
-
-### Macaque Random-Dot Motion (RDM)
-
-- **Reference benchmarks** (2611 trials): slope 17.6, bias ~0, RT intercept 759 ms, RT slope -645 ms, win-stay 46%, sticky-choice 46%.
-- **PPO v24:** slope 30.4 (173%), bias 0.247, RT intercept 210 ms (28%), RT slope 0 ms (0%), win-stay 46% (100%).  *Fast, reward-optimal, but non-biological RT curve and large choice bias.*
-- **DDM v2:** slope 6.5 (37%), bias 0.015, RT intercept 613 ms (81%), RT slope -139 ms (22%), win-stay 53% (116%).  *Captures temporal dynamics via evidence accumulation but misses accuracy scaling.*
+Artifacts: `runs/rdm_wfpt_regularized/metrics.json`, `dashboard.html`.
 
 ---
 
-## Key Insights
+## Cross-task Observations
 
-1. **Reward-optimal ≠ behaviorally faithful.** Agents maximizing reward alone diverge on RT and lapse structure found in animal data.
-2. **Architectural priors matter.** Mechanistic models (DDM) inherit realistic temporal dynamics; generic policy gradients do not, even with history features.
-3. **Multi-trial memory remains an open gap.** Sticky-GLM and PPO capture first-order history but underperform on deeper kernels observed in rodents and primates.
-4. **Schema-first logging pays off.** Shared `.ndjson` format lets metrics, dashboards, and future tasks plug in without interface churn.
+- **Reaction-time realism requires policy-side latency.** Forcing a delay in the environment merely shifts intercepts. Agents need internal state or objectives that reward waiting for evidence.
+- **Bias calibration is fragile.** Sticky-Q hits near-zero bias while the animals favor one choice slightly; PPO drifts heavily positive. Incorporating bias priors from the dataset or penalizing large offsets could help.
+- **History kernels remain underfit.** Neither baseline reproduces the nuanced win-stay/lose-shift asymmetry or the decaying history kernels documented by the labs. Additional recurrent structure or explicit history penalties are required.
+- **Schema validation protects analysis.** Forcing NaNs to `null` in metrics surfaces unstable regressions instead of hiding them, helping diagnose where modeling assumptions break (e.g., PPO’s chronometric slope fit fails because all RTs are identical).
+
+---
+
+## Outstanding Risks
+
+- **Latency parameter tuning**: The current Sticky-Q run hard-codes 20 steps of latency. Different durations change RT intercepts substantially; we lack a principled calibration procedure.
+- **Reward hacking in PPO**: With environment shortcuts gone, PPO absorbs penalty by random lapses. Without additional constraints, future hyper-parameter sweeps could land on superficially improved accuracy that remains behaviorally implausible.
+- **Hybrid agent sustainability**: The WFPT loss and regularization pipeline is delicate. Training remains slow on CPU, and scaling to PRL/DMS will require careful batching.
+- **Documentation drift**: Past READMEs overstated parity with animal data. This write-up replaces those claims, but future contributors must continue to run schema checks and update findings when new evidence arrives.
 
 ---
 
 ## Next Steps
 
-1. Hybrid agent combining DDM-style accumulation with adaptive policy layers to balance RT realism and accuracy.
-2. History-regularized training objectives to encourage biologically plausible win-stay/lose-shift patterns.
-3. Extend the pipeline to PRL and DMS while reusing seeds, schema validation, and reporting hooks.
+1. **Agent-side latency models**: Give Sticky-Q and PPO explicit non-decision-time estimates that can adapt by coherence or block, rather than relying on environment delays.
+2. **Bias and lapse regularizers**: Penalize large bias deviations and encourage lapse rates that match observed animal floors instead of zero or fifty percent extremes.
+3. **History-aware losses**: Incorporate win-stay/lose-shift targets or kernel regression loss terms so agents learn multi-trial dependencies present in the data.
+4. **Roadmap readiness**: Generalize logging and evaluation hooks so Probabilistic Reversal Learning and Delayed Match-to-Sample tasks can reuse the same schema without touching CLI surfaces.
 
 ---
 
-## Artifacts
+## Artifact Index
 
-- Mouse dashboard: `runs/ibl_final_dashboard.html`
-- Macaque PPO dashboard: `runs/rdm_final_dashboard.html`
-- Macaque DDM dashboard: `runs/rdm_ddm_dashboard.html`
-- Metrics JSON and config snapshots live alongside each run directory.
+- Mouse Sticky-Q latency run: `runs/ibl_stickyq_latency/`
+- Macaque PPO baseline rerun: `runs/rdm_ppo_latest/`
+- Hybrid DDM+LSTM comparison: `runs/rdm_wfpt_regularized/`
+- Reference data: `data/ibl/reference.ndjson`, `data/macaque/reference.ndjson`
+- Evaluation utilities: `scripts/evaluate_agent.py`, `scripts/make_report.py`, `scripts/make_dashboard.py`
+
+All directories contain `config.json`, `trials.ndjson`, `metrics.json`, and at least one HTML artifact for inspection.
 
 ---
 

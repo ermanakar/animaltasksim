@@ -42,7 +42,7 @@ class PPOTrainingConfig:
     evidence_gain: float = 0.05
     momentary_sigma: float = 1.0
     include_cumulative_evidence: bool = True
-    collapsing_bound: bool = True
+    collapsing_bound: bool = False
     min_bound_steps: int = 20
     bound_threshold: float = 3.0
     # Confidence-based reward parameters
@@ -268,6 +268,12 @@ def _serialize_env(env_config) -> dict[str, object]:
             "collapsing_bound": env_config.collapsing_bound,
             "min_bound_steps": env_config.min_bound_steps,
             "bound_threshold": env_config.bound_threshold,
+            "use_confidence_reward": env_config.use_confidence_reward,
+            "confidence_bonus_weight": env_config.confidence_bonus_weight,
+            "base_time_cost": env_config.base_time_cost,
+            "time_cost_growth": env_config.time_cost_growth,
+            "target_rt_steps": env_config.target_rt_steps,
+            "rt_tolerance": env_config.rt_tolerance,
         }
     raise TypeError("Unsupported environment configuration")
 

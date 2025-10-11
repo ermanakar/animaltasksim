@@ -66,7 +66,7 @@ class RDMConfig:
     evidence_gain: float = 0.05
     momentary_sigma: float = 1.0
     per_step_cost: float = 0.0
-    collapsing_bound: bool = True
+    collapsing_bound: bool = False
     min_bound_steps: int = 20  # 200ms minimum RT (matches Roitman data)
     bound_threshold: float = 3.0
     # Confidence-based reward shaping parameters

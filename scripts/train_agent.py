@@ -4,7 +4,7 @@ import json
 import math
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import Literal, cast
 
 import tyro
 
@@ -19,6 +19,9 @@ class StickyQCLIConfig:
     weight_decay: float = 0.0
     temperature: float = 1.0
     sample_actions: bool = False
+    side_bias: float = 0.0
+    lapse_high: float = 0.0
+    min_response_latency_steps: int = 0
 
 
 @dataclass(slots=True)
@@ -42,7 +45,7 @@ class PPOCLIConfig:
     evidence_gain: float = 0.05
     momentary_sigma: float = 1.0
     include_cumulative_evidence: bool = True
-    collapsing_bound: bool = True
+    collapsing_bound: bool = False
     min_bound_steps: int = 5
     bound_threshold: float = 3.0
 
@@ -70,7 +73,9 @@ def _train_sticky_q(args: TrainArgs) -> dict[str, object]:
     if episodes is None:
         episodes = max(1, math.ceil(args.steps / max(1, args.trials_per_episode)))
 
-    hyper = StickyGLMHyperParams(**asdict(args.sticky_q))
+    sticky_kwargs = asdict(args.sticky_q)
+    min_latency = int(sticky_kwargs.pop("min_response_latency_steps"))
+    hyper = StickyGLMHyperParams(**sticky_kwargs)
     config = StickyGLMTrainingConfig(
         episodes=episodes,
         trials_per_episode=args.trials_per_episode,
@@ -78,6 +83,7 @@ def _train_sticky_q(args: TrainArgs) -> dict[str, object]:
         agent_version=args.agent_version,
         output_dir=args.out,
         hyperparams=hyper,
+        min_response_latency_steps=min_latency,
     )
     return train_sticky_q(config)
 
@@ -97,7 +103,7 @@ def _train_bayes(args: TrainArgs) -> dict[str, object]:
         output_dir=args.out,
         params=params,
     )
-    return run_bayesian_observer(config)
+    return cast(dict[str, object], run_bayesian_observer(config))
 
 
 def _train_ppo(args: TrainArgs) -> dict[str, object]:

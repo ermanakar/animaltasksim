@@ -1,56 +1,29 @@
 # AnimalTaskSim
 
-AnimalTaskSim benchmarks AI agents on classic animal decision-making tasks using task-faithful environments, public reference data, and a schema-locked evaluation stack. The project focuses on matching animal **behavioral fingerprints**—psychometric, chronometric, history, and lapse patterns—rather than raw reward.
+AnimalTaskSim is a reproducible benchmark for asking a simple question: **do our learning agents behave like the animals that solved the original laboratory tasks?** We provide task-faithful environments, public reference datasets, seeded baselines, and analysis tools that turn raw trial logs into behavioral fingerprints (psychometric, chronometric, history, and lapse statistics).
 
 ---
 
-## Recent Updates
+## Project Goals
 
-### October 11, 2025 - Hybrid DDM+LSTM Agent Training Results
-
-After systematic debugging of 10+ training attempts, the hybrid agent demonstrates evidence-dependent RT dynamics using WFPT (Wiener First Passage Time) likelihood loss with drift magnitude regularization:
-
-**Quantitative Results (Attempt 11: `runs/rdm_wfpt_regularized/`):**
-
-- **Chronometric slope:** -981 ms/unit (macaque reference: -645 ms/unit, 152% match)
-- **Psychometric slope:** 10.93 (macaque: 17.56, 62% match)
-- **Bias:** -0.001 (macaque: +0.0003, both approximately zero)
-- **Lapses:** ~10^-13 (macaque: ~10^-16, both negligible)
-- **History effects:** win-stay 0.50, lose-shift 0.50, sticky-choice 0.50 (macaque: 0.46, 0.52, 0.46; all near chance)
-- **DDM parameters:** drift_gain 12-18, SNR 0.03-0.40, bounds 1.9-2.7
-
-**Technical approach:**
-
-1. WFPT likelihood loss: Replaces MSE RT loss with joint density p(choice, RT | drift, bound, bias, noise, non_decision)
-2. Drift magnitude regularization: (drift_gain - 12)² term prevents convergence to weak-drift local minima
-3. Infrastructure fixes:
-   - Mini-batch splitting: 2611 trials split into 26 batches of 100 trials (15→520 gradient updates)
-   - Collapsing bound disabled: Environment's auto-commit behavior was overriding agent's learned DDM timing
-
-**Training configuration:** 20 epochs, 520 total gradient updates, loss weights: choice=1.0, wfpt=1.0, history=0.1, drift_magnitude=0.5. Full results in `runs/rdm_wfpt_regularized/` and dashboard at `runs/rdm_wfpt_regularized_dashboard.html`.
-
-**Limitations:** Low coherences (0.0-0.128) timeout at 1200ms vs macaque 660-760ms. Overall RT scale shifted up ~500ms (intercept 1259 vs 759). Core mechanism (evidence-dependent timing via learned DDM) demonstrated. See [`FINDINGS.md`](FINDINGS.md) for complete analysis.
+- Mirror published mouse and macaque decision-making tasks with Gymnasium environments that respect timing, response rules, and priors.
+- Train baseline agents under fixed seeds, logging one schema-validated JSON object per trial.
+- Compare agent logs against the animal reference data with the same metrics neuroscientists use.
+- Surface where agents succeed or fail so model improvements can target real behavioral gaps.
 
 ---
 
-**Current scope (v0.1):**
+## October 2025 Status Snapshot
 
-- IBL-style mouse visual 2AFC task
-- Macaque random-dot motion discrimination task
-- Baseline agents: Sticky-Q, Bayesian observer, PPO
-- **NEW: Hybrid DDM+LSTM agent** with stochastic evidence accumulation
-- Metrics, reports, and `.ndjson` logs that align agents with rodent/primate data
+We reran both benchmarks after hardening the environments (collapsing bounds are now disabled by default and the mouse task supports an explicit non-decision latency). Fresh dashboards live in `runs/ibl_stickyq_latency/` and `runs/rdm_ppo_latest/`.
 
-Read the full benchmark recap in [`FINDINGS.md`](FINDINGS.md). Dashboards are stored under `runs/` for interactive inspection.
+| Task & Agent | Key Agent Metrics | Reference Metrics | Takeaway |
+| --- | --- | --- | --- |
+| Mouse 2AFC — Sticky-Q with 200 ms latency | Bias −0.0001; psychometric slope 33.3; RT median 210 ms flat across contrasts; win-stay 0.67 | Bias +0.074; slope 13.2; RT median 300 ms with decreasing slope −36 ms/unit; win-stay 0.73 | Latency floor produces realistic RT scale, but the agent still commits immediately once allowed, overshoots contrast sensitivity, and over-perseverates after wins. |
+| Macaque RDM — PPO (collapsing bound disabled) | Bias +0.52; psychometric slope 50.0; RT median 60 ms at all coherences; lapse_low 0.49 | Bias ≈0; slope 17.6; RT median 760 ms with slope −645 ms/unit; lapse_low ≈0 | Removing the auto-commit reveals that PPO still collapses to minimum response time and relies on large lapses instead of evidence accumulation. |
+| Macaque RDM — Hybrid DDM+LSTM (`runs/rdm_wfpt_regularized/`, Oct 2025) | RT slope −981 ms/unit; intercept 1.26 s; psychometric slope 10.9 | RT slope −645 ms/unit; intercept 0.76 s; slope 17.6 | Mechanistic accumulation yields coherence-dependent timing, but absolute RTs remain too slow and choice slope too shallow. |
 
----
-
-## Project Overview
-
-- Provide reproducible Gymnasium environments that mirror lab protocols and timing.
-- Train seeded baseline agents and log one JSON object per trial using the frozen schema.
-- Run evaluation scripts that score fingerprints against shared reference datasets and render HTML reports.
-- Design code paths so future PRL and DMS tasks drop in without breaking interfaces.
+Bottom line: the infrastructure now reflects genuine agent behavior, but no current baseline matches animal timing and bias simultaneously.
 
 ---
 
@@ -58,79 +31,92 @@ Read the full benchmark recap in [`FINDINGS.md`](FINDINGS.md). Dashboards are st
 
 ```bash
 # Install (editable + dev extras)
-pip install -e ".[dev]"
 
-# Train a baseline agent (writes runs/<name>/)
-python scripts/train_agent.py --env ibl_2afc --agent sticky_q --steps 2000 --out runs/ibl_stickyq
 
-# Train the hybrid DDM+LSTM agent (uses macaque reference data)
-python scripts/train_hybrid.py --output_dir runs/rdm_hybrid --epochs 5 --episodes 10
+# Mouse baseline with a 200 ms non-decision latency
+python scripts/train_agent.py \
+  --env ibl_2afc --agent sticky_q \
+  --steps 8000 --trials-per-episode 400 \
+  --sticky-q.min-response-latency-steps 20 \
+  --out runs/ibl_stickyq_latency
 
-# Evaluate fingerprints and generate a report
-python scripts/evaluate_agent.py --run runs/ibl_stickyq
-python scripts/make_report.py --run runs/ibl_stickyq
+# Macaque PPO baseline (collapsing bound disabled by default)
+python scripts/train_agent.py \
+  --env rdm --agent ppo \
+  --steps 200000 --trials-per-episode 300 \
+  --out runs/rdm_ppo_latest
+
+# Compute metrics and render artifacts
+python scripts/evaluate_agent.py --run runs/ibl_stickyq_latency
+python scripts/make_dashboard.py \
+  --opts.agent-log runs/ibl_stickyq_latency/trials.ndjson \
+  --opts.reference-log data/ibl/reference.ndjson \
+  --opts.output runs/ibl_stickyq_latency/dashboard.html
 ```
 
-Each command respects deterministic seeding, persists `config.json`, and emits schema-validated `.ndjson` logs.
+All scripts seed Python, NumPy, and PyTorch, persist `config.json`, and emit `.ndjson` logs that pass `eval/schema_validator.py`.
 
 ---
 
 ## Repository Layout
 
 ```text
-animal-task-sim/
+animaltasksim/
 ├─ envs/                # Gymnasium tasks + timing utilities
-├─ agents/              # Sticky-Q, Bayesian observer, PPO, hybrid DDM agents
-├─ eval/                # Metrics, schema validator, HTML report tooling
-├─ scripts/             # Train / evaluate / report CLIs (frozen interfaces)
-├─ data/                # Reference animal logs and helpers
-├─ tests/               # Env/agent/metric + schema unit tests
-└─ runs/                # Generated configs, logs, metrics, dashboards
+├─ agents/              # Sticky-Q, Bayesian observer, PPO, hybrid DDM
+├─ eval/                # Metrics, dashboards, schema validator
+├─ scripts/             # Train / evaluate / make_report / make_dashboard
+├─ data/                # Reference animal logs (IBL mouse, Roitman macaque)
+├─ runs/                # Generated configs, logs, metrics, dashboards
+└─ tests/               # Env/metric/schema unit tests
 ```
 
 ---
 
-## Task Snapshots
+## Task Overview
 
-### Mouse 2AFC (IBL)
+### IBL Mouse 2AFC
 
-- Discrete (`left`, `right`, `no-op`) actions; contrast-driven observations in [-1, 1].
-- Block priors and lapse regimes match the reference dataset; priors hidden by default.
-- Sessions run for fixed trial counts and log per-phase timing.
+- Actions: `left`, `right`, `no-op`; observations include signed contrast (−1 to 1) with optional phase and timing encodings.
+- `min_response_latency_steps` (default 0) can be set to impose a non-decision delay before actions register.
+- Block priors and contrast ladder replicate the public IBL dataset (`data/ibl/reference.ndjson`).
 
-### Macaque RDM
+### Macaque Random-Dot Motion
 
-- Motion coherence observations with optional go-cue phases.
-- Actions: `left`, `right`, `hold`, with optional per-step costs.
-- Supports collapsing bounds and chronometric metrics for RT alignment.
-
----
-
-## Evaluation Stack
-
-- `scripts/train_agent.py` seeds Python/NumPy/Torch and saves configs alongside logs.
-- `scripts/evaluate_agent.py` computes psychometric, chronometric, history, and bias metrics, writing `metrics.json`.
-- `scripts/make_report.py` renders HTML reports that juxtapose agent runs with reference curves.
-- `eval/schema_validator.py` guards the `.ndjson` contract; `tests/test_schema.py` keeps regressions from landing.
+- Actions: `left`, `right`, `hold` with streaming evidence during stimulus and response phases.
+- Collapsing bounds now default to `False`; agents must decide when to commit instead of inheriting the simulator’s accumulator.
+- Optional reward shaping (confidence bonuses, RT targets) is captured in saved configs for reproducibility.
 
 ---
 
-## Guiding Principles
+## Evaluation Workflow
 
-- Fidelity over flash: copy lab timing, priors, and response rules exactly.
-- Fingerprints over reward: success = matching bias, RT, history, lapse statistics.
-- Reproducibility: deterministic seeds, saved configs, and schema-validated logs.
-- Separation of concerns: environments, agents, metrics, and scripts remain decoupled.
+1. **Train** with `scripts/train_agent.py` (or task-specific scripts). Each run lands in `runs/<name>/` with `config.json`, `trials.ndjson`, and training metrics.
+2. **Score** with `scripts/evaluate_agent.py` to produce `metrics.json` (psychometric, chronometric, history summaries; NaNs are exported as `null`).
+3. **Inspect** with `scripts/make_report.py` (static HTML) or `scripts/make_dashboard.py` (interactive comparison against animal data).
+4. **Validate** any log with `eval/schema_validator.py` or `pytest tests/test_schema.py`.
+
+The benchmark emphasises visible trial-by-trial evidence: every dashboard links back to the exact `.ndjson` and config that generated it.
 
 ---
 
-## Roadmap Preview (v0.2)
+## Scientific Caveats
 
-- **Probabilistic Reversal Learning (PRL):** bias-block reversals with perseveration metrics delivered through the same logging schema.
-- **Delayed Match-to-Sample (DMS):** delay-dependent accuracy and RT metrics sharing evaluation infrastructure.
+- Agents still exploit shortcuts. Sticky-Q commits on the first eligible step, so the latency parameter only shifts the intercept; slopes remain flat.
+- PPO requires additional structure (e.g., explicit accumulators) to express animal-like RT slopes; reward shaping alone is insufficient.
+- Hybrid DDM runs show the desired trend but highlight calibration gaps (non-decision time, low-coherence handling).
+- Metrics depend on reliable fits; we treat failed logistic regressions as `null` to keep downstream analyses honest.
+
+---
+
+## Roadmap
+
+- Extend the evaluation stack to Probabilistic Reversal Learning and Delayed Match-to-Sample tasks (interfaces already anticipate these additions).
+- Tighten RT modelling by adding non-decision components to agents rather than the environment.
+- Provide parameter sweeps and ablation scripts so others can reproduce the negative results as readily as the positive ones.
 
 ---
 
 ## License
 
-Code is released under MIT; datasets retain their original licenses.
+Code is released under the MIT License. Reference datasets retain their original licenses and attribution requirements.

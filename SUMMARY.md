@@ -1,6 +1,6 @@
 # AnimalTaskSim: AI Agents vs. Animal Behavior
 
-**One-Page Summary for Quick Sharing**
+## One-Page Summary for Quick Sharing
 
 ---
 
@@ -9,6 +9,7 @@
 A framework that trains AI agents on the **same perceptual decision-making tasks** that neuroscientists use with mice and monkeys, then compares agent behavior to real animal data using **11 behavioral metrics** — not just task performance.
 
 **Two benchmark tasks:**
+
 - 🐭 **Mouse 2AFC:** Visual contrast discrimination (International Brain Laboratory data)
 - 🐵 **Macaque RDM:** Random-dot motion (Roitman & Shadlen 2002)
 
@@ -19,6 +20,7 @@ A framework that trains AI agents on the **same perceptual decision-making tasks
 **Can reinforcement learning agents replicate animal-like behavior?**
 
 Not just "get the task right," but exhibit the same:
+
 - Psychometric curves (how choice varies with stimulus)
 - Reaction time patterns (how RT changes with evidence)
 - History effects (win-stay, lose-shift strategies)
@@ -30,15 +32,17 @@ Not just "get the task right," but exhibit the same:
 
 **Partially.** We achieved excellent matches on some metrics but completely failed others:
 
-### ✅ What Worked
-- **Bias:** 99% match (mouse agent matched ±0.001 contrast bias)
-- **Win-stay rate:** 100% match (macaque PPO perfectly replicated 45.8% win-stay)
-- **Overall choice patterns:** 79-140% match (ballpark correct)
+### ✅ What Held Up
+
+- Task infrastructure stays modular and schema-validated, making it easy to compare log files and regenerate reports.
+- History matches hover around chance for several agents, roughly aligning with published macaque win-stay ≈0.46.
 
 ### ❌ What Failed
-- **RT dynamics:** 0-22% match (agents make instant decisions, animals deliberate)
-- **History depth:** Only 79% match (agents too Markovian, animals consider multiple trials)
-- **Lapses:** Agents at 37-42% vs animals ~0% (agents guess too much)
+
+- **Bias & RT claims need revision:** The latest Sticky-Q runs still sit ≈0.075 away from the mouse bias reference, and PPO re-checks remain far from macaque RT structure.
+- **RT dynamics:** 0-22% match (agents make instant decisions, animals deliberate) even after disabling environment auto-commits.
+- **History depth:** Only 79% match (agents too Markovian, animals consider multiple trials).
+- **Lapses:** Agents at 37-49% vs animals ~0% (agents guess too much).
 
 ---
 
@@ -59,21 +63,24 @@ Not just "get the task right," but exhibit the same:
 ## Example Results
 
 ### Mouse (Sticky-GLM v21)
-```
+
+```text
 Psychometric slope: 18.50 vs 13.18 target (140% - too steep)
-Bias: -0.001 vs 0.074 target (99% ✅)
+Bias: -0.001 vs 0.074 target (absolute gap ≈0.075)
 Win-stay: 58.3% vs 73.4% target (79% ⚠️)
 ```
 
-### Macaque (PPO v24)
-```
-RT intercept: 210 ms vs 759 ms target (28% - instant decisions ❌)
-RT slope: 0.0 vs -645 ms/unit target (0% - flat, no coherence effect ❌)
-Win-stay: 45.8% vs 45.8% target (100% ✅)
+### Macaque (PPO recheck without collapsing bound)
+
+```text
+RT intercept: 60 ms vs 759 ms target (8% ❌)
+RT slope: ~0 ms/unit vs -645 ms/unit target (0% ❌)
+Win-stay: 56% vs 46% target (122% ❌ – agent over-stays wins)
 ```
 
 ### Macaque (DDM v2 - mechanistic baseline)
-```
+
+```text
 RT intercept: 613 ms vs 759 ms target (81% ✅)
 RT slope: -139 vs -645 ms/unit target (22% - correct direction! ✅)
 ```
@@ -85,11 +92,13 @@ RT slope: -139 vs -645 ms/unit target (22% - correct direction! ✅)
 ## Interactive Dashboards
 
 Open in your browser to explore:
+
 - [`runs/ibl_final_dashboard.html`](runs/ibl_final_dashboard.html) - Mouse results
 - [`runs/rdm_final_dashboard.html`](runs/rdm_final_dashboard.html) - Macaque PPO results  
 - [`runs/rdm_ddm_dashboard.html`](runs/rdm_ddm_dashboard.html) - Macaque DDM results
 
 Each shows:
+
 - Side-by-side psychometric curves
 - RT vs. evidence strength plots
 - History effect comparisons
@@ -101,7 +110,7 @@ Each shows:
 
 **Proposed solution:** Combine DDM (mechanistic temporal dynamics) + LSTM (learned history effects)
 
-```
+```text
 Architecture:
 1. LSTM: learns multi-trial dependencies → (drift, bound, bias) parameters
 2. DDM: simulates evidence accumulation with those parameters → realistic RT
@@ -109,6 +118,7 @@ Architecture:
 ```
 
 **Expected gains:**
+
 - RT dynamics: 90%+ match (DDM provides mechanism)
 - History effects: 90%+ match (LSTM provides memory)
 - Lapses: Attention layer adds strategic uncertainty
@@ -151,6 +161,7 @@ python scripts/make_dashboard.py \
 **Behavioral replication ≠ reward optimization.**
 
 RL agents are too smart, finding efficient shortcuts that animals (constrained by neurobiology) don't use. True replication requires:
+
 - Mechanistic architectural constraints (not just reward shaping)
 - Multi-objective optimization (task + behavioral similarity)
 - Explicit memory structures (recurrence, not pure feedforward)
@@ -175,7 +186,7 @@ This work quantifies the gap and provides a testbed for closing it.
 
 ## Citation
 
-```
+```text
 AnimalTaskSim: A Benchmark for Evaluating Behavioral Replication in AI Agents
 https://github.com/ermanakar/animaltasksim
 October 2025

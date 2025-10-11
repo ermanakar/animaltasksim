@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass
+import math
+import numbers
 from pathlib import Path
 from typing import Callable, Iterable, Sequence
 
@@ -213,18 +215,31 @@ def compute_history_metrics(df: pd.DataFrame) -> HistoryMetrics:
     return HistoryMetrics(win_stay, lose_shift, sticky, float(prev_choice_beta), float(prev_correct_beta))
 
 
+def _sanitize(obj: object) -> object:
+    if isinstance(obj, numbers.Real):
+        value = float(obj)
+        if not math.isfinite(value):
+            return None
+        return obj
+    if isinstance(obj, dict):
+        return {key: _sanitize(value) for key, value in obj.items()}
+    if isinstance(obj, list):
+        return [_sanitize(value) for value in obj]
+    return obj
+
+
 def compute_all_metrics(df: pd.DataFrame, task: str) -> dict[str, object]:
     metrics: dict[str, object] = {}
     if task == "ibl_2afc":
-        metrics["psychometric"] = asdict(compute_psychometric(df, stimulus_key="contrast"))
-        metrics["chronometric"] = asdict(compute_chronometric(df, stimulus_key="contrast"))
-        metrics["history"] = asdict(compute_history_metrics(df))
+        metrics["psychometric"] = _sanitize(asdict(compute_psychometric(df, stimulus_key="contrast")))
+        metrics["chronometric"] = _sanitize(asdict(compute_chronometric(df, stimulus_key="contrast")))
+        metrics["history"] = _sanitize(asdict(compute_history_metrics(df)))
     elif task == "rdm":
-        metrics["psychometric"] = asdict(compute_psychometric(df, stimulus_key="coherence"))
-        metrics["chronometric"] = asdict(compute_chronometric(df, stimulus_key="coherence"))
-        metrics["history"] = asdict(compute_history_metrics(df))
+        metrics["psychometric"] = _sanitize(asdict(compute_psychometric(df, stimulus_key="coherence")))
+        metrics["chronometric"] = _sanitize(asdict(compute_chronometric(df, stimulus_key="coherence")))
+        metrics["history"] = _sanitize(asdict(compute_history_metrics(df)))
     else:  # pragma: no cover - defensive fallback for future tasks
-        metrics["history"] = asdict(compute_history_metrics(df))
+        metrics["history"] = _sanitize(asdict(compute_history_metrics(df)))
     return metrics
 
 
