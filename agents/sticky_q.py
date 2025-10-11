@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import numbers
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Dict
@@ -44,7 +43,6 @@ class StickyGLMTrainingConfig:
     agent_version: str = "0.1.0"
     output_dir: Path = field(default_factory=lambda: ProjectPaths.from_cwd().runs / "ibl_sticky_glm")
     hyperparams: StickyGLMHyperParams = field(default_factory=StickyGLMHyperParams)
-    min_response_latency_steps: int = 0
 
     def output_paths(self) -> dict[str, Path]:
         out = Path(self.output_dir).resolve()
@@ -102,10 +100,8 @@ class StickyGLMLearner:
             log_path=paths["log"],
             agent=AgentMetadata(name="sticky_glm", version=self.config.agent_version),
             seed=self.config.seed,
-            min_response_latency_steps=self.config.min_response_latency_steps,
         )
         env = IBL2AFCEnv(env_config)
-        min_latency = env.config.min_response_latency_steps
 
         seed_everything(self.config.seed)
 
@@ -126,15 +122,9 @@ class StickyGLMLearner:
             terminated = False
             while not terminated:
                 phase = info["phase"]
-                phase_step_raw = info.get("phase_step", 0)
-                phase_step = int(phase_step_raw) if isinstance(phase_step_raw, (int, float)) else 0
-                if phase == "response" and phase_step < min_latency:
-                    action = ACTION_NO_OP
-                elif phase == "response" and pending_features is None:
-                    contrast_raw = observation.get("contrast", 0.0)
-                    contrast = float(contrast_raw) if isinstance(contrast_raw, numbers.Real) else float(0.0)
-                    block_prior_raw = info.get("block_prior", 0.5)
-                    block_prior = float(block_prior_raw) if isinstance(block_prior_raw, numbers.Real) else 0.5
+                if phase == "response" and pending_features is None:
+                    contrast = float(observation.get("contrast", 0.0))
+                    block_prior = float(info.get("block_prior", 0.5))
                     features = self._features(contrast, prev_action_feature)
                     # Apply bias during action selection
                     prob_right = self._prob_right(features, apply_bias=True)
@@ -204,7 +194,6 @@ class StickyGLMLearner:
                 "episodes": self.config.episodes,
                 "trials_per_episode": self.config.trials_per_episode,
                 "seed": self.config.seed,
-                "min_response_latency_steps": self.config.min_response_latency_steps,
             },
         }
         config_path.write_text(json.dumps(config_dict, indent=2), encoding="utf-8")
@@ -220,7 +209,6 @@ class StickyGLMLearner:
             ],
             "step_ms": env_config.step_ms,
             "expose_prior": env_config.expose_prior,
-            "min_response_latency_steps": env_config.min_response_latency_steps,
         }
 
 

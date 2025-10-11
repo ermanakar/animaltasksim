@@ -113,6 +113,65 @@ Artifacts: `runs/rdm_wfpt_regularized/metrics.json`, `dashboard.html`.
 
 ---
 
+## RDM PPO Calibration Chronicle (Sept–Oct 2025)
+
+| Iteration | Key Configs | Intent | Outcome |
+| --- | --- | --- | --- |
+| `rdm_ppo_avgcost_v1` | Avg-reward controller (`scale=0.5`) | Penalize long trials to induce RT slope | Agent froze on HOLD; chronometric curve remained flat and accuracy collapsed to 48 %. |
+| `rdm_ppo_avgcost_v2` | Avg-reward controller (`scale=0.05`) | Softer penalty to restore action while nudging RTs | Accuracy recovered (≈60 %), but RTs still pegged at 60 ms; slope ≈0. |
+| `rdm_ppo_calib_s005_*` | Avg-reward `0.05`, urgency feature {0.8, 1.2, 1.6} | Add policy-side urgency signal | RTs unchanged; high urgency destabilized policy (bias blow-up). |
+| `rdm_ppo_calib_s002_*` | Avg-reward `0.02`, urgency {0.8, 1.2} | Reduce penalty, same urgency | Chronometric slope still zero; psychometric slope oscillated wildly. |
+| `rdm_ppo_confidence_v1` | Confidence reward + RT target, no penalties | Reward waiting proportionally to evidence | RT intercept moved to 90 ms but slope stayed zero; policy learned to commit once hold expired. |
+| `rdm_ppo_threshold_v1` | Evidence threshold gate + confidence reward | Force bound crossing before response | Accuracy moderate, yet RT stayed 60 ms because high coherence hits threshold instantly. |
+| `rdm_ppo_threshold_v2` | Slower noise / higher gain adjustments | Make evidence accumulation harder | Psychometric slope overshot to 6× reference; RT still flat. |
+| `rdm_ppo_hold{20,30}_*` | Response hold 20–30 steps + thresholds 1.5–3.0 | Simulate motor prep window | Intercepts rose (210–310 ms) but coherence effect absent; high thresholds tanked reward. |
+| `rdm_ppo_thresh3_v3` | Threshold 3.0, no hold, low evidence gain | Probe extreme gating | Policy reverted to immediate commits; accuracy ≈ chance. |
+
+### Lessons Learned
+
+- **Environment gating without stimulus dynamics fails.** Coherence levels need to modulate evidence flow over many steps; otherwise, agents cross the bound almost immediately.
+- **Reward shaping alone cannot buy chronometry.** Bonuses tied to cumulative evidence or RT targets simply shift intercepts while keeping zero slope.
+- **Urgency signals need conflict.** With no cost to instant action, the agent ignores urgency features or treats them as noise.
+
+### October 11 Sweep: Stimulus Pacing + Time-Cost Probes
+
+After instrumenting `envs/rdm_macaque.py` with coherence-dependent sampling, optional trace logging, and Tyro-exposed overrides for stimulus/response durations, we ran three focused PPO experiments to bend the chronometric curve without artificial holds.
+
+| Run | Key Config (diffs relative to baseline) | Psychometric | Chronometric (ms by coherence) | History snapshot |
+| --- | --- | --- | --- | --- |
+| `rdm_ppo_coherence_long_20251011` | Stimulus 160, response 200, `use_coherence_dependent_sampling=True`, hold=10 | slope 3.35, bias ≈0, lapses ≈0 | flat 200 / 200 / 200 / 200 / 200 / 200 | win-stay 0.51, lose-shift 0.47, sticky 0.52 |
+| `rdm_ppo_coherence_hold40_20251011` | Response 280, hold=40, lower gain floor | slope 50.0, bias −0.50, lapse_high 0.45 | flat 400 / … / 400 | win-stay 0.44, lose-shift 0.67, sticky 0.37 |
+| `rdm_ppo_coherence_soft_20251011` | Hold=5, threshold 4.0, negative per-step reward | slope 6.0, bias −0.37, lapse_high 0.21 | flat 250 / … / 250 | win-stay 0.65, lose-shift 0.53, sticky 0.55 |
+| `rdm_ppo_coherence_cost_20251011` | Negative per-step cost −5e-4, confidence bonus 0.5 | slope 1.63, bias +0.17 | flat 100 / … / 100 | win-stay 0.44, lose-shift 0.53, sticky 0.45 |
+| `rdm_ppo_coherence_cost2_20251011` | Avg-reward scale 0.14, `bound_threshold=3.5`, no confidence | slope 6.77, bias −0.44, lapse_high 0.16 | flat 150 / … / 150 | win-stay 0.76, lose-shift 0.41 |
+
+None of the variants produced the desired RT gradient; introducing negative per-step incentives amplified waiting without linking latency to coherence, while large holds simply pinned RT at the enforced duration and distorted choice history. These runs confirm that pacing must emerge from evidence accumulation (gain/sigma schedules) plus calibrated time costs, not from hard response blocks or reward bribes.
+
+To isolate time-cost mechanisms we executed a three-run micro-sweep with 300 k PPO steps and 600-trial episodes:
+
+| Run | Time pressure | Psychometric | Chronometric `rt_by_level` | Notes |
+| --- | --- | --- | --- | --- |
+| `rdm_ppo_chrono_A` | Avg reward (`scale=0.10`), `bound_threshold=3.0`, `min_bound_steps=2`, urgency 0.8 | slope 18.1, bias −5.85, lapse_low 0.16 | {0.0:20, 0.032:20, 0.064:30, 0.128:30, 0.256:25, 0.512:30} | Strong WSLS lock-in (win-stay=1.0) shows policy saturates a single action despite slight RT spread. |
+| `rdm_ppo_chrono_B` | Avg reward (`scale=0.14`), tighter bound 2.5 | slope 3.69, bias ≈0, lapses ≈0 | All coherences 10 ms | Time penalty too strong—agent fires instantly to avoid cost. |
+| `rdm_ppo_chrono_C` | Explicit time-cost controller (`base=3e-4`, `growth=0.01`) | slope 3.31, bias −0.03 | {0.0:30, 0.032:30, 0.064:30, 0.128:30, 0.256:20, 0.512:30} | Slight downward dip at 0.256, but still far from macaque slope. |
+
+Takeaways:
+
+- Avg-reward penalties require careful tuning; too low and policy camps on one choice, too high and it commits immediately.
+- Time-cost controller yielded the only non-flat bin (20 ms at 0.256), hinting that collapsing bounds + cost can create a slope once evidence dynamics are further differentiated.
+- History metrics highlight when policies exploit the reward structure instead of integrating evidence—monitor `win_stay`, `lose_shift`, and regression betas after every sweep.
+
+### Next Plan of Record (Nov 2025)
+
+1. **Stimulus pacing overhaul**: extend stimulus phase and stream motion pulses whose variance scales with coherence so low-coherence trials require longer integration.
+2. **Average-reward per second objective**: switch PPO reward to `correct_reward - lambda * RT` with lambda calibrated to macaque mean reward rate; learnable non-decision time parameter to encourage evidence-based timing.
+3. **History-informed baselines**: incorporate recent trial outcomes into policy inputs (or an auxiliary loss) to match win-stay/lose-shift kernels while maintaining schema stability.
+4. **Benchmark harness**: document each calibration sweep in `runs/calibration_logs/README.md` with configs and evaluation plots to track progress and prevent repetition.
+
+These steps refocus effort on stimulus realism and policy incentives rather than brute-force hyperparameter sweeps.
+
+---
+
 ## Next Steps
 
 1. **Agent-side latency models**: Give Sticky-Q and PPO explicit non-decision-time estimates that can adapt by coherence or block, rather than relying on environment delays.

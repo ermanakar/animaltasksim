@@ -4,7 +4,7 @@ import json
 import math
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Literal, cast
+from typing import Literal
 
 import tyro
 
@@ -19,9 +19,6 @@ class StickyQCLIConfig:
     weight_decay: float = 0.0
     temperature: float = 1.0
     sample_actions: bool = False
-    side_bias: float = 0.0
-    lapse_high: float = 0.0
-    min_response_latency_steps: int = 0
 
 
 @dataclass(slots=True)
@@ -45,15 +42,9 @@ class PPOCLIConfig:
     evidence_gain: float = 0.05
     momentary_sigma: float = 1.0
     include_cumulative_evidence: bool = True
-    collapsing_bound: bool = False
+    collapsing_bound: bool = True
     min_bound_steps: int = 5
     bound_threshold: float = 3.0
-    use_avg_reward_time_cost: bool = False
-    avg_reward_alpha: float = 0.05
-    avg_reward_scale: float = 1.0
-    avg_reward_initial_rate: float = 1.0
-    include_urgency_feature: bool = False
-    urgency_slope: float = 1.0
 
 
 @dataclass(slots=True)
@@ -66,7 +57,6 @@ class TrainArgs:
     seed: int = 1234
     out: Path = Path("runs/ibl_stickyq")
     agent_version: str = "0.1.0"
-    sticky_min_response_latency_steps: int | None = None
     sticky_q: StickyQCLIConfig = field(default_factory=StickyQCLIConfig)
     bayes: BayesCLIConfig = field(default_factory=BayesCLIConfig)
     ppo: PPOCLIConfig = field(default_factory=PPOCLIConfig)
@@ -80,12 +70,7 @@ def _train_sticky_q(args: TrainArgs) -> dict[str, object]:
     if episodes is None:
         episodes = max(1, math.ceil(args.steps / max(1, args.trials_per_episode)))
 
-    sticky_kwargs = asdict(args.sticky_q)
-    configured_latency = int(sticky_kwargs.pop("min_response_latency_steps"))
-    min_latency = configured_latency
-    if args.sticky_min_response_latency_steps is not None:
-        min_latency = max(0, int(args.sticky_min_response_latency_steps))
-    hyper = StickyGLMHyperParams(**sticky_kwargs)
+    hyper = StickyGLMHyperParams(**asdict(args.sticky_q))
     config = StickyGLMTrainingConfig(
         episodes=episodes,
         trials_per_episode=args.trials_per_episode,
@@ -93,7 +78,6 @@ def _train_sticky_q(args: TrainArgs) -> dict[str, object]:
         agent_version=args.agent_version,
         output_dir=args.out,
         hyperparams=hyper,
-        min_response_latency_steps=min_latency,
     )
     return train_sticky_q(config)
 
@@ -113,7 +97,7 @@ def _train_bayes(args: TrainArgs) -> dict[str, object]:
         output_dir=args.out,
         params=params,
     )
-    return cast(dict[str, object], run_bayesian_observer(config))
+    return run_bayesian_observer(config)
 
 
 def _train_ppo(args: TrainArgs) -> dict[str, object]:
@@ -125,12 +109,6 @@ def _train_ppo(args: TrainArgs) -> dict[str, object]:
     collapsing_bound = ppo_args.pop("collapsing_bound")
     min_bound_steps = int(ppo_args.pop("min_bound_steps"))
     bound_threshold = float(ppo_args.pop("bound_threshold"))
-    use_avg_reward_time_cost = bool(ppo_args.pop("use_avg_reward_time_cost"))
-    avg_reward_alpha = float(ppo_args.pop("avg_reward_alpha"))
-    avg_reward_scale = float(ppo_args.pop("avg_reward_scale"))
-    avg_reward_initial_rate = float(ppo_args.pop("avg_reward_initial_rate"))
-    include_urgency_feature = bool(ppo_args.pop("include_urgency_feature"))
-    urgency_slope = float(ppo_args.pop("urgency_slope"))
     hyper = PPOHyperParams(**ppo_args)
     config = PPOTrainingConfig(
         env=args.env,
@@ -144,12 +122,6 @@ def _train_ppo(args: TrainArgs) -> dict[str, object]:
         collapsing_bound=collapsing_bound,
         min_bound_steps=min_bound_steps,
         bound_threshold=bound_threshold,
-        use_avg_reward_time_cost=use_avg_reward_time_cost,
-        avg_reward_alpha=avg_reward_alpha,
-        avg_reward_scale=avg_reward_scale,
-        avg_reward_initial_rate=avg_reward_initial_rate,
-    include_urgency_feature=include_urgency_feature,
-    urgency_slope=urgency_slope,
         seed=args.seed,
         agent_version=args.agent_version,
         output_dir=args.out,

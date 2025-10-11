@@ -47,8 +47,8 @@ def main(args: EvaluateArgs) -> None:
         "log": str(log_path),
         "metrics": metrics,
     }
-    out_path.write_text(json.dumps(payload, indent=2, allow_nan=False), encoding="utf-8")
-    print(json.dumps(metrics, indent=2, allow_nan=False))
+    out_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    print(json.dumps(metrics, indent=2))
 
 
 if __name__ == "__main__":

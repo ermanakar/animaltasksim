@@ -12,7 +12,6 @@ from gymnasium import Env, spaces
 from gymnasium.utils import seeding
 
 from animaltasksim.logging import NDJSONTrialLogger
-from animaltasksim.time_cost import AverageRewardTimeCost
 from envs.utils_timing import PhaseTiming, ensure_phase_names
 
 ACTION_LEFT = 0
@@ -67,7 +66,7 @@ class RDMConfig:
     evidence_gain: float = 0.05
     momentary_sigma: float = 1.0
     per_step_cost: float = 0.0
-    collapsing_bound: bool = False
+    collapsing_bound: bool = True
     min_bound_steps: int = 20  # 200ms minimum RT (matches Roitman data)
     bound_threshold: float = 3.0
     # Confidence-based reward shaping parameters
@@ -78,12 +77,6 @@ class RDMConfig:
     # RT shaping: reward RTs in realistic range (target 400-800ms)
     target_rt_steps: int = 60  # ~600ms at 10ms/step
     rt_tolerance: float = 30.0  # Gaussian width for RT bonus
-    use_avg_reward_time_cost: bool = False
-    avg_reward_alpha: float = 0.05
-    avg_reward_scale: float = 1.0
-    avg_reward_initial_rate: float = 1.0
-    include_urgency_feature: bool = False
-    urgency_slope: float = 1.0
     log_path: Path | None = None
     agent: AgentMetadata = field(default_factory=AgentMetadata)
     seed: int | None = None
@@ -101,15 +94,6 @@ class RDMConfig:
             raise ValueError("momentary_sigma must be positive")
         if self.bound_threshold <= 0:
             raise ValueError("bound_threshold must be positive")
-        if self.use_avg_reward_time_cost:
-            if not (0.0 < self.avg_reward_alpha <= 1.0):
-                raise ValueError("avg_reward_alpha must fall within (0, 1]")
-            if self.avg_reward_scale < 0.0:
-                raise ValueError("avg_reward_scale must be non-negative")
-            if self.avg_reward_initial_rate < 0.0:
-                raise ValueError("avg_reward_initial_rate must be non-negative")
-        if self.include_urgency_feature and self.urgency_slope < 0.0:
-            raise ValueError("urgency_slope must be non-negative")
 
 
 class RDMMacaqueEnv(Env):
@@ -123,9 +107,6 @@ class RDMMacaqueEnv(Env):
         self._phase_schedule = self.config.phase_schedule
         self._phase_names = ensure_phase_names(self._phase_schedule)
         self._coherences = _validate_coherences(self.config.coherence_set)
-        self._response_phase = next((p for p in self._phase_schedule if p.name == "response"), None)
-        if self._response_phase is None:
-            raise ValueError("phase_schedule must include a 'response' phase")
 
         self.action_space = spaces.Discrete(3)
         self.observation_space = self._build_observation_space()
@@ -133,18 +114,6 @@ class RDMMacaqueEnv(Env):
         self._logger: NDJSONTrialLogger | None = None
         if self.config.log_path is not None:
             self._logger = NDJSONTrialLogger(self.config.log_path)
-
-        step_seconds = self.config.step_ms / 1000.0
-        self._time_cost_controller = (
-            AverageRewardTimeCost(
-                step_seconds=step_seconds,
-                alpha=self.config.avg_reward_alpha,
-                scale=self.config.avg_reward_scale,
-                initial_rate=self.config.avg_reward_initial_rate,
-            )
-            if self.config.use_avg_reward_time_cost
-            else None
-        )
 
         self._rng: np.random.Generator | None = None
         self._seed: int | None = None
@@ -167,9 +136,6 @@ class RDMMacaqueEnv(Env):
         self._momentary_evidence: float = 0.0
         self._cumulative_evidence: float = 0.0
         self._response_steps: int = 0
-        self._cumulative_reward_trial: float = 0.0
-        self._elapsed_steps_in_trial: int = 0
-        self._base_trial_reward: float = 0.0
 
     def _build_observation_space(self) -> spaces.Dict:
         space_dict: dict[str, spaces.Space] = {
@@ -179,8 +145,6 @@ class RDMMacaqueEnv(Env):
             space_dict["cumulative_evidence"] = spaces.Box(
                 low=-np.inf, high=np.inf, shape=(), dtype=np.float32
             )
-        if self.config.include_urgency_feature:
-            space_dict["urgency"] = spaces.Box(low=0.0, high=np.inf, shape=(), dtype=np.float32)
         if self.config.include_phase_onehot:
             space_dict["phase_onehot"] = spaces.Box(
                 low=0.0, high=1.0, shape=(len(self._phase_schedule),), dtype=np.float32
@@ -213,26 +177,12 @@ class RDMMacaqueEnv(Env):
         else:
             self._momentary_evidence = 0.0
 
-    def _current_urgency(self) -> float:
-        if not self.config.include_urgency_feature:
-            return 0.0
-        if self._current_phase_name() != "response":
-            return 0.0
-        response_phase = self._response_phase
-        if response_phase is None:
-            return 0.0
-        duration = max(response_phase.duration_steps - 1, 1)
-        normalized = min(1.0, max(0.0, self._phase_step / duration))
-        return float(self.config.urgency_slope * normalized)
-
     def _build_observation(self) -> dict[str, np.ndarray | float | np.floating]:  # type: ignore[return]
         obs: dict[str, np.ndarray | float | np.floating] = {  # type: ignore[misc]
             "coherence": np.float32(self._momentary_evidence)
         }
         if self.config.include_cumulative_evidence:
             obs["cumulative_evidence"] = np.float32(self._cumulative_evidence)
-        if self.config.include_urgency_feature:
-            obs["urgency"] = np.float32(self._current_urgency())
         if self.config.include_phase_onehot:
             onehot = np.zeros(len(self._phase_schedule), dtype=np.float32)
             onehot[self._phase_index] = 1.0
@@ -273,9 +223,6 @@ class RDMMacaqueEnv(Env):
         self._prev_correct = None
         self._response_steps = 0
 
-        if self._time_cost_controller is not None:
-            self._time_cost_controller.reset()
-
         self._start_new_trial()
         self._maybe_sample_evidence()
         return self._build_observation(), self._default_info()
@@ -302,9 +249,6 @@ class RDMMacaqueEnv(Env):
         self._rt_steps = None
         self._reset_evidence()
         self._response_steps = 0
-        self._cumulative_reward_trial = 0.0
-        self._elapsed_steps_in_trial = 0
-        self._base_trial_reward = 0.0
 
     def _log_trial(self) -> None:
         if self._logger is None:
@@ -398,12 +342,9 @@ class RDMMacaqueEnv(Env):
         
         # Use confidence-based reward if enabled, otherwise simple correct/incorrect
         if self.config.use_confidence_reward:
-            reward = self._compute_confidence_based_reward(self._correct, response_steps)
+            self._trial_reward = self._compute_confidence_based_reward(self._correct, response_steps)
         else:
-            reward = 1.0 if self._correct else -1.0
-
-        self._base_trial_reward = float(reward)
-        self._trial_reward = float(reward)
+            self._trial_reward = 1.0 if self._correct else -1.0
 
         self._phase_step = self._current_phase.duration_steps - 1
 
@@ -415,7 +356,6 @@ class RDMMacaqueEnv(Env):
         self._trial_reward = 0.0
         self._rt_steps = None
         self._correct = False
-        self._base_trial_reward = 0.0
 
     def step(self, action: int):  # type: ignore[override]
         if self._terminated:
@@ -425,7 +365,6 @@ class RDMMacaqueEnv(Env):
 
         phase_name = self._current_phase_name()
         reward = 0.0
-        self._elapsed_steps_in_trial += 1
 
         if phase_name == "response":
             if not self._response_captured:
@@ -436,22 +375,14 @@ class RDMMacaqueEnv(Env):
         else:
             action = ACTION_HOLD
 
-        if self._time_cost_controller is not None and phase_name != "outcome":
-            penalty = self._time_cost_controller.step_penalty()
-            if penalty:
-                reward -= penalty
-
         reward += self._apply_per_step_cost(phase_name)
 
         if phase_name == "outcome" and self._phase_step == 0:
-            final_reward = self._base_trial_reward
+            reward = self._trial_reward
             if self.config.per_step_cost > 0.0:
-                final_reward -= self.config.per_step_cost * self._response_steps
-            reward += final_reward
+                reward -= self.config.per_step_cost * self._response_steps
             self._response_steps = 0
-            self._base_trial_reward = float(final_reward)
 
-        self._cumulative_reward_trial += reward
         self._phase_step_counts[phase_name] += 1
 
         terminated = False
@@ -482,15 +413,7 @@ class RDMMacaqueEnv(Env):
         if trial_completed:
             if not self._response_captured:
                 self._finalize_without_response()
-            final_reward = float(self._cumulative_reward_trial)
-            self._trial_reward = final_reward
-            if self._time_cost_controller is not None:
-                self._time_cost_controller.update(final_reward, self._elapsed_steps_in_trial)
             self._log_trial()
-            self._elapsed_steps_in_trial = 0
-            self._cumulative_reward_trial = 0.0
-            self._base_trial_reward = 0.0
-            self._response_steps = 0
             terminated = (self._trial_index + 1) >= self.config.trials_per_episode
             if terminated:
                 self._terminated = True
@@ -517,8 +440,6 @@ class RDMMacaqueEnv(Env):
         obs: dict[str, np.ndarray | float | np.floating] = {"coherence": np.float32(0.0)}  # type: ignore[misc]
         if self.config.include_cumulative_evidence:
             obs["cumulative_evidence"] = np.float32(0.0)
-        if self.config.include_urgency_feature:
-            obs["urgency"] = np.float32(0.0)
         if self.config.include_phase_onehot:
             obs["phase_onehot"] = np.zeros(len(self._phase_schedule), dtype=np.float32)
         if self.config.include_timing:
