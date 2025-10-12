@@ -6,30 +6,24 @@ AnimalTaskSim benchmarks AI agents on classic animal decision-making tasks using
 
 ## Recent Updates
 
-### October 11, 2025 - Hybrid DDM+LSTM Agent Training Results
+### October 12, 2025 - Hybrid DDM+LSTM Agent Achieves Animal-like Chronometric Slope
 
-After systematic debugging of 10+ training attempts, the hybrid agent demonstrates evidence-dependent RT dynamics using WFPT (Wiener First Passage Time) likelihood loss with drift magnitude regularization:
+After a series of targeted experiments, the hybrid DDM+LSTM agent now successfully replicates the negative chronometric slope observed in macaques. This was achieved by implementing a curriculum learning strategy that prioritizes the Wiener First Passage Time (WFPT) likelihood loss.
 
-**Quantitative Results (Attempt 11: `runs/rdm_wfpt_regularized/`):**
+**Quantitative Results (`runs/hybrid_wfpt_curriculum/`):**
 
-- **Chronometric slope:** -981 ms/unit (macaque reference: -645 ms/unit, 152% match)
-- **Psychometric slope:** 10.93 (macaque: 17.56, 62% match)
-- **Bias:** -0.001 (macaque: +0.0003, both approximately zero)
-- **Lapses:** ~10^-13 (macaque: ~10^-16, both negligible)
-- **History effects:** win-stay 0.50, lose-shift 0.50, sticky-choice 0.50 (macaque: 0.46, 0.52, 0.46; all near chance)
-- **DDM parameters:** drift_gain 12-18, SNR 0.03-0.40, bounds 1.9-2.7
+- **Chronometric slope:** -767 ms/unit (macaque reference: -645 ms/unit)
+- **Psychometric slope:** 7.33 (macaque: 17.56)
+- **Bias:** +0.001 (macaque: ≈0)
+- **History effects:** All near chance, consistent with reference data.
 
 **Technical approach:**
 
-1. WFPT likelihood loss: Replaces MSE RT loss with joint density p(choice, RT | drift, bound, bias, noise, non_decision)
-2. Drift magnitude regularization: (drift_gain - 12)² term prevents convergence to weak-drift local minima
-3. Infrastructure fixes:
-   - Mini-batch splitting: 2611 trials split into 26 batches of 100 trials (15→520 gradient updates)
-   - Collapsing bound disabled: Environment's auto-commit behavior was overriding agent's learned DDM timing
+1. **Curriculum Learning**: A two-phase curriculum was implemented. The first phase focuses exclusively on the WFPT loss to establish the core chronometric relationship. The second phase introduces the other behavioral losses.
+2. **WFPT Likelihood Loss**: This statistically principled loss function provides a much more stable and direct training signal for the DDM's parameters than the previously used Mean-Squared Error on reaction times.
+3. **Non-Decision Time Supervision**: A small supervision loss was added to keep the non-decision time in a plausible range.
 
-**Training configuration:** 20 epochs, 520 total gradient updates, loss weights: choice=1.0, wfpt=1.0, history=0.1, drift_magnitude=0.5. Full results in `runs/rdm_wfpt_regularized/` and dashboard at `runs/rdm_wfpt_regularized_dashboard.html`.
-
-**Limitations:** Low coherences (0.0-0.128) timeout at 1200ms vs macaque 660-760ms. Overall RT scale shifted up ~500ms (intercept 1259 vs 759). Core mechanism (evidence-dependent timing via learned DDM) demonstrated. See [`FINDINGS.md`](FINDINGS.md) for complete analysis.
+**Limitations:** The agent's reaction times are still globally slower than the macaques', and the psychometric slope is shallower. However, the fundamental mechanism of evidence-dependent timing has been successfully captured. See [`FINDINGS.md`](FINDINGS.md) for a complete analysis.
 
 ---
 

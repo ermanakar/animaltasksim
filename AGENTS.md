@@ -9,7 +9,7 @@
 
 ## Before You Touch Code
 
-- Re-read `README.md`, `PRD.md`, `kickoff_prompt.md`, and task-specific specs; note v0.2 expectations even if they are out of scope now.
+- Re-read `README.md` and task-specific specs; note v0.2 expectations even if they are out of scope now.
 - Confirm changes stay inside the frozen CLI + schema contract; get explicit approval before renaming flags, paths, or log fields.
 - List assumptions/upcoming questions early and surface blockers before implementation.
 
@@ -54,7 +54,7 @@
 - Config updates documented and stored alongside outputs.
 - `.ndjson` logs validated via `eval/schema_validator.py`; schema test passes; logs flush cleanly without extra keys.
 - Relevant tests and CLI demos executed; if sandbox restrictions block execution, state what could not run and why.
-- README/PRD/kickoff alignment verified; docs updated when behavior changes.
+- README/spec alignment verified; docs updated when behavior changes.
 - Roadmap readiness noted: call out how work supports upcoming PRL/DMS additions.
 
 ## Communication & Change Control

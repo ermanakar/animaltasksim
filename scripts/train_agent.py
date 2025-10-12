@@ -139,7 +139,7 @@ def _train_ppo(args: TrainArgs) -> dict[str, object]:
         output_dir=args.out,
         hyperparams=hyper,
     )
-    return train_ppo(config)  # type: ignore[return-value]
+    return train_ppo(config)
 
 
 def main(args: TrainArgs) -> None:

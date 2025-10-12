@@ -6,7 +6,7 @@ import json
 import math
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal, Mapping
 
 import numpy as np
 
@@ -85,21 +85,29 @@ class BayesianObserver:
             return env, env_config
         raise ValueError(f"Unsupported environment: {self.config.env}")
 
-    def _decide(self, observation: dict[str, object], info: dict[str, object]) -> int:
+    def _decide(self, observation: Mapping[str, Any], info: Mapping[str, Any]) -> int:
         phase = info.get("phase")
         if self.config.env == "ibl_2afc":
             from envs.ibl_2afc import ACTION_LEFT, ACTION_NO_OP, ACTION_RIGHT
 
             if phase != "response":
                 return ACTION_NO_OP
-            stimulus = float(observation.get("contrast", 0.0))
+            raw = observation.get("contrast", 0.0)
+            if isinstance(raw, np.ndarray):
+                stimulus = float(raw.item())
+            else:
+                stimulus = float(raw)  # type: ignore[arg-type]
             return self._sample_binary_decision(stimulus, ACTION_LEFT, ACTION_RIGHT)
         else:
             from envs.rdm_macaque import ACTION_HOLD, ACTION_LEFT, ACTION_RIGHT
 
             if phase != "response":
                 return ACTION_HOLD
-            stimulus = float(observation.get("coherence", 0.0))
+            raw = observation.get("coherence", 0.0)
+            if isinstance(raw, np.ndarray):
+                stimulus = float(raw.item())
+            else:
+                stimulus = float(raw)  # type: ignore[arg-type]
             return self._sample_binary_decision(stimulus, ACTION_LEFT, ACTION_RIGHT)
 
     def _sample_binary_decision(self, stimulus: float, left_action: int, right_action: int) -> int:
@@ -110,7 +118,7 @@ class BayesianObserver:
             return self.rng.choice([left_action, right_action])
         return base_action
 
-    def run(self) -> dict[str, list[float]]:
+    def run(self) -> dict[str, object]:
         paths = self.config.output_paths()
         env, env_config = self._build_env(paths["log"])
 
@@ -144,7 +152,7 @@ class BayesianObserver:
 
         env.close()
 
-        metrics = {
+        metrics: dict[str, object] = {
             "episodes": self.config.episodes,
             "total_rewards": total_rewards,
             "mean_accuracy": accuracy,
@@ -194,7 +202,7 @@ class BayesianObserver:
         raise TypeError("Unsupported environment config")
 
 
-def run_bayesian_observer(config: BayesTrainingConfig) -> dict[str, list[float]]:
+def run_bayesian_observer(config: BayesTrainingConfig) -> dict[str, object]:
     observer = BayesianObserver(config)
     return observer.run()
 

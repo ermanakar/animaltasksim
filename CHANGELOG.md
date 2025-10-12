@@ -6,33 +6,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.1.2] - 2025-10-12
+
+Added
+
+- **Curriculum Learning Framework**: Implemented a curriculum learning framework for the hybrid DDM+LSTM agent.
+- **WFPT-based Curriculum**: Created a new default curriculum that prioritizes the WFPT loss in the initial phase of training.
+
+### Changed
+
+- **Default Curriculum**: The default curriculum for the hybrid agent is now a two-phase, WFPT-based curriculum.
+- **Reward Structure**: The reward for an incorrect choice is now -0.1 (previously 0.0).
+- **Observation Space**: The environment now supports including the previous trial's action, reward, and correctness in the observation.
+- **Zero-Contrast Trials**: The hard-coded logic for zero-contrast trials has been removed. The agent is now rewarded for choosing the side with the higher prior probability.
+
+### Results (`runs/hybrid_wfpt_curriculum/`)
+
+**Chronometric (RT Dynamics):**
+
+- Slope: -767 ms/unit (macaque reference: -645 ms/unit)
+- RT range: 790ms (high coherence) → 1200ms (low coherence)
+
+**Psychometric (Choice Behavior):**
+
+- Slope: 7.33 (macaque: 17.56)
+- Bias: +0.001 (macaque: ≈0)
+
 ## [0.1.1] - 2025-10-11
 
-### Dashboard Plotting Fixed for IBL Task
-
-#### Fixed
-
-- **Dashboard chronometric and accuracy plots now support both contrast and coherence** (`eval/dashboard.py`)
-  - Previously `_plot_chronometric_comparison()` and `_plot_accuracy_by_coherence()` only checked for `stimulus_coherence`
-  - IBL mouse task uses `stimulus_contrast`, causing plots to show "No coherence data" error
-  - Both functions now auto-detect stimulus column (contrast or coherence)
-  - Use absolute values for difficulty binning (handles signed contrast ±1.0 and unsigned coherence 0-0.512)
-  - Label axes appropriately: "|Contrast|" for IBL, "|Coherence|" for macaque
-  - Result: All 4 plots (psychometric, chronometric, history, accuracy) now render correctly for both tasks
-
-### Chronometric Analysis Enabled for IBL Task
-
-#### Fixed
-
-- **Chronometric metrics now computed for IBL mouse 2AFC task** (`eval/metrics.py:218`)
-  - Previously only psychometric and history metrics were computed despite RT data being present
-  - Added `compute_chronometric(df, stimulus_key="contrast")` call for IBL task
-  - Function already supported both contrast (signed, ±1.0) and coherence (unsigned, 0-0.512) via `abs()` conversion
-  - IBL reference results: slope -36.43 ms/unit, intercept 300.0 ms, RT range 260-319 ms
-
-### Hybrid DDM+LSTM Agent - WFPT Training Implementation
-
-#### Added
+### Added
 
 - **WFPT (Wiener First Passage Time) likelihood loss** (`agents/wfpt_loss.py`)
   - Likelihood-based DDM training objective: p(choice, RT | drift, bound, bias, noise, non_decision)
@@ -51,24 +53,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Increases gradient updates: 26 batches per epoch (520 total) vs 1 batch (15 total)
   - Required for sufficient optimization steps on single-session datasets
 
-#### Fixed
+### Fixed
 
-- **Collapsing bound override bug** (`agents/hybrid_ddm_lstm.py:661`)
-  - Environment's `collapsing_bound=True` triggered auto-commit at ~6 steps based on internal evidence
-  - Agent's learned commit_step_target (48-120 steps) was ignored during rollout
-  - All RTs collapsed to 60-80ms minimum regardless of learned DDM parameters
-  - Fix: Set `collapsing_bound=False` to delegate timing control to agent's DDM
-  - Measured impact: RTs 76ms → 1103ms, slope -0.27 → -169 ms/unit in diagnostic test
+- **Dashboard Plotting for IBL Task**: Dashboard chronometric and accuracy plots now support both contrast and coherence (`eval/dashboard.py`).
+  - Previously `_plot_chronometric_comparison()` and `_plot_accuracy_by_coherence()` only checked for `stimulus_coherence`, causing an error for the IBL mouse task which uses `stimulus_contrast`.
+  - Both functions now auto-detect the stimulus column and use absolute values for binning, correctly rendering all plots for both tasks.
 
-- **Type annotations in debug scripts**
-  - `debug_ddm_rollout.py`: Corrected device parameter type (str → torch.device)
-  - `debug_rollout.py`: Added type: ignore for info dict access
+- **Chronometric Analysis for IBL Task**: Chronometric metrics are now computed for the IBL mouse 2AFC task (`eval/metrics.py:218`).
+  - Previously, only psychometric and history metrics were computed. The fix adds a `compute_chronometric(df, stimulus_key="contrast")` call.
 
-#### Changed
+- **Collapsing bound override bug in Hybrid DDM+LSTM Agent** (`agents/hybrid_ddm_lstm.py:661`):
+  - The environment's `collapsing_bound=True` was overriding the agent's learned commit step, causing all RTs to collapse to a minimum.
+  - Setting `collapsing_bound=False` delegates timing control to the agent's DDM, restoring correct RT dynamics.
 
-- Loss tracking: Added `epoch_drift_magnitude` to training metrics
-- Configuration: drift_magnitude parameter exposed in CLI (scripts/train_hybrid.py)
-- Documentation: Updated with diagnostic process and quantitative results
+- **Type annotations in debug scripts**: Corrected type hints in `debug_ddm_rollout.py` and `debug_rollout.py`.
+
+### Changed items
+
+- **Hybrid DDM+LSTM Agent**:
+  - Loss tracking now includes `epoch_drift_magnitude`.
+  - The `drift_magnitude` parameter is exposed in the CLI (`scripts/train_hybrid.py`).
+  - Documentation was updated with diagnostic process and results.
 
 ### Results (Attempt 11: `runs/rdm_wfpt_regularized/`)
 
@@ -168,10 +173,8 @@ LossWeights(choice=1.0, rt=0.0, wfpt=1.0, history=0.1, drift_magnitude=0.5)
 **Documentation:**
 
 - `README.md`: Project overview, quickstart, task descriptions
-- `PRD.md`: Product requirements document
 - `FINDINGS.md`: Benchmark results and insights
 - `AGENTS.md`: Agent operating guide
-- `kickoff_prompt.md`: Project kickoff specification
 
 **Infrastructure:**
 
