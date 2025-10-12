@@ -27,6 +27,17 @@ After a series of targeted experiments, the hybrid DDM+LSTM agent now successful
 
 ---
 
+### October 14, 2025 - Time-Cost Curriculum Guardrails
+
+We revisited the hybrid curriculum to keep WFPT loss dominant while widening the agent’s response window (`max_commit_steps = 180`). The updated run (`runs/hybrid_wfpt_curriculum_timecost/`) restores a negative chronometric slope without saturating the 1.2 s cap.
+
+- **Chronometric slope:** −267 ms/unit (still shallower than macaque −645 ms/unit, but no longer flat)
+- **RT intercept:** 883 ms (improved from 1.26 s, still slower than 760 ms target)
+- **Psychometric slope:** 7.50 (agent remains conservative relative to 17.56 reference)
+- **History:** Win-stay 0.22 / Lose-shift 0.47 / Sticky 0.42 — indicates the agent under-utilises recent rewards and is less perseverative than macaques.
+
+The guardrails (longer WFPT warm-up, gentler RT penalties, higher commit window) keep the optimisation scientifically honest while we continue exploring soft RT regularisers and phase-level diagnostics. See [`runs/hybrid_wfpt_curriculum_timecost/dashboard.html`](runs/hybrid_wfpt_curriculum_timecost/dashboard.html) for the full comparison.
+
 **Current scope (v0.1):**
 
 - IBL-style mouse visual 2AFC task

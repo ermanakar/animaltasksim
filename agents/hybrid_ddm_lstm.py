@@ -6,7 +6,7 @@ import json
 import random
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 import torch
@@ -53,6 +53,8 @@ class CurriculumPhase:
     epochs: int
     loss_weights: LossWeights
     success_criteria: dict[str, float] = field(default_factory=dict)
+    min_commit_steps: Optional[int] = None
+    max_commit_steps: Optional[int] = None
     # Success criteria keys: 'min_slope_abs', 'min_r2', 'min_rt_diff_abs'
 
 
@@ -69,13 +71,13 @@ class CurriculumConfig:
         """Default 2-phase curriculum: WFPT → full balance."""
         phase1 = CurriculumPhase(
             name="phase1_wfpt_only",
-            epochs=10,
+            epochs=15,
             loss_weights=LossWeights(
                 choice=0.0,
                 rt=0.0,
                 history=0.0,
-                drift_supervision=0.1,
-                non_decision_supervision=0.1,
+                drift_supervision=0.25,
+                non_decision_supervision=0.15,
                 wfpt=1.0,
             ),
             success_criteria={"min_slope_abs": 100.0, "min_r2": 0.1},
@@ -94,6 +96,60 @@ class CurriculumConfig:
             success_criteria={},
         )
         return CurriculumConfig(phases=[phase1, phase2])
+
+    @staticmethod
+    def wfpt_history_refine() -> CurriculumConfig:
+        """Extended curriculum that adds a history-aware refinement phase."""
+        base = CurriculumConfig.default_rt_first()
+        phase3 = CurriculumPhase(
+            name="phase3_history_tune",
+            epochs=5,
+            loss_weights=LossWeights(
+                choice=0.8,
+                rt=0.1,
+                history=0.25,
+                drift_supervision=0.02,
+                non_decision_supervision=0.1,
+                wfpt=0.3,
+            ),
+            success_criteria={},
+        )
+        phases = list(base.phases) + [phase3]
+        return CurriculumConfig(phases=phases, allow_early_stopping=base.allow_early_stopping, checkpoint_each_phase=base.checkpoint_each_phase)
+
+    @staticmethod
+    def wfpt_time_cost() -> CurriculumConfig:
+        """Curriculum that enforces WFPT dynamics then adds RT pressure with a reduced commit window."""
+        phase1, phase2 = CurriculumConfig.default_rt_first().phases
+
+        phase2_adj = CurriculumPhase(
+            name="phase2_balanced_rt_seed",
+            epochs=6,
+            loss_weights=LossWeights(
+                choice=1.0,
+                rt=0.0,
+                history=0.12,
+                drift_supervision=0.05,
+                non_decision_supervision=0.1,
+                wfpt=0.8,
+            ),
+        )
+
+        phase3 = CurriculumPhase(
+            name="phase3_time_cost",
+            epochs=6,
+            loss_weights=LossWeights(
+                choice=0.9,
+                rt=0.03,
+                history=0.22,
+                drift_supervision=0.02,
+                non_decision_supervision=0.1,
+                wfpt=0.55,
+            ),
+        )
+
+        phases = [phase1, phase2_adj, phase3]
+        return CurriculumConfig(phases=phases, allow_early_stopping=True)
 
 
 @dataclass(slots=True)
@@ -114,7 +170,7 @@ class HybridTrainingConfig:
     max_sessions: int | None = None
     max_trials_per_session: int | None = None
     min_commit_steps: int = 5
-    max_commit_steps: int = 120
+    max_commit_steps: int = 180
     drift_scale: float = 10.0  # Scale drift_head initialization to enable stronger evidence effects
     curriculum: CurriculumConfig | None = None  # If set, use curriculum learning
 
@@ -873,8 +929,15 @@ def _evaluate_phase_success(
     if not trials:
         return False, {}
     
-    rts = np.array([t['rt_ms'] for t in trials])
-    coherences = np.array([t['stimulus']['coherence'] for t in trials])
+    filtered = [
+        (t["rt_ms"], t["stimulus"]["coherence"])
+        for t in trials
+        if t.get("rt_ms") is not None
+    ]
+    if not filtered:
+        return False, {}
+    rts = np.array([rt for rt, _ in filtered], dtype=float)
+    coherences = np.array([coh for _, coh in filtered], dtype=float)
     abs_coh = np.abs(coherences)
     
     # Compute RT-coherence metrics
@@ -910,6 +973,8 @@ def train_hybrid_curriculum(config: HybridTrainingConfig) -> dict:
     
     curriculum = config.curriculum
     trainer = HybridDDMTrainer(config)
+    # Ensure commit window is wide enough before applying curriculum adjustments.
+    trainer.config.max_commit_steps = max(trainer.config.max_commit_steps, 180)
     paths = config.output_paths()
     
     # Track all phase metrics with proper types
@@ -929,18 +994,27 @@ def train_hybrid_curriculum(config: HybridTrainingConfig) -> dict:
         print(f"Loss weights: {asdict(phase.loss_weights)}")
         print(f"Epochs: {phase.epochs}")
         print(f"Success criteria: {phase.success_criteria}")
-        print(f"{'='*80}\n")
-        
-        # Temporarily update config for this phase
+
+        # Apply per-phase overrides
         original_epochs = trainer.config.epochs
         trainer.config.epochs = phase.epochs
-        
+        if phase.min_commit_steps is not None:
+            trainer.config.min_commit_steps = phase.min_commit_steps
+        if phase.max_commit_steps is not None:
+            trainer.config.max_commit_steps = phase.max_commit_steps
+        phase_min_commit = trainer.config.min_commit_steps
+        phase_max_commit = trainer.config.max_commit_steps
+        print(
+            f"Commit window (steps): min={phase_min_commit}, max={phase_max_commit}"
+        )
+        print(f"{'='*80}\n")
+
         # Train with phase-specific loss weights
         phase_metrics = trainer.train(loss_weights=phase.loss_weights)
-        
-        # Restore original epochs
+
+        # Restore epoch count (commit window persists unless overridden later)
         trainer.config.epochs = original_epochs
-        
+
         # Append phase metrics to cumulative tracking
         for key in phase_metrics:
             if key in cumulative_metrics:
@@ -978,6 +1052,10 @@ def train_hybrid_curriculum(config: HybridTrainingConfig) -> dict:
                 "name": phase.name,
                 "epochs": phase.epochs,
                 "loss_weights": asdict(phase.loss_weights),
+                "commit_window": {
+                    "min": phase_min_commit,
+                    "max": phase_max_commit,
+                },
                 "success": success,
                 "metrics": eval_metrics,
                 "criteria": phase.success_criteria,
@@ -1003,6 +1081,10 @@ def train_hybrid_curriculum(config: HybridTrainingConfig) -> dict:
                 "name": phase.name,
                 "epochs": phase.epochs,
                 "loss_weights": asdict(phase.loss_weights),
+                "commit_window": {
+                    "min": phase_min_commit,
+                    "max": phase_max_commit,
+                },
                 "success": True,  # Final phase always succeeds
                 "metrics": {},
                 "criteria": {},
@@ -1046,6 +1128,7 @@ def train_hybrid(config: HybridTrainingConfig) -> dict[str, object]:
         return train_hybrid_curriculum(config)
     
     trainer = HybridDDMTrainer(config)
+    trainer.config.max_commit_steps = max(trainer.config.max_commit_steps, 180)
     paths = config.output_paths()
     training_metrics = trainer.train()
     rollout_stats = trainer.rollout(paths)

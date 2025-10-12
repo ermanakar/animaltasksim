@@ -12,6 +12,8 @@ Added
 
 - **Curriculum Learning Framework**: Implemented a curriculum learning framework for the hybrid DDM+LSTM agent.
 - **WFPT-based Curriculum**: Created a new default curriculum that prioritizes the WFPT loss in the initial phase of training.
+- **Curriculum extensions**: Curriculum phases can now override commit windows; `CurriculumConfig.wfpt_history_refine()` adds an optional history-focused third phase, while `CurriculumConfig.wfpt_time_cost()` introduces a time-cost constrained schedule for RT tuning experiments.
+- **Hybrid timing guardrails**: Increased the hybrid agent’s default `max_commit_steps` to 180, bolstered the WFPT warm-up (longer phase, higher drift/non-decision supervision), and rebalanced the time-cost curriculum so WFPT remains dominant while RT penalties stay gentle.
 
 ### Changed
 

@@ -88,6 +88,17 @@ Psychometric slope: 7.33 vs 17.56 target (42% - too shallow ⚠️)
 
 **Key insight:** The hybrid model successfully captures the chronometric slope, but further calibration is needed to match the absolute reaction times and the psychometric slope.
 
+### Macaque (Hybrid DDM+LSTM + Time-Cost Guardrails)
+
+```text
+RT intercept: 883 ms vs 759 ms target (116% - closer, still slow ⚠️)
+RT slope: -267 vs -645 ms/unit target (41% - evidence effect regained but shallow ⚠️)
+Psychometric slope: 7.50 vs 17.56 target (43% - conservative choices ⚠️)
+History: win-stay 0.22 / lose-shift 0.47 vs 0.46 / 0.52 target (under-perseverates)
+```
+
+**Key insight:** A wider commit window and longer WFPT warm-up restore a negative chronometric slope without clipping, but we now need history-aware supervision and softer RT regularisation to hit macaque-level kernels.
+
 ---
 
 ## Interactive Dashboards

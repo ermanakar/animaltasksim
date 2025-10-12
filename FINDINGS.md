@@ -96,6 +96,29 @@ Artifacts: `runs/hybrid_wfpt_curriculum/metrics.json`, `dashboard.html`.
 
 ---
 
+## Macaque RDM — Hybrid DDM+LSTM with Time-Cost Guardrails
+
+- **Run**: `runs/hybrid_wfpt_curriculum_timecost/`
+- **Objective**: Preserve the negative chronometric slope while widening the agent’s response window and keeping WFPT loss dominant.
+
+| Metric | Guardrailed Agent | Reference | Gap |
+| --- | --- | --- | --- |
+| RT intercept | 0.883 s | 0.76 s | +123 ms |
+| RT slope | −267 ms/unit | −645 ms/unit | Slope regained but still shallow |
+| Psychometric slope | 7.50 | 17.56 | Agent remains conservative |
+| Bias | +0.24 | ≈0 | Small positive offset |
+| History (win/lose/sticky) | 0.22 / 0.47 / 0.42 | 0.46 / 0.52 / 0.46 | Under-uses reward history |
+
+### Interpretation (Time-Cost Curriculum)
+
+- Extending the WFPT warm-up (15 epochs, heavier drift and non-decision supervision) plus a wider commit window (`max_commit_steps = 180`) prevents the chronometric curve from collapsing to the 1.2 s ceiling. The slope is again negative, though about 40% of the macaque magnitude.
+- Reaction times are shorter overall (mean ≈810 ms), yet low coherence trials remain slower than the animals’, signalling that non-decision tuning or evidence noise still needs work.
+- History metrics dipped below reference values. While the agent no longer locks onto a single action, it now under-perseverates; we will introduce explicit history losses or supervised pretraining to rebalance win-stay/lose-shift.
+
+Artifacts: `runs/hybrid_wfpt_curriculum_timecost/trials.ndjson`, `metrics.json`, `training_metrics.json`, `curriculum_phases.json`, and `dashboard.html`.
+
+---
+
 ## Cross-task Observations
 
 - **Reaction-time realism requires policy-side latency.** Forcing a delay in the environment merely shifts intercepts. Agents need internal state or objectives that reward waiting for evidence.
