@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import json
+
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, TextIO
 from uuid import uuid4
 
 import numpy as np
@@ -12,6 +14,7 @@ from gymnasium import Env, spaces
 from gymnasium.utils import seeding
 
 from animaltasksim.logging import NDJSONTrialLogger
+from animaltasksim.time_cost import AverageRewardTimeCost
 from envs.utils_timing import PhaseTiming, ensure_phase_names
 
 ACTION_LEFT = 0
@@ -43,6 +46,12 @@ def _validate_coherences(values: Iterable[float]) -> list[float]:
     return coherences
 
 
+def _lerp(start: float, end: float, t: float) -> float:
+    """Return the linear interpolation between ``start`` and ``end`` for ``t`` in [0, 1]."""
+    t_clamped = min(max(t, 0.0), 1.0)
+    return float((1.0 - t_clamped) * start + t_clamped * end)
+
+
 @dataclass(slots=True)
 class AgentMetadata:
     name: str = "unknown"
@@ -66,9 +75,11 @@ class RDMConfig:
     evidence_gain: float = 0.05
     momentary_sigma: float = 1.0
     per_step_cost: float = 0.0
-    collapsing_bound: bool = True
+    collapsing_bound: bool = False
     min_bound_steps: int = 20  # 200ms minimum RT (matches Roitman data)
     bound_threshold: float = 3.0
+    require_evidence_threshold: bool = False
+    response_hold_steps: int = 0
     # Confidence-based reward shaping parameters
     use_confidence_reward: bool = False  # Enable new reward structure
     confidence_bonus_weight: float = 1.0  # Multiplier for confidence bonus
@@ -77,6 +88,23 @@ class RDMConfig:
     # RT shaping: reward RTs in realistic range (target 400-800ms)
     target_rt_steps: int = 60  # ~600ms at 10ms/step
     rt_tolerance: float = 30.0  # Gaussian width for RT bonus
+    use_avg_reward_time_cost: bool = False
+    avg_reward_alpha: float = 0.05
+    avg_reward_scale: float = 1.0
+    avg_reward_initial_rate: float = 1.0
+    include_urgency_feature: bool = False
+    urgency_slope: float = 1.0
+    use_coherence_dependent_sampling: bool = False
+    coherence_gain_min: float = 0.02
+    coherence_gain_max: float = 0.08
+    coherence_sigma_min: float = 0.3
+    coherence_sigma_max: float = 1.0
+    stimulus_duration_override: int | None = None
+    response_duration_override: int | None = None
+    intratrial_evidence_schedule: tuple[float, ...] = ()
+    include_history: bool = False
+    trace_log_path: Path | None = None
+    gate_log_path: Path | None = None
     log_path: Path | None = None
     agent: AgentMetadata = field(default_factory=AgentMetadata)
     seed: int | None = None
@@ -94,6 +122,33 @@ class RDMConfig:
             raise ValueError("momentary_sigma must be positive")
         if self.bound_threshold <= 0:
             raise ValueError("bound_threshold must be positive")
+        if self.use_avg_reward_time_cost:
+            if not (0.0 < self.avg_reward_alpha <= 1.0):
+                raise ValueError("avg_reward_alpha must fall within (0, 1]")
+            if self.avg_reward_scale < 0.0:
+                raise ValueError("avg_reward_scale must be non-negative")
+            if self.avg_reward_initial_rate < 0.0:
+                raise ValueError("avg_reward_initial_rate must be non-negative")
+        if self.include_urgency_feature and self.urgency_slope < 0.0:
+            raise ValueError("urgency_slope must be non-negative")
+        if self.response_hold_steps < 0:
+            raise ValueError("response_hold_steps must be non-negative")
+        if self.use_coherence_dependent_sampling:
+            if self.coherence_gain_min < 0.0 or self.coherence_gain_max < 0.0:
+                raise ValueError("coherence gains must be non-negative")
+            if self.coherence_gain_min > self.coherence_gain_max:
+                raise ValueError("coherence_gain_min cannot exceed coherence_gain_max")
+            if self.coherence_sigma_min <= 0.0 or self.coherence_sigma_max <= 0.0:
+                raise ValueError("coherence sigmas must be positive")
+            if self.coherence_sigma_min > self.coherence_sigma_max:
+                raise ValueError("coherence_sigma_min cannot exceed coherence_sigma_max")
+        if self.stimulus_duration_override is not None and self.stimulus_duration_override <= 0:
+            raise ValueError("stimulus_duration_override must be positive")
+        if self.response_duration_override is not None and self.response_duration_override <= 0:
+            raise ValueError("response_duration_override must be positive")
+        if self.intratrial_evidence_schedule:
+            if not all(v >= 0 for v in self.intratrial_evidence_schedule):
+                raise ValueError("intratrial_evidence_schedule values must be non-negative")
 
 
 class RDMMacaqueEnv(Env):
@@ -104,9 +159,30 @@ class RDMMacaqueEnv(Env):
     def __init__(self, config: RDMConfig | None = None) -> None:
         super().__init__()
         self.config = config or RDMConfig()
-        self._phase_schedule = self.config.phase_schedule
+        schedule: list[PhaseTiming] = list(self.config.phase_schedule)
+        if self.config.stimulus_duration_override is not None:
+            schedule = [
+                PhaseTiming(phase.name, self.config.stimulus_duration_override)
+                if phase.name == "stimulus"
+                else phase
+                for phase in schedule
+            ]
+        if self.config.response_duration_override is not None:
+            schedule = [
+                PhaseTiming(phase.name, self.config.response_duration_override)
+                if phase.name == "response"
+                else phase
+                for phase in schedule
+            ]
+        self._phase_schedule = tuple(schedule)
         self._phase_names = ensure_phase_names(self._phase_schedule)
         self._coherences = _validate_coherences(self.config.coherence_set)
+        self._max_coherence = max(abs(value) for value in self._coherences) if self._coherences else 1.0
+        self._response_phase = next((p for p in self._phase_schedule if p.name == "response"), None)
+        if self._response_phase is None:
+            raise ValueError("phase_schedule must include a 'response' phase")
+        if self.config.response_hold_steps >= self._response_phase.duration_steps:
+            raise ValueError("response_hold_steps must be less than response phase duration")
 
         self.action_space = spaces.Discrete(3)
         self.observation_space = self._build_observation_space()
@@ -114,6 +190,18 @@ class RDMMacaqueEnv(Env):
         self._logger: NDJSONTrialLogger | None = None
         if self.config.log_path is not None:
             self._logger = NDJSONTrialLogger(self.config.log_path)
+
+        step_seconds = self.config.step_ms / 1000.0
+        self._time_cost_controller = (
+            AverageRewardTimeCost(
+                step_seconds=step_seconds,
+                alpha=self.config.avg_reward_alpha,
+                scale=self.config.avg_reward_scale,
+                initial_rate=self.config.avg_reward_initial_rate,
+            )
+            if self.config.use_avg_reward_time_cost
+            else None
+        )
 
         self._rng: np.random.Generator | None = None
         self._seed: int | None = None
@@ -136,6 +224,23 @@ class RDMMacaqueEnv(Env):
         self._momentary_evidence: float = 0.0
         self._cumulative_evidence: float = 0.0
         self._response_steps: int = 0
+        self._cumulative_reward_trial: float = 0.0
+        self._elapsed_steps_in_trial: int = 0
+        self._base_trial_reward: float = 0.0
+        self._trace_steps: list[dict[str, object]] = []
+        self._gate_checks: list[dict[str, object]] = []
+        self._trace_handle: TextIO | None = None
+        if self.config.trace_log_path is not None:
+            trace_path = Path(self.config.trace_log_path)
+            trace_path.parent.mkdir(parents=True, exist_ok=True)
+            self._trace_handle = trace_path.open("a", encoding="utf-8")
+        self._gate_handle: TextIO | None = None
+        if self.config.gate_log_path is not None:
+            gate_path = Path(self.config.gate_log_path)
+            gate_path.parent.mkdir(parents=True, exist_ok=True)
+            self._gate_handle = gate_path.open("a", encoding="utf-8")
+        self._last_gain: float = self.config.evidence_gain
+        self._last_sigma: float = self.config.momentary_sigma
 
     def _build_observation_space(self) -> spaces.Dict:
         space_dict: dict[str, spaces.Space] = {
@@ -145,12 +250,18 @@ class RDMMacaqueEnv(Env):
             space_dict["cumulative_evidence"] = spaces.Box(
                 low=-np.inf, high=np.inf, shape=(), dtype=np.float32
             )
+        if self.config.include_urgency_feature:
+            space_dict["urgency"] = spaces.Box(low=0.0, high=np.inf, shape=(), dtype=np.float32)
         if self.config.include_phase_onehot:
             space_dict["phase_onehot"] = spaces.Box(
                 low=0.0, high=1.0, shape=(len(self._phase_schedule),), dtype=np.float32
             )
         if self.config.include_timing:
             space_dict["t_norm"] = spaces.Box(low=0.0, high=1.0, shape=(), dtype=np.float32)
+        if self.config.include_history:
+            space_dict["prev_action"] = spaces.Box(low=0.0, high=1.0, shape=(3,), dtype=np.float32)
+            space_dict["prev_reward"] = spaces.Box(low=-np.inf, high=np.inf, shape=(), dtype=np.float32)
+            space_dict["prev_correct"] = spaces.Box(low=0.0, high=1.0, shape=(), dtype=np.float32)
         return spaces.Dict(space_dict)
 
     @property
@@ -160,13 +271,36 @@ class RDMMacaqueEnv(Env):
     def _current_phase_name(self) -> str:
         return self._current_phase.name
 
+    @staticmethod
+    def _coerce_action(action: int | float | np.ndarray) -> int:
+        if isinstance(action, np.ndarray):
+            if action.size != 1:
+                raise ValueError("expected scalar action array")
+            return int(action.item())
+        return int(action)
+
     def _reset_evidence(self) -> None:
         self._momentary_evidence = 0.0
         self._cumulative_evidence = 0.0
 
     def _sample_evidence(self) -> None:
-        mean = self.config.evidence_gain * self._signed_coherence
-        sample = float(self._rng.normal(loc=mean, scale=self.config.momentary_sigma)) if self._rng else 0.0
+        gain = self.config.evidence_gain
+        sigma = self.config.momentary_sigma
+        if self.config.intratrial_evidence_schedule:
+            schedule = self.config.intratrial_evidence_schedule
+            idx = min(self._phase_step, len(schedule) - 1)
+            gain *= schedule[idx]
+        if self.config.use_coherence_dependent_sampling and self._rng is not None:
+            magnitude = abs(self._signed_coherence)
+            max_coherence = max(self._max_coherence, 1e-6)
+            normalized = float(np.clip(magnitude / max_coherence, 0.0, 1.0))
+            gain = _lerp(self.config.coherence_gain_min, self.config.coherence_gain_max, normalized)
+            sigma = _lerp(self.config.coherence_sigma_max, self.config.coherence_sigma_min, normalized)
+        sigma = max(float(sigma), 1e-6)
+        mean = gain * self._signed_coherence
+        sample = float(self._rng.normal(loc=mean, scale=sigma)) if self._rng else 0.0
+        self._last_gain = float(gain)
+        self._last_sigma = float(sigma)
         self._momentary_evidence = sample
         self._cumulative_evidence += sample
 
@@ -177,12 +311,26 @@ class RDMMacaqueEnv(Env):
         else:
             self._momentary_evidence = 0.0
 
+    def _current_urgency(self) -> float:
+        if not self.config.include_urgency_feature:
+            return 0.0
+        if self._current_phase_name() != "response":
+            return 0.0
+        response_phase = self._response_phase
+        if response_phase is None:
+            return 0.0
+        duration = max(response_phase.duration_steps - 1, 1)
+        normalized = min(1.0, max(0.0, self._phase_step / duration))
+        return float(self.config.urgency_slope * normalized)
+
     def _build_observation(self) -> dict[str, np.ndarray | float | np.floating]:  # type: ignore[return]
         obs: dict[str, np.ndarray | float | np.floating] = {  # type: ignore[misc]
             "coherence": np.float32(self._momentary_evidence)
         }
         if self.config.include_cumulative_evidence:
             obs["cumulative_evidence"] = np.float32(self._cumulative_evidence)
+        if self.config.include_urgency_feature:
+            obs["urgency"] = np.float32(self._current_urgency())
         if self.config.include_phase_onehot:
             onehot = np.zeros(len(self._phase_schedule), dtype=np.float32)
             onehot[self._phase_index] = 1.0
@@ -190,6 +338,15 @@ class RDMMacaqueEnv(Env):
         if self.config.include_timing:
             duration = self._current_phase.duration_steps
             obs["t_norm"] = np.float32(self._phase_step / max(duration - 1, 1))
+        if self.config.include_history:
+            prev_action_onehot = np.zeros(3, dtype=np.float32)
+            if self._prev_action is not None:
+                action_map = {ACTION_NAMES[a]: a for a in [ACTION_LEFT, ACTION_RIGHT, ACTION_HOLD]}
+                if self._prev_action in action_map:
+                    prev_action_onehot[action_map[self._prev_action]] = 1.0
+            obs["prev_action"] = prev_action_onehot
+            obs["prev_reward"] = np.float32(self._prev_reward if self._prev_reward is not None else 0.0)
+            obs["prev_correct"] = np.float32(self._prev_correct if self._prev_correct is not None else 0.0)
         return obs
 
     def _default_info(self) -> dict[str, object]:
@@ -223,6 +380,9 @@ class RDMMacaqueEnv(Env):
         self._prev_correct = None
         self._response_steps = 0
 
+        if self._time_cost_controller is not None:
+            self._time_cost_controller.reset()
+
         self._start_new_trial()
         self._maybe_sample_evidence()
         return self._build_observation(), self._default_info()
@@ -249,6 +409,11 @@ class RDMMacaqueEnv(Env):
         self._rt_steps = None
         self._reset_evidence()
         self._response_steps = 0
+        self._cumulative_reward_trial = 0.0
+        self._elapsed_steps_in_trial = 0
+        self._base_trial_reward = 0.0
+        self._trace_steps = []
+        self._gate_checks = []
 
     def _log_trial(self) -> None:
         if self._logger is None:
@@ -329,8 +494,41 @@ class RDMMacaqueEnv(Env):
         if action == ACTION_HOLD:
             return
         # Enforce a minimum evidence accumulation period before allowing commits.
-        response_steps = self._phase_step_counts.get("response", 0)
+        response_steps = self._response_steps
+        self._gate_checks.append(
+            {
+                "check": "min_bound",
+                "step": response_steps,
+                "required": self.config.min_bound_steps,
+            }
+        )
         if response_steps < self.config.min_bound_steps:
+            return
+
+        if self.config.require_evidence_threshold:
+            threshold = self.config.bound_threshold
+            if self.config.collapsing_bound:
+                dynamic = max(0.5, threshold * np.exp(-0.02 * response_steps))
+                threshold = float(dynamic)
+            self._gate_checks.append(
+                {
+                    "check": "threshold",
+                    "step": response_steps,
+                    "required": threshold,
+                    "evidence": abs(self._cumulative_evidence),
+                }
+            )
+            if abs(self._cumulative_evidence) < threshold:
+                return
+
+        self._gate_checks.append(
+            {
+                "check": "response_hold",
+                "step": response_steps,
+                "required": self.config.response_hold_steps,
+            }
+        )
+        if response_steps < self.config.response_hold_steps:
             return
 
         self._response_captured = True
@@ -342,9 +540,20 @@ class RDMMacaqueEnv(Env):
         
         # Use confidence-based reward if enabled, otherwise simple correct/incorrect
         if self.config.use_confidence_reward:
-            self._trial_reward = self._compute_confidence_based_reward(self._correct, response_steps)
+            reward = self._compute_confidence_based_reward(self._correct, response_steps)
         else:
-            self._trial_reward = 1.0 if self._correct else -1.0
+            reward = 1.0 if self._correct else -1.0
+
+        self._base_trial_reward = float(reward)
+        self._trial_reward = float(reward)
+
+        self._gate_checks.append(
+            {
+                "check": "commit",
+                "step": response_steps,
+                "rt_steps": self._rt_steps,
+            }
+        )
 
         self._phase_step = self._current_phase.duration_steps - 1
 
@@ -356,6 +565,7 @@ class RDMMacaqueEnv(Env):
         self._trial_reward = 0.0
         self._rt_steps = None
         self._correct = False
+        self._base_trial_reward = 0.0
 
     def step(self, action: int):  # type: ignore[override]
         if self._terminated:
@@ -364,26 +574,43 @@ class RDMMacaqueEnv(Env):
         self._maybe_sample_evidence()
 
         phase_name = self._current_phase_name()
+        phase_step = self._phase_step
         reward = 0.0
+        self._elapsed_steps_in_trial += 1
+
+        action_idx = self._coerce_action(action)
 
         if phase_name == "response":
             if not self._response_captured:
                 self._response_steps += 1
-            self._process_response(int(action))
+            self._process_response(action_idx)
         elif phase_name in {"fixation", "stimulus", "outcome"}:
-            action = ACTION_HOLD
+            action_idx = ACTION_HOLD
         else:
-            action = ACTION_HOLD
+            action_idx = ACTION_HOLD
+
+        if self._time_cost_controller is not None and phase_name != "outcome":
+            penalty = self._time_cost_controller.step_penalty()
+            if penalty:
+                reward -= penalty
 
         reward += self._apply_per_step_cost(phase_name)
 
         if phase_name == "outcome" and self._phase_step == 0:
-            reward = self._trial_reward
+            final_reward = self._base_trial_reward
             if self.config.per_step_cost > 0.0:
-                reward -= self.config.per_step_cost * self._response_steps
+                final_reward -= self.config.per_step_cost * self._response_steps
+            reward += final_reward
             self._response_steps = 0
+            self._base_trial_reward = float(final_reward)
 
+        self._cumulative_reward_trial += reward
         self._phase_step_counts[phase_name] += 1
+        self._record_trace_step(
+            phase_name=phase_name,
+            phase_step=phase_step,
+            action_name=ACTION_NAMES.get(action_idx, "unknown"),
+        )
 
         terminated = False
         truncated = False
@@ -402,18 +629,27 @@ class RDMMacaqueEnv(Env):
             self.config.collapsing_bound
             and not self._response_captured
             and phase_name == "response"
-            and self._phase_step_counts.get("response", 0) >= self.config.min_bound_steps
+            and self._response_steps >= self.config.min_bound_steps
         ):
-            response_steps = self._phase_step_counts.get("response", 0)
+            response_steps = self._response_steps
             dynamic_bound = max(0.5, self.config.bound_threshold * np.exp(-0.02 * response_steps))
             if abs(self._cumulative_evidence) >= dynamic_bound:
-                action = ACTION_RIGHT if self._cumulative_evidence >= 0 else ACTION_LEFT
-                self._process_response(action)
+                forced_action = ACTION_RIGHT if self._cumulative_evidence >= 0 else ACTION_LEFT
+                self._process_response(forced_action)
 
         if trial_completed:
             if not self._response_captured:
                 self._finalize_without_response()
+            final_reward = float(self._cumulative_reward_trial)
+            self._trial_reward = final_reward
+            if self._time_cost_controller is not None:
+                self._time_cost_controller.update(final_reward, self._elapsed_steps_in_trial)
             self._log_trial()
+            self._flush_debug_logs()
+            self._elapsed_steps_in_trial = 0
+            self._cumulative_reward_trial = 0.0
+            self._base_trial_reward = 0.0
+            self._response_steps = 0
             terminated = (self._trial_index + 1) >= self.config.trials_per_episode
             if terminated:
                 self._terminated = True
@@ -440,16 +676,67 @@ class RDMMacaqueEnv(Env):
         obs: dict[str, np.ndarray | float | np.floating] = {"coherence": np.float32(0.0)}  # type: ignore[misc]
         if self.config.include_cumulative_evidence:
             obs["cumulative_evidence"] = np.float32(0.0)
+        if self.config.include_urgency_feature:
+            obs["urgency"] = np.float32(0.0)
         if self.config.include_phase_onehot:
             obs["phase_onehot"] = np.zeros(len(self._phase_schedule), dtype=np.float32)
         if self.config.include_timing:
             obs["t_norm"] = np.float32(0.0)
+        if self.config.include_history:
+            obs["prev_action"] = np.zeros(3, dtype=np.float32)
+            obs["prev_reward"] = np.float32(0.0)
+            obs["prev_correct"] = np.float32(0.0)
         return obs
 
     def close(self) -> None:
         if self._logger is not None:
             self._logger.close()
+        if self._trace_handle is not None and not self._trace_handle.closed:
+            self._trace_handle.close()
+        if self._gate_handle is not None and not self._gate_handle.closed:
+            self._gate_handle.close()
         super().close()
+
+    def _record_trace_step(self, *, phase_name: str, phase_step: int, action_name: str) -> None:
+        if self._trace_handle is None:
+            return
+        self._trace_steps.append(
+            {
+                "trial_index": self._trial_index,
+                "phase": phase_name,
+                "phase_step": phase_step,
+                "response_steps": self._response_steps,
+                "momentary_evidence": float(self._momentary_evidence),
+                "cumulative_evidence": float(self._cumulative_evidence),
+                "gain": float(self._last_gain),
+                "sigma": float(self._last_sigma),
+                "action": action_name,
+            }
+        )
+
+    def _flush_debug_logs(self) -> None:
+        if self._trace_handle is not None and self._trace_steps:
+            payload = {
+                "session_id": self._session_id,
+                "trial_index": self._trial_index,
+                "rt_steps": self._rt_steps,
+                "steps": self._trace_steps,
+            }
+            self._trace_handle.write(json.dumps(payload))
+            self._trace_handle.write("\n")
+            self._trace_handle.flush()
+        self._trace_steps = []
+
+        if self._gate_handle is not None and self._gate_checks:
+            payload = {
+                "session_id": self._session_id,
+                "trial_index": self._trial_index,
+                "checks": self._gate_checks,
+            }
+            self._gate_handle.write(json.dumps(payload))
+            self._gate_handle.write("\n")
+            self._gate_handle.flush()
+        self._gate_checks = []
 
 
 __all__ = [

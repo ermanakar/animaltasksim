@@ -45,6 +45,8 @@ class PPOCLIConfig:
     collapsing_bound: bool = True
     min_bound_steps: int = 5
     bound_threshold: float = 3.0
+    include_history: bool = False
+    intratrial_evidence_schedule: tuple[float, ...] = ()
 
 
 @dataclass(slots=True)
@@ -109,6 +111,8 @@ def _train_ppo(args: TrainArgs) -> dict[str, object]:
     collapsing_bound = ppo_args.pop("collapsing_bound")
     min_bound_steps = int(ppo_args.pop("min_bound_steps"))
     bound_threshold = float(ppo_args.pop("bound_threshold"))
+    include_history = bool(ppo_args.pop("include_history"))
+    intratrial_evidence_schedule = tuple(float(v) for v in ppo_args.pop("intratrial_evidence_schedule"))
     hyper = PPOHyperParams(**ppo_args)
     config = PPOTrainingConfig(
         env=args.env,
@@ -122,12 +126,14 @@ def _train_ppo(args: TrainArgs) -> dict[str, object]:
         collapsing_bound=collapsing_bound,
         min_bound_steps=min_bound_steps,
         bound_threshold=bound_threshold,
+        include_history=include_history,
+        intratrial_evidence_schedule=intratrial_evidence_schedule,
         seed=args.seed,
         agent_version=args.agent_version,
         output_dir=args.out,
         hyperparams=hyper,
     )
-    return train_ppo(config)
+    return train_ppo(config)  # type: ignore[return-value]
 
 
 def main(args: TrainArgs) -> None:

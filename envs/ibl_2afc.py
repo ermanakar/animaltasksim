@@ -93,6 +93,7 @@ class IBL2AFCConfig:
     include_phase_onehot: bool = False
     include_timing: bool = False
     expose_prior: bool = False
+    min_response_latency_steps: int = 0  # Optional non-decision latency before responses are captured
     log_path: Path | None = None
     agent: AgentMetadata = field(default_factory=AgentMetadata)
     seed: int | None = None
@@ -106,6 +107,14 @@ class IBL2AFCConfig:
         _validate_contrasts(self.contrast_set)
         if not self.block_sequence:
             raise ValueError("block_sequence must contain at least one entry")
+        if self.min_response_latency_steps < 0:
+            raise ValueError("min_response_latency_steps must be non-negative")
+        if self.min_response_latency_steps > 0:
+            response_phase = next((p for p in self.phase_schedule if p.name == "response"), None)
+            if response_phase is None:
+                raise ValueError("phase_schedule must include a 'response' phase")
+            if self.min_response_latency_steps >= response_phase.duration_steps:
+                raise ValueError("min_response_latency_steps must be smaller than response phase duration")
 
 
 class IBL2AFCEnv(Env):
@@ -256,6 +265,11 @@ class IBL2AFCEnv(Env):
             return
         if action == ACTION_NO_OP:
             return
+        if self.config.min_response_latency_steps > 0:
+            response_steps = self._phase_step_counts.get("response", 0)
+            if response_steps < self.config.min_response_latency_steps:
+                # Enforce a minimum non-decision time before registering the choice.
+                return
 
         self._response_action = ACTION_NAMES[action]
         self._response_captured = True

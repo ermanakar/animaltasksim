@@ -45,6 +45,8 @@ class PPOTrainingConfig:
     collapsing_bound: bool = True
     min_bound_steps: int = 20
     bound_threshold: float = 3.0
+    intratrial_evidence_schedule: tuple[float, ...] = ()
+    include_history: bool = False
     # Confidence-based reward parameters
     use_confidence_reward: bool = False
     confidence_bonus_weight: float = 1.0
@@ -83,6 +85,8 @@ def _make_env(
     collapsing_bound: bool,
     min_bound_steps: int,
     bound_threshold: float,
+    intratrial_evidence_schedule: tuple[float, ...],
+    include_history: bool,
     use_confidence_reward: bool = False,
     confidence_bonus_weight: float = 1.0,
     base_time_cost: float = 0.0001,
@@ -111,6 +115,8 @@ def _make_env(
             collapsing_bound=collapsing_bound,
             min_bound_steps=min_bound_steps,
             bound_threshold=bound_threshold,
+            intratrial_evidence_schedule=intratrial_evidence_schedule,
+            include_history=include_history,
             use_confidence_reward=use_confidence_reward,
             confidence_bonus_weight=confidence_bonus_weight,
             base_time_cost=base_time_cost,
@@ -162,6 +168,8 @@ def train_ppo(config: PPOTrainingConfig) -> dict[str, object]:
         collapsing_bound=config.collapsing_bound,
         min_bound_steps=config.min_bound_steps,
         bound_threshold=config.bound_threshold,
+        intratrial_evidence_schedule=config.intratrial_evidence_schedule,
+        include_history=config.include_history,
         use_confidence_reward=config.use_confidence_reward,
         confidence_bonus_weight=config.confidence_bonus_weight,
         base_time_cost=config.base_time_cost,
@@ -203,6 +211,8 @@ def train_ppo(config: PPOTrainingConfig) -> dict[str, object]:
         collapsing_bound=config.collapsing_bound,
         min_bound_steps=config.min_bound_steps,
         bound_threshold=config.bound_threshold,
+        intratrial_evidence_schedule=config.intratrial_evidence_schedule,
+        include_history=config.include_history,
         use_confidence_reward=config.use_confidence_reward,
         confidence_bonus_weight=config.confidence_bonus_weight,
         base_time_cost=config.base_time_cost,
@@ -268,6 +278,8 @@ def _serialize_env(env_config) -> dict[str, object]:
             "collapsing_bound": env_config.collapsing_bound,
             "min_bound_steps": env_config.min_bound_steps,
             "bound_threshold": env_config.bound_threshold,
+            "intratrial_evidence_schedule": list(env_config.intratrial_evidence_schedule),
+            "include_history": env_config.include_history,
         }
     raise TypeError("Unsupported environment configuration")
 
