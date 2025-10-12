@@ -11,7 +11,7 @@ from typing import Callable, Iterable, Sequence
 
 import numpy as np
 import pandas as pd
-from scipy.optimize import curve_fit, minimize
+from scipy.optimize import least_squares, minimize
 
 from eval.schema_validator import TrialRecord
 
@@ -114,22 +114,32 @@ def compute_psychometric(df: pd.DataFrame, stimulus_key: str = "contrast") -> Ps
     if len(xdata) < 2 or np.allclose(xdata, xdata[0]):
         return PsychometricMetrics(np.nan, np.nan, np.nan, np.nan)
 
+    initial = np.array([0.0, 5.0, 0.02, 0.02], dtype=float)
+    lower_bounds = np.array([-np.inf, 0.01, 0.0, 0.0], dtype=float)
+    upper_bounds = np.array([np.inf, 50.0, 0.49, 0.49], dtype=float)
+    weight_scale = np.sqrt(np.clip(weights, 1.0, None))
+
+    def _residuals(params: np.ndarray) -> np.ndarray:
+        preds = _logistic_function(xdata, params[0], params[1], params[2], params[3])
+        return (preds - ydata) * weight_scale
+
     try:
-        popt, _ = curve_fit(
-            _logistic_function,
-            xdata,
-            ydata,
-            sigma=1.0 / np.clip(weights, 1, None),
-            p0=[0.0, 5.0, 0.02, 0.02],
-            bounds=([-np.inf, 0.01, 0.0, 0.0], [np.inf, 50.0, 0.49, 0.49]),
-            maxfev=1000,
+        result = least_squares(
+            _residuals,
+            x0=initial,
+            bounds=(lower_bounds, upper_bounds),
+            max_nfev=10000,
         )
-        bias, slope, lapse_low, lapse_high = popt
     except Exception:  # pragma: no cover - rare fit failure fallback
+        result = None
+
+    if result is None or not result.success:
         bias = float(np.interp(0.5, ydata, xdata)) if np.isfinite(ydata).all() else np.nan
         slope = np.nan
         lapse_low = float(max(0.0, 1.0 - ydata.max()))
         lapse_high = float(max(0.0, ydata.min()))
+    else:
+        bias, slope, lapse_low, lapse_high = result.x
 
     return PsychometricMetrics(float(slope), float(bias), float(lapse_low), float(lapse_high))
 
