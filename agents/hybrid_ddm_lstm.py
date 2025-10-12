@@ -17,6 +17,7 @@ from agents.losses import (
     LossWeights,
     choice_loss,
     history_penalty,
+    history_supervision_loss,
     non_decision_supervision_loss,
     rt_loss,
     soft_rt_penalty,
@@ -317,6 +318,72 @@ class CurriculumConfig:
             success_criteria={},
         )
         return CurriculumConfig(phases=[phase1, phase2, phase3])
+
+    @staticmethod
+    def history_supervision_curriculum() -> CurriculumConfig:
+        """A 4-phase curriculum that adds a final history supervision phase."""
+        base = CurriculumConfig.annealed_choice_curriculum()
+        phase4 = CurriculumPhase(
+            name="phase4_history_supervision",
+            epochs=5,
+            loss_weights=LossWeights(
+                choice=2.5,
+                rt=0.0,
+                wfpt=0.9,
+                history=0.0,
+                rt_soft=0.05,
+                drift_supervision=0.1,
+                non_decision_supervision=0.05,
+                history_supervision=0.2,  # Activate history supervision
+            ),
+            max_commit_steps=200,
+            success_criteria={},
+        )
+        return CurriculumConfig(phases=base.phases + [phase4])
+
+    @staticmethod
+    def rt_calibration_curriculum() -> CurriculumConfig:
+        """A curriculum that adds a final RT calibration phase with scheduled weights."""
+        base = CurriculumConfig.history_supervision_curriculum()
+        phase5 = CurriculumPhase(
+            name="phase5_rt_calibration",
+            epochs=5,
+            loss_weights=LossWeights(
+                choice=2.5,
+                rt=0.0,
+                wfpt=0.9,
+                history=0.0,
+                rt_soft=0.1,  # Activate soft RT penalty
+                drift_supervision=0.1,
+                non_decision_supervision=0.05,
+                history_supervision=0.2,
+            ),
+            max_commit_steps=200,
+            success_criteria={},
+        )
+        return CurriculumConfig(phases=base.phases + [phase5])
+
+    @staticmethod
+    def rt_weighted_calibration_curriculum() -> CurriculumConfig:
+        """A curriculum that adds a final RT calibration phase with scheduled weights."""
+        base = CurriculumConfig.rt_calibration_curriculum()
+        phase6 = CurriculumPhase(
+            name="phase6_rt_weighted_calibration",
+            epochs=5,
+            loss_weights=LossWeights(
+                choice=2.5,
+                rt=0.0,
+                wfpt=0.9,
+                history=0.0,
+                rt_soft=0.1,  # Activate soft RT penalty
+                drift_supervision=0.1,
+                non_decision_supervision=0.05,
+                history_supervision=0.2,
+            ),
+            max_commit_steps=200,
+            success_criteria={},
+        )
+        return CurriculumConfig(phases=base.phases + [phase6])
 
 
 @dataclass(slots=True)
@@ -733,6 +800,7 @@ class HybridDDMTrainer:
             "epoch_rt_loss": [],
             "epoch_soft_rt_penalty": [],
             "epoch_history_penalty": [],
+            "epoch_history_supervision": [],
             "epoch_drift_supervision": [],
             "epoch_non_decision_supervision": [],
             "epoch_drift_magnitude": [],
@@ -746,6 +814,7 @@ class HybridDDMTrainer:
             epoch_rt = 0.0
             epoch_soft_rt = 0.0
             epoch_hist = 0.0
+            epoch_hist_sup = 0.0
             epoch_drift_sup = 0.0
             epoch_non_decision_sup = 0.0
             epoch_drift_mag = 0.0
@@ -778,6 +847,7 @@ class HybridDDMTrainer:
                 soft_rt_target_buffer: list[torch.Tensor] = []
                 soft_rt_var_buffer: list[torch.Tensor] = []
                 soft_rt_mask_buffer: list[torch.Tensor] = []
+                soft_rt_weights_buffer: list[torch.Tensor] = []
 
                 # Buffers for WFPT loss (collect all DDM params + observed choice/RT)
                 non_decision_buffer: list[torch.Tensor] = []
@@ -856,6 +926,12 @@ class HybridDDMTrainer:
                         )
                         soft_rt_mask_buffer.append(rt_mask[idx : idx + 1])
 
+                        # Add per-coherence weighting
+                        coherence_val = torch.abs(features[idx, 0])
+                        # Inverse relationship: higher weight for lower coherence
+                        weight = 1.0 / (1.0 + 2.0 * coherence_val)
+                        soft_rt_weights_buffer.append(weight.unsqueeze(0))
+
                     if choice_mask[idx] > 0:
                         loss_c = choice_loss(prob_right, choice[idx : idx + 1], choice_mask[idx : idx + 1])
                         total_choice_loss = total_choice_loss + loss_c
@@ -898,6 +974,17 @@ class HybridDDMTrainer:
                     total_loss = total_loss + weights.history * hist_loss
                 else:
                     hist_loss = torch.zeros(1, device=self.device)
+
+                hist_sup_loss = torch.zeros(1, device=self.device)
+                if weights.history_supervision > 0.0:
+                    pred_win_stay, pred_lose_shift = self._estimate_history(prob_buffer, session)
+                    hist_sup_loss = history_supervision_loss(
+                        pred_win_stay=torch.tensor(pred_win_stay, device=self.device),
+                        pred_lose_shift=torch.tensor(pred_lose_shift, device=self.device),
+                        target_win_stay=torch.tensor(session.win_stay_target, device=self.device),
+                        target_lose_shift=torch.tensor(session.lose_shift_target, device=self.device),
+                    )
+                    total_loss = total_loss + weights.history_supervision * hist_sup_loss
 
                 # Drift supervision: penalize weak drift parameters
                 drift_sup_loss = torch.zeros(1, device=self.device)
@@ -954,7 +1041,8 @@ class HybridDDMTrainer:
                     targets = torch.cat(soft_rt_target_buffer)
                     variances = torch.cat(soft_rt_var_buffer)
                     masks = torch.cat(soft_rt_mask_buffer)
-                    soft_rt_loss = soft_rt_penalty(preds, targets, variances, masks)
+                    rt_weights = torch.cat(soft_rt_weights_buffer)
+                    soft_rt_loss = soft_rt_penalty(preds, targets, variances, masks, rt_weights)
                     total_loss = total_loss + weights.rt_soft * soft_rt_loss
 
                 twin_sup_loss = torch.zeros(1, device=self.device)
@@ -1001,6 +1089,7 @@ class HybridDDMTrainer:
                 epoch_rt += float(total_rt_loss.detach().cpu())
                 epoch_soft_rt += float(soft_rt_loss.detach().cpu())
                 epoch_hist += float(hist_loss.detach().cpu())
+                epoch_hist_sup += float(hist_sup_loss.detach().cpu())
                 epoch_drift_sup += float(drift_sup_loss.detach().cpu())
                 epoch_non_decision_sup += float(non_decision_sup_loss.detach().cpu())
                 epoch_drift_mag += float(drift_mag_loss.detach().cpu())
@@ -1014,6 +1103,9 @@ class HybridDDMTrainer:
                 epoch_soft_rt / max(session_count, 1)
             )
             metrics["epoch_history_penalty"].append(epoch_hist / max(session_count, 1))
+            metrics["epoch_history_supervision"].append(
+                epoch_hist_sup / max(session_count, 1)
+            )
             metrics["epoch_drift_supervision"].append(epoch_drift_sup / max(session_count, 1))
             metrics["epoch_non_decision_supervision"].append(
                 epoch_non_decision_sup / max(session_count, 1)

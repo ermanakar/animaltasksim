@@ -21,6 +21,7 @@ class LossWeights:
     wfpt: float = 0.0  # Wiener First Passage Time likelihood loss
     drift_magnitude: float = 0.0  # Regularization to anchor drift_gain scale
     twin_supervision: float = 0.0  # Encourage alignment with per-session DDM fits
+    history_supervision: float = 0.0  # MSE loss on win-stay/lose-shift targets
 
     def clamp_non_negative(self) -> None:
         """Ensure weights remain non-negative."""
@@ -33,6 +34,19 @@ class LossWeights:
         self.wfpt = max(0.0, float(self.wfpt))
         self.drift_magnitude = max(0.0, float(self.drift_magnitude))
         self.twin_supervision = max(0.0, float(self.twin_supervision))
+        self.history_supervision = max(0.0, float(self.history_supervision))
+
+
+def history_supervision_loss(
+    pred_win_stay: torch.Tensor,
+    pred_lose_shift: torch.Tensor,
+    target_win_stay: torch.Tensor,
+    target_lose_shift: torch.Tensor,
+) -> torch.Tensor:
+    """MSE loss to pull win-stay/lose-shift probabilities toward macaque values."""
+    loss_ws = F.mse_loss(pred_win_stay, target_win_stay)
+    loss_ls = F.mse_loss(pred_lose_shift, target_lose_shift)
+    return (loss_ws + loss_ls) / 2.0
 
 
 def choice_loss(probs: torch.Tensor, targets: torch.Tensor, mask: torch.Tensor | None = None) -> torch.Tensor:
@@ -112,10 +126,13 @@ def soft_rt_penalty(
     target_rt: torch.Tensor,
     target_var: torch.Tensor,
     mask: torch.Tensor | None = None,
+    weights: torch.Tensor | None = None,
 ) -> torch.Tensor:
     """Soft penalty for reaction times toward per-coherence means with variance scaling."""
 
     loss = ((predicted_rt - target_rt) ** 2) / torch.clamp(target_var, min=1e-3)
+    if weights is not None:
+        loss = loss * weights
     if mask is not None:
         loss = loss * mask
     normaliser = loss.numel() if mask is None else torch.clamp(mask.sum(), min=1.0)
@@ -128,6 +145,7 @@ __all__ = [
     "rt_loss",
     "soft_rt_penalty",
     "history_penalty",
+    "history_supervision_loss",
     "drift_supervision_loss",
     "non_decision_supervision_loss",
 ]

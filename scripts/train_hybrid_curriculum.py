@@ -84,7 +84,7 @@ def main(args: TrainCurriculumArgs) -> None:
     
     # Build curriculum config
     if args.use_default_curriculum:
-        curriculum = CurriculumConfig.annealed_choice_curriculum()
+        curriculum = CurriculumConfig.rt_weighted_calibration_curriculum()
     else:
         # Custom curriculum from args
         phase1 = CurriculumPhase(
