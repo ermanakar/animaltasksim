@@ -38,6 +38,14 @@ We revisited the hybrid curriculum to keep WFPT loss dominant while widening the
 
 The guardrails (longer WFPT warm-up, gentler RT penalties, higher commit window) keep the optimisation scientifically honest while we continue exploring soft RT regularisers and phase-level diagnostics. See [`runs/hybrid_wfpt_curriculum_timecost/dashboard.html`](runs/hybrid_wfpt_curriculum_timecost/dashboard.html) for the full comparison.
 
+### October 15, 2025 - Soft RT Penalty Sweep
+
+We introduced a soft reaction-time penalty that targets macaque mean RTs without forcing mean-squared-error. Early sweeps (`runs/hybrid_wfpt_curriculum_timecost_soft_rt/`) keep the WFPT warm-up intact but reveal that aggressive RT pressure still flattens the chronometric slope. Iterations with modest `rt_soft` weights (0.05–0.1) now log both WFPT and soft RT losses so we can dial the trade-off deliberately.
+
+Dashboards:
+- [`runs/hybrid_wfpt_curriculum_timecost_attempt1/dashboard.html`](runs/hybrid_wfpt_curriculum_timecost_attempt1/dashboard.html) — baseline time-cost guardrail (flat-slope regression)
+- [`runs/hybrid_wfpt_curriculum_timecost_soft_rt/dashboard.html`](runs/hybrid_wfpt_curriculum_timecost_soft_rt/dashboard.html) — latest soft RT configuration
+
 **Current scope (v0.1):**
 
 - IBL-style mouse visual 2AFC task

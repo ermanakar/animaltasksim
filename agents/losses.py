@@ -14,21 +14,25 @@ class LossWeights:
 
     choice: float = 1.0
     rt: float = 1.0
+    rt_soft: float = 0.0
     history: float = 0.0
     drift_supervision: float = 0.0
     non_decision_supervision: float = 0.0
     wfpt: float = 0.0  # Wiener First Passage Time likelihood loss
     drift_magnitude: float = 0.0  # Regularization to anchor drift_gain scale
+    twin_supervision: float = 0.0  # Encourage alignment with per-session DDM fits
 
     def clamp_non_negative(self) -> None:
         """Ensure weights remain non-negative."""
         self.choice = max(0.0, float(self.choice))
         self.rt = max(0.0, float(self.rt))
+        self.rt_soft = max(0.0, float(self.rt_soft))
         self.history = max(0.0, float(self.history))
         self.drift_supervision = max(0.0, float(self.drift_supervision))
         self.non_decision_supervision = max(0.0, float(self.non_decision_supervision))
         self.wfpt = max(0.0, float(self.wfpt))
         self.drift_magnitude = max(0.0, float(self.drift_magnitude))
+        self.twin_supervision = max(0.0, float(self.twin_supervision))
 
 
 def choice_loss(probs: torch.Tensor, targets: torch.Tensor, mask: torch.Tensor | None = None) -> torch.Tensor:
@@ -103,10 +107,26 @@ def non_decision_supervision_loss(
     return loss.mean()
 
 
+def soft_rt_penalty(
+    predicted_rt: torch.Tensor,
+    target_rt: torch.Tensor,
+    target_var: torch.Tensor,
+    mask: torch.Tensor | None = None,
+) -> torch.Tensor:
+    """Soft penalty for reaction times toward per-coherence means with variance scaling."""
+
+    loss = ((predicted_rt - target_rt) ** 2) / torch.clamp(target_var, min=1e-3)
+    if mask is not None:
+        loss = loss * mask
+    normaliser = loss.numel() if mask is None else torch.clamp(mask.sum(), min=1.0)
+    return loss.sum() / normaliser
+
+
 __all__ = [
     "LossWeights",
     "choice_loss",
     "rt_loss",
+    "soft_rt_penalty",
     "history_penalty",
     "drift_supervision_loss",
     "non_decision_supervision_loss",

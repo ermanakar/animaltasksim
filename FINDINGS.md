@@ -119,6 +119,33 @@ Artifacts: `runs/hybrid_wfpt_curriculum_timecost/trials.ndjson`, `metrics.json`,
 
 ---
 
+## Macaque RDM — Soft RT Penalty Sweep
+
+- **Runs**: `runs/hybrid_wfpt_curriculum_timecost_attempt1/`, `runs/hybrid_wfpt_curriculum_attempt2_two_phase/`, `runs/hybrid_wfpt_curriculum_timecost_soft_rt/`
+- **Objective**: Stabilise the WFPT warm-up while nudging reaction times toward macaque means using a soft penalty instead of hard MSE.
+
+| Configuration | Chronometric slope | RT intercept | Notes |
+| --- | --- | --- | --- |
+| Time-cost guardrail (Attempt 1) | ≈0 ms/unit | 1.20 s | RT ceiling hit; agent collapsed to a single side (bias ≈+6). |
+| WFPT two-phase baseline | −505 ms/unit | 1.24 s | No RT penalty; slope healthy but intercept still high. |
+| Soft RT (latest) | −165 ms/unit | 0.93 s | Soft penalty prevents ceiling camping, but slope remains shallow and history kernels under-shoot macaque values. |
+
+### Interpretation (Soft RT Sweep)
+
+- The soft penalty successfully avoids the 1.2 s clamp that flattened earlier runs, while keeping WFPT dominant in phase 1.
+- Later phases still struggle to preserve a strong chronometric gradient: higher `rt_soft` weights drag the slope toward zero, whereas lower weights leave intercepts high.
+- History metrics drop below macaque values when RT pressure increases; the agent becomes less perseverative and loses win-stay behaviour.
+
+Artifacts and dashboards:
+
+- `runs/hybrid_wfpt_curriculum_timecost_attempt1/dashboard.html`
+- `runs/hybrid_wfpt_curriculum_attempt2_two_phase/dashboard.html`
+- `runs/hybrid_wfpt_curriculum_timecost_soft_rt/dashboard.html`
+
+Archived sweeps (`runs/archive/hybrid_wfpt_curriculum_timecost_soft_rt_attempt*/`) capture additional RT-weight combinations for forensic analysis.
+
+---
+
 ## Cross-task Observations
 
 - **Reaction-time realism requires policy-side latency.** Forcing a delay in the environment merely shifts intercepts. Agents need internal state or objectives that reward waiting for evidence.

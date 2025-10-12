@@ -23,11 +23,13 @@ from agents.hybrid_ddm_lstm import (
 class LossWeightArgs:
     choice: float = 1.0
     rt: float = 1.0
+    rt_soft: float = 0.0
     history: float = 0.0
     drift_supervision: float = 0.0
     non_decision_supervision: float = 0.0
     wfpt: float = 0.0
     drift_magnitude: float = 0.0
+    twin_supervision: float = 0.0
 
 
 @dataclass(slots=True)
@@ -97,12 +99,14 @@ def _parse_args() -> TrainHybridArgs:
     parser.add_argument("--max_commit_steps", type=int, default=120)
     parser.add_argument("--loss_weights.choice", dest="loss_choice", type=float, default=1.0)
     parser.add_argument("--loss_weights.rt", dest="loss_rt", type=float, default=1.0)
+    parser.add_argument("--loss_weights.rt_soft", dest="loss_rt_soft", type=float, default=0.0)
     parser.add_argument("--loss_weights.history", dest="loss_history", type=float, default=0.0)
 
     ns = parser.parse_args()
     loss_weights = LossWeightArgs(
         choice=ns.loss_choice,
         rt=ns.loss_rt,
+        rt_soft=ns.loss_rt_soft,
         history=ns.loss_history,
     )
     return TrainHybridArgs(

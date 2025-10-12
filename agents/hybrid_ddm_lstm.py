@@ -6,7 +6,7 @@ import json
 import random
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List, Optional
 
 import numpy as np
 import torch
@@ -19,6 +19,7 @@ from agents.losses import (
     history_penalty,
     non_decision_supervision_loss,
     rt_loss,
+    soft_rt_penalty,
 )
 from agents.wfpt_loss import wfpt_loss
 from animaltasksim.config import ProjectPaths
@@ -80,7 +81,7 @@ class CurriculumConfig:
                 non_decision_supervision=0.15,
                 wfpt=1.0,
             ),
-            success_criteria={"min_slope_abs": 100.0, "min_r2": 0.1},
+            success_criteria={"min_slope_abs": 250.0, "min_r2": 0.1, "max_slope": -150.0},
         )
         phase2 = CurriculumPhase(
             name="phase2_full_balance",
@@ -92,6 +93,7 @@ class CurriculumConfig:
                 drift_supervision=0.05,
                 non_decision_supervision=0.05,
                 wfpt=0.5,
+                twin_supervision=0.1,
             ),
             success_criteria={},
         )
@@ -128,11 +130,13 @@ class CurriculumConfig:
             loss_weights=LossWeights(
                 choice=1.0,
                 rt=0.0,
+                rt_soft=0.1,
                 history=0.12,
                 drift_supervision=0.05,
                 non_decision_supervision=0.1,
-                wfpt=0.8,
+                wfpt=0.9,
             ),
+            max_commit_steps=160,
         )
 
         phase3 = CurriculumPhase(
@@ -140,16 +144,179 @@ class CurriculumConfig:
             epochs=6,
             loss_weights=LossWeights(
                 choice=0.9,
-                rt=0.03,
-                history=0.22,
+                rt=0.0,
+                rt_soft=0.1,
+                history=0.12,
                 drift_supervision=0.02,
                 non_decision_supervision=0.1,
-                wfpt=0.55,
+                wfpt=0.7,
             ),
+            max_commit_steps=180,
         )
 
         phases = [phase1, phase2_adj, phase3]
         return CurriculumConfig(phases=phases, allow_early_stopping=True)
+
+    @staticmethod
+    def guarded_wfpt_dominant() -> CurriculumConfig:
+        """A 3-phase curriculum with strong WFPT dominance, adaptive commit windows, and slope/history guardrails."""
+        phase1 = CurriculumPhase(
+            name="phase1_wfpt_warmup",
+            epochs=15,
+            loss_weights=LossWeights(
+                choice=0.0,
+                rt=0.0,
+                wfpt=1.0,
+                drift_supervision=0.25,
+                non_decision_supervision=0.15,
+            ),
+            success_criteria={
+                "min_slope": -800.0,
+                "max_slope": -200.0,
+                "max_sticky_choice": 0.8,
+            },
+        )
+        phase2 = CurriculumPhase(
+            name="phase2_choice_and_relax_window",
+            epochs=8,
+            loss_weights=LossWeights(
+                choice=1.0,
+                rt=0.0,
+                wfpt=0.95,
+                history=0.05,
+                drift_supervision=0.05,
+                non_decision_supervision=0.05,
+            ),
+            max_commit_steps=150,
+            success_criteria={
+                "min_slope": -800.0,
+                "max_slope": -200.0,
+                "max_sticky_choice": 0.8,
+            },
+        )
+        phase3 = CurriculumPhase(
+            name="phase3_finetune",
+            epochs=8,
+            loss_weights=LossWeights(
+                choice=1.0,
+                rt=0.0,
+                wfpt=0.95,
+                history=0.05,
+                rt_soft=0.05,
+                non_decision_supervision=0.05,
+            ),
+            max_commit_steps=200,
+            success_criteria={},  # Final phase
+        )
+        return CurriculumConfig(phases=[phase1, phase2, phase3])
+
+    @staticmethod
+    def focused_choice_curriculum() -> CurriculumConfig:
+        """A curriculum that heavily penalizes incorrect choices to force stimulus attention."""
+        phase1 = CurriculumPhase(
+            name="phase1_wfpt_warmup",
+            epochs=15,
+            loss_weights=LossWeights(
+                choice=0.0,
+                rt=0.0,
+                wfpt=1.0,
+                drift_supervision=0.2,
+                non_decision_supervision=0.15,
+            ),
+            success_criteria={
+                "min_slope": -800.0,
+                "max_slope": -200.0,
+                "max_sticky_choice": 0.8,
+            },
+        )
+        phase2 = CurriculumPhase(
+            name="phase2_strong_choice_penalty",
+            epochs=8,
+            loss_weights=LossWeights(
+                choice=5.0,  # Heavily weight choice loss
+                rt=0.0,
+                wfpt=0.95,
+                history=0.1,
+                drift_supervision=0.1,
+                non_decision_supervision=0.05,
+            ),
+            max_commit_steps=150,
+            success_criteria={
+                "min_slope": -800.0,
+                "max_slope": -200.0,
+                "max_sticky_choice": 0.8,
+            },
+        )
+        phase3 = CurriculumPhase(
+            name="phase3_finetune_with_choice",
+            epochs=8,
+            loss_weights=LossWeights(
+                choice=5.0,
+                rt=0.0,
+                wfpt=0.95,
+                history=0.1,
+                rt_soft=0.05,
+                drift_supervision=0.1,
+                non_decision_supervision=0.05,
+            ),
+            max_commit_steps=200,
+            success_criteria={},
+        )
+        return CurriculumConfig(phases=[phase1, phase2, phase3])
+
+    @staticmethod
+    def annealed_choice_curriculum() -> CurriculumConfig:
+        """A curriculum that gradually introduces the choice penalty to preserve the chronometric slope."""
+        phase1 = CurriculumPhase(
+            name="phase1_wfpt_warmup",
+            epochs=15,
+            loss_weights=LossWeights(
+                choice=0.0,
+                rt=0.0,
+                wfpt=1.0,
+                drift_supervision=0.2,
+                non_decision_supervision=0.15,
+            ),
+            success_criteria={
+                "min_slope": -800.0,
+                "max_slope": -200.0,
+                "max_sticky_choice": 0.8,
+            },
+        )
+        phase2 = CurriculumPhase(
+            name="phase2_gentle_choice_intro",
+            epochs=8,
+            loss_weights=LossWeights(
+                choice=1.5,  # Gentle introduction of choice loss
+                rt=0.0,
+                wfpt=0.95,
+                history=0.1,
+                drift_supervision=0.15,  # Keep drift supervision high
+                non_decision_supervision=0.05,
+            ),
+            max_commit_steps=150,
+            success_criteria={
+                "min_slope": -800.0,
+                "max_slope": -200.0,
+                "max_sticky_choice": 0.8,
+            },
+        )
+        phase3 = CurriculumPhase(
+            name="phase3_finetune_annealed",
+            epochs=8,
+            loss_weights=LossWeights(
+                choice=2.5,  # Increase choice weight
+                rt=0.0,
+                wfpt=0.95,
+                history=0.1,
+                rt_soft=0.05,
+                drift_supervision=0.1,
+                non_decision_supervision=0.05,
+            ),
+            max_commit_steps=200,
+            success_criteria={},
+        )
+        return CurriculumConfig(phases=[phase1, phase2, phase3])
 
 
 @dataclass(slots=True)
@@ -170,7 +337,7 @@ class HybridTrainingConfig:
     max_sessions: int | None = None
     max_trials_per_session: int | None = None
     min_commit_steps: int = 5
-    max_commit_steps: int = 180
+    max_commit_steps: int = 120
     drift_scale: float = 10.0  # Scale drift_head initialization to enable stronger evidence effects
     curriculum: CurriculumConfig | None = None  # If set, use curriculum learning
 
@@ -198,6 +365,9 @@ class SessionBatch:
     correct: np.ndarray  # shape (T,)
     win_stay_target: float
     lose_shift_target: float
+    twin_params: dict[str, float] | None = None
+    rt_targets: np.ndarray | None = None
+    rt_variances: np.ndarray | None = None
 
 
 class HybridDDMModel(nn.Module):
@@ -314,6 +484,8 @@ class HybridDDMTrainer:
 
                 features, choice, choice_mask, rt_ms, rt_mask, correct = self._session_to_arrays(batch_trials)
                 win_stay, lose_shift = self._session_history_stats(batch_trials)
+                twin_params = self._fit_twin_parameters(choice, choice_mask, rt_ms, rt_mask)
+                rt_targets, rt_variances = self._compute_rt_targets(rt_ms, rt_mask, features)
                 sessions.append(
                     SessionBatch(
                         features=features,
@@ -324,6 +496,9 @@ class HybridDDMTrainer:
                         correct=correct,
                         win_stay_target=float(win_stay),
                         lose_shift_target=float(lose_shift),
+                        twin_params=twin_params,
+                        rt_targets=rt_targets,
+                        rt_variances=rt_variances,
                     )
                 )
                 if self.config.max_sessions is not None and len(sessions) >= self.config.max_sessions:
@@ -405,6 +580,122 @@ class HybridDDMTrainer:
         correct_np = np.asarray(correct, dtype=np.float32)
         return features_np, choice_np, choice_mask_np, rt_np, rt_mask_np, correct_np
 
+    def _fit_twin_parameters(
+        self,
+        choice: np.ndarray,
+        choice_mask: np.ndarray,
+        rt_ms: np.ndarray,
+        rt_mask: np.ndarray,
+    ) -> dict[str, float]:
+        valid = (choice_mask > 0.5) & (rt_mask > 0.5) & (rt_ms > 1.0)
+        if int(valid.sum()) < 10:
+            return {
+                "drift": 6.0,
+                "bound": 2.5,
+                "bias": 0.0,
+                "non_decision": 250.0,
+                "noise": 1.0,
+            }
+
+        y = torch.from_numpy(np.where(choice[valid] > 0.5, 1.0, 0.0)).float().to(self.device)
+        rt = torch.from_numpy(rt_ms[valid]).float().to(self.device)
+
+        drift_p = torch.nn.Parameter(torch.tensor(2.0))
+        bound_p = torch.nn.Parameter(torch.tensor(0.7))
+        bias_p = torch.nn.Parameter(torch.tensor(0.0))
+        nd_p = torch.nn.Parameter(torch.tensor(200.0))
+        noise_p = torch.nn.Parameter(torch.tensor(0.0))
+
+        optim = torch.optim.Adam([drift_p, bound_p, bias_p, nd_p, noise_p], lr=0.03)
+
+        for _ in range(400):
+            optim.zero_grad()
+            drift = torch.nn.functional.softplus(drift_p) + 1e-3
+            bound = torch.nn.functional.softplus(bound_p) + 0.5
+            bias = torch.tanh(bias_p)
+            non_decision = torch.nn.functional.softplus(nd_p) + 120.0
+            noise = torch.nn.functional.softplus(noise_p) + 1e-3
+
+            loss = wfpt_loss(
+                choice=y,
+                rt_ms=rt,
+                drift=drift.expand_as(y),
+                bound=bound.expand_as(y),
+                bias=bias.expand_as(y),
+                noise=noise.expand_as(y),
+                non_decision_ms=non_decision.expand_as(y),
+                weight=1.0,
+            )
+            if not torch.isfinite(loss):
+                break
+            loss.backward()
+            optim.step()
+
+        with torch.no_grad():
+            drift_val = float((torch.nn.functional.softplus(drift_p) + 1e-3).cpu().item())
+            bound_val = float((torch.nn.functional.softplus(bound_p) + 0.5).cpu().item())
+            bias_val = float(torch.tanh(bias_p).cpu().item())
+            non_decision_val = float((torch.nn.functional.softplus(nd_p) + 120.0).cpu().item())
+            noise_val = float((torch.nn.functional.softplus(noise_p) + 1e-3).cpu().item())
+
+        return {
+            "drift": drift_val,
+            "bound": bound_val,
+            "bias": bias_val,
+            "non_decision": non_decision_val,
+            "noise": noise_val,
+        }
+
+    def _compute_rt_targets(
+        self,
+        rt_ms: np.ndarray,
+        rt_mask: np.ndarray,
+        features: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        valid = (rt_mask > 0.5) & (rt_ms > 1.0)
+        if not valid.any():
+            length = len(rt_ms)
+            return (
+                np.full(length, 750.0, dtype=np.float32),
+                np.full(length, 30000.0, dtype=np.float32),
+            )
+
+        # coherence stored in first feature entry (signed); use absolute value
+        coherences = np.abs(features[:, 0])
+        unique = np.unique(coherences[valid])
+        unique.sort()
+
+        # Precompute mean/var from reference data
+        ref_means = {
+            0.0: 785.3410672853828,
+            0.032: 778.6422018348624,
+            0.064: 736.3586206896551,
+            0.128: 666.9172413793103,
+            0.256: 559.9678899082569,
+            0.512: 464.41324200913243,
+        }
+        ref_vars = {
+            0.0: 36552.229381763456,
+            0.032: 38897.03253193174,
+            0.064: 29724.092081856124,
+            0.128: 23129.02763476932,
+            0.256: 12263.618235997053,
+            0.512: 8138.849779987095,
+        }
+
+        targets = np.empty_like(rt_ms, dtype=np.float32)
+        variances = np.empty_like(rt_ms, dtype=np.float32)
+        for coh in unique:
+            mask = coherences == coh
+            targets[mask] = ref_means.get(float(coh), 750.0)
+            variances[mask] = ref_vars.get(float(coh), 30000.0)
+        # For coherences not seen in reference, fall back to mean of neighbours
+        remaining = ~np.isfinite(targets)
+        if remaining.any():
+            targets[remaining] = 750.0
+            variances[remaining] = 30000.0
+        return targets, variances
+
     @staticmethod
     def _session_history_stats(trials) -> tuple[float, float]:
         win_stay_events = 0
@@ -440,22 +731,26 @@ class HybridDDMTrainer:
         metrics: dict[str, list[float]] = {
             "epoch_choice_loss": [],
             "epoch_rt_loss": [],
+            "epoch_soft_rt_penalty": [],
             "epoch_history_penalty": [],
             "epoch_drift_supervision": [],
             "epoch_non_decision_supervision": [],
             "epoch_drift_magnitude": [],
             "epoch_wfpt_loss": [],
+            "epoch_twin_supervision": [],
             "noise": [],
             "mean_bound": [],
         }
         for epoch in range(self.config.epochs):
             epoch_choice = 0.0
             epoch_rt = 0.0
+            epoch_soft_rt = 0.0
             epoch_hist = 0.0
             epoch_drift_sup = 0.0
             epoch_non_decision_sup = 0.0
             epoch_drift_mag = 0.0
             epoch_wfpt = 0.0
+            epoch_twin_sup = 0.0
             session_count = 0
             # Shuffle sessions using random.shuffle for type compatibility
             shuffled_sessions = list(self.sessions)
@@ -476,7 +771,14 @@ class HybridDDMTrainer:
 
                 prob_buffer: list[float] = []
                 drift_gain_buffer: list[torch.Tensor] = []  # Collect for supervision
-                
+                bound_buffer: list[torch.Tensor] = []
+                bias_buffer: list[torch.Tensor] = []
+                noise_buffer: list[torch.Tensor] = []
+                soft_rt_pred_buffer: list[torch.Tensor] = []
+                soft_rt_target_buffer: list[torch.Tensor] = []
+                soft_rt_var_buffer: list[torch.Tensor] = []
+                soft_rt_mask_buffer: list[torch.Tensor] = []
+
                 # Buffers for WFPT loss (collect all DDM params + observed choice/RT)
                 non_decision_buffer: list[torch.Tensor] = []
                 wfpt_choice_buffer: list[torch.Tensor] = []
@@ -502,9 +804,12 @@ class HybridDDMTrainer:
                     drift = out["drift_gain"] * coherence
                     bound = out["bound"]
                     noise = out["noise"]
-                    
+
                     # Collect drift_gain for supervision loss
                     drift_gain_buffer.append(out["drift_gain"])
+                    bound_buffer.append(bound)
+                    bias_buffer.append(out["bias"])
+                    noise_buffer.append(noise)
 
                     score = 2.0 * drift * bound / (noise**2)
                     score = torch.nan_to_num(score, nan=0.0, posinf=10.0, neginf=-10.0)
@@ -532,6 +837,24 @@ class HybridDDMTrainer:
                         min=float(self.config.step_ms * self.config.min_commit_steps),
                         max=float(self.config.step_ms * self.config.max_commit_steps),
                     )
+
+                    if (
+                        weights.rt_soft > 0.0
+                        and session.rt_targets is not None
+                        and session.rt_variances is not None
+                    ):
+                        soft_rt_pred_buffer.append(predicted_rt)
+                        soft_rt_target_buffer.append(
+                            torch.tensor(
+                                [session.rt_targets[idx]], device=self.device, dtype=torch.float32
+                            )
+                        )
+                        soft_rt_var_buffer.append(
+                            torch.tensor(
+                                [session.rt_variances[idx]], device=self.device, dtype=torch.float32
+                            )
+                        )
+                        soft_rt_mask_buffer.append(rt_mask[idx : idx + 1])
 
                     if choice_mask[idx] > 0:
                         loss_c = choice_loss(prob_right, choice[idx : idx + 1], choice_mask[idx : idx + 1])
@@ -612,7 +935,7 @@ class HybridDDMTrainer:
                     wfpt_biases = torch.cat(wfpt_bias_buffer)
                     wfpt_noises = torch.cat(wfpt_noise_buffer)
                     wfpt_nondecisions = torch.cat(wfpt_nondecision_buffer)
-                    
+
                     wfpt_loss_val = wfpt_loss(
                         choice=wfpt_choices,
                         rt_ms=wfpt_rts,
@@ -624,6 +947,43 @@ class HybridDDMTrainer:
                         weight=1.0,
                     )
                     total_loss = total_loss + weights.wfpt * wfpt_loss_val
+
+                soft_rt_loss = torch.zeros(1, device=self.device)
+                if weights.rt_soft > 0.0 and soft_rt_pred_buffer:
+                    preds = torch.cat(soft_rt_pred_buffer)
+                    targets = torch.cat(soft_rt_target_buffer)
+                    variances = torch.cat(soft_rt_var_buffer)
+                    masks = torch.cat(soft_rt_mask_buffer)
+                    soft_rt_loss = soft_rt_penalty(preds, targets, variances, masks)
+                    total_loss = total_loss + weights.rt_soft * soft_rt_loss
+
+                twin_sup_loss = torch.zeros(1, device=self.device)
+                if weights.twin_supervision > 0.0 and session.twin_params and drift_gain_buffer:
+                    components: list[torch.Tensor] = []
+                    twin = session.twin_params
+                    predicted_drift_mean = torch.cat(drift_gain_buffer).mean()
+                    components.append(
+                        ((predicted_drift_mean - torch.tensor(twin["drift"], device=self.device)) / (abs(twin["drift"]) + 1.0)) ** 2
+                    )
+                    if bound_buffer:
+                        components.append(
+                            ((torch.cat(bound_buffer).mean() - torch.tensor(twin["bound"], device=self.device)) / (abs(twin["bound"]) + 1.0)) ** 2
+                        )
+                    if bias_buffer:
+                        components.append(
+                            ((torch.cat(bias_buffer).mean() - torch.tensor(twin["bias"], device=self.device)) / 1.0) ** 2
+                        )
+                    if non_decision_buffer:
+                        components.append(
+                            ((torch.cat(non_decision_buffer).mean() - torch.tensor(twin["non_decision"], device=self.device)) / (abs(twin["non_decision"]) + 1.0)) ** 2
+                        )
+                    if noise_buffer:
+                        components.append(
+                            ((torch.cat(noise_buffer).mean() - torch.tensor(twin["noise"], device=self.device)) / (abs(twin["noise"]) + 1.0)) ** 2
+                        )
+                    if components:
+                        twin_sup_loss = torch.mean(torch.stack(components))
+                        total_loss = total_loss + weights.twin_supervision * twin_sup_loss
 
                 total_loss.backward()
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=5.0)
@@ -639,15 +999,20 @@ class HybridDDMTrainer:
 
                 epoch_choice += float(total_choice_loss.detach().cpu())
                 epoch_rt += float(total_rt_loss.detach().cpu())
+                epoch_soft_rt += float(soft_rt_loss.detach().cpu())
                 epoch_hist += float(hist_loss.detach().cpu())
                 epoch_drift_sup += float(drift_sup_loss.detach().cpu())
                 epoch_non_decision_sup += float(non_decision_sup_loss.detach().cpu())
                 epoch_drift_mag += float(drift_mag_loss.detach().cpu())
                 epoch_wfpt += float(wfpt_loss_val.detach().cpu())
+                epoch_twin_sup += float(twin_sup_loss.detach().cpu())
                 session_count += 1
 
             metrics["epoch_choice_loss"].append(epoch_choice / max(session_count, 1))
             metrics["epoch_rt_loss"].append(epoch_rt / max(session_count, 1))
+            metrics["epoch_soft_rt_penalty"].append(
+                epoch_soft_rt / max(session_count, 1)
+            )
             metrics["epoch_history_penalty"].append(epoch_hist / max(session_count, 1))
             metrics["epoch_drift_supervision"].append(epoch_drift_sup / max(session_count, 1))
             metrics["epoch_non_decision_supervision"].append(
@@ -655,6 +1020,7 @@ class HybridDDMTrainer:
             )
             metrics["epoch_drift_magnitude"].append(epoch_drift_mag / max(session_count, 1))
             metrics["epoch_wfpt_loss"].append(epoch_wfpt / max(session_count, 1))
+            metrics["epoch_twin_supervision"].append(epoch_twin_sup / max(session_count, 1))
             noise_value = torch.exp(torch.nan_to_num(self.model.log_noise, nan=0.0)).detach().cpu()
             metrics["noise"].append(float(noise_value))
             metrics["mean_bound"].append(self._estimate_mean_bound())
@@ -919,41 +1285,41 @@ def _evaluate_phase_success(
 ) -> tuple[bool, dict[str, float]]:
     """Evaluate whether phase success criteria are met."""
     from scipy import stats as scipy_stats
-    
+
+    from eval.metrics import compute_history_metrics, load_trials
+
     # Load agent trials
-    trials: list[dict] = []
-    with open(trials_path) as f:
-        for line in f:
-            trials.append(json.loads(line))
-    
-    if not trials:
+    df = load_trials(trials_path)
+    if df.empty:
         return False, {}
-    
-    filtered = [
-        (t["rt_ms"], t["stimulus"]["coherence"])
-        for t in trials
-        if t.get("rt_ms") is not None
-    ]
-    if not filtered:
+
+    # Filter for valid trials for chronometric analysis
+    filtered = df[(df["rt_ms"].notnull()) & (df["stimulus_coherence"].notnull())].copy()
+    if filtered.empty:
         return False, {}
-    rts = np.array([rt for rt, _ in filtered], dtype=float)
-    coherences = np.array([coh for _, coh in filtered], dtype=float)
+
+    rts = filtered["rt_ms"].values.astype(float)
+    coherences = filtered["stimulus_coherence"].values.astype(float)
     abs_coh = np.abs(coherences)
-    
+
     # Compute RT-coherence metrics
     linreg_result = scipy_stats.linregress(abs_coh, rts)
-    # scipy.stats.linregress returns LinregressResult with .slope and .rvalue attributes
     slope_val = float(linreg_result.slope)  # type: ignore[attr-defined]
     r_val = float(linreg_result.rvalue)  # type: ignore[attr-defined]
-    r2_val = r_val ** 2
+    r2_val = r_val**2
     rt_diff = float(np.abs(rts[abs_coh < 0.05].mean() - rts[abs_coh > 0.5].mean()))
-    
+
+    # Compute history metrics
+    history = compute_history_metrics(df)
+
     metrics = {
+        "slope": slope_val,
         "slope_abs": abs(slope_val),
         "r2": r2_val,
         "rt_diff_abs": rt_diff,
+        "sticky_choice": history.sticky_choice,
     }
-    
+
     # Check criteria
     success = True
     if "min_slope_abs" in criteria and metrics["slope_abs"] < criteria["min_slope_abs"]:
@@ -962,11 +1328,17 @@ def _evaluate_phase_success(
         success = False
     if "min_rt_diff_abs" in criteria and metrics["rt_diff_abs"] < criteria["min_rt_diff_abs"]:
         success = False
-    
+    if "max_slope" in criteria and metrics["slope"] > criteria["max_slope"]:
+        success = False
+    if "min_slope" in criteria and metrics["slope"] < criteria["min_slope"]:
+        success = False
+    if "max_sticky_choice" in criteria and metrics.get("sticky_choice", 1.0) > criteria["max_sticky_choice"]:
+        success = False
+
     return success, metrics
 
 
-def train_hybrid_curriculum(config: HybridTrainingConfig) -> dict:
+def train_hybrid_curriculum(config: HybridTrainingConfig) -> dict[str, Any]:
     """Train using curriculum learning with phased loss weights."""
     if config.curriculum is None:
         raise ValueError("Curriculum config required for curriculum training")
@@ -974,7 +1346,7 @@ def train_hybrid_curriculum(config: HybridTrainingConfig) -> dict:
     curriculum = config.curriculum
     trainer = HybridDDMTrainer(config)
     # Ensure commit window is wide enough before applying curriculum adjustments.
-    trainer.config.max_commit_steps = max(trainer.config.max_commit_steps, 180)
+    trainer.config.max_commit_steps = max(trainer.config.max_commit_steps, 120)
     paths = config.output_paths()
     
     # Track all phase metrics with proper types
@@ -1120,7 +1492,7 @@ def train_hybrid_curriculum(config: HybridTrainingConfig) -> dict:
     }
 
 
-def train_hybrid(config: HybridTrainingConfig) -> dict[str, object]:
+def train_hybrid(config: HybridTrainingConfig) -> dict[str, Any]:
     """High-level entry point used by CLI/tests."""
     
     # Use curriculum training if configured
