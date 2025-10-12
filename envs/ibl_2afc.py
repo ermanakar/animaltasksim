@@ -93,6 +93,7 @@ class IBL2AFCConfig:
     include_phase_onehot: bool = False
     include_timing: bool = False
     expose_prior: bool = False
+    include_history: bool = False
     min_response_latency_steps: int = 0  # Optional non-decision latency before responses are captured
     log_path: Path | None = None
     agent: AgentMetadata = field(default_factory=AgentMetadata)
@@ -168,6 +169,10 @@ class IBL2AFCEnv(Env):
             space_dict["t_norm"] = spaces.Box(low=0.0, high=1.0, shape=(), dtype=np.float32)
         if self.config.expose_prior:
             space_dict["block_prior"] = spaces.Box(low=0.0, high=1.0, shape=(), dtype=np.float32)
+        if self.config.include_history:
+            space_dict["prev_action"] = spaces.Box(low=0.0, high=1.0, shape=(3,), dtype=np.float32)
+            space_dict["prev_reward"] = spaces.Box(low=-np.inf, high=np.inf, shape=(), dtype=np.float32)
+            space_dict["prev_correct"] = spaces.Box(low=0.0, high=1.0, shape=(), dtype=np.float32)
         return spaces.Dict(space_dict)
 
     @property
@@ -182,16 +187,31 @@ class IBL2AFCEnv(Env):
         contrast = 0.0
         if phase_name in {"stimulus", "response", "outcome"}:
             contrast = float(self._stimulus.get("contrast", 0.0))
-        obs: dict[str, np.ndarray | float] = {"contrast": np.float32(contrast)}
+        obs: dict[str, np.ndarray | float] = {"contrast": float(contrast)}
         if self.config.include_phase_onehot:
             onehot = np.zeros(len(self._phase_schedule), dtype=np.float32)
             onehot[self._phase_index] = 1.0
             obs["phase_onehot"] = onehot
         if self.config.include_timing:
             duration = self._current_phase.duration_steps
-            obs["t_norm"] = np.float32(self._phase_step / max(duration - 1, 1))
+            obs["t_norm"] = float(self._phase_step / max(duration - 1, 1))
         if self.config.expose_prior:
-            obs["block_prior"] = np.float32(self._block_prior)
+            obs["block_prior"] = float(self._block_prior)
+        if self.config.include_history:
+            prev_action_onehot = np.zeros(3, dtype=np.float32)
+            if self._prev_action is not None:
+                action_map = {
+                    ACTION_NAMES[a]: a for a in [ACTION_LEFT, ACTION_RIGHT, ACTION_NO_OP]
+                }
+                if self._prev_action in action_map:
+                    prev_action_onehot[action_map[self._prev_action]] = 1.0
+            obs["prev_action"] = prev_action_onehot
+            obs["prev_reward"] = float(
+                self._prev_reward if self._prev_reward is not None else 0.0
+            )
+            obs["prev_correct"] = float(
+                self._prev_correct if self._prev_correct is not None else 0.0
+            )
         return obs
 
     def _default_info(self) -> dict[str, object]:
@@ -278,9 +298,10 @@ class IBL2AFCEnv(Env):
         contrast = float(self._stimulus.get("contrast", 0.0))
         expected = ACTION_RIGHT if contrast > 0 else ACTION_LEFT
         if contrast == 0.0:
-            expected = ACTION_RIGHT if self._block_prior >= 0.5 else ACTION_LEFT
+            # On zero-contrast trials, reward choice towards the high-probability side
+            expected = ACTION_RIGHT if self._block_prior > 0.5 else ACTION_LEFT
         self._correct = action == expected
-        self._trial_reward = 1.0 if self._correct else 0.0
+        self._trial_reward = 1.0 if self._correct else -0.1
 
         # Jump to outcome on the next step.
         self._phase_step = self._current_phase.duration_steps - 1
@@ -383,13 +404,17 @@ class IBL2AFCEnv(Env):
         return observation, reward, terminated, truncated, info
 
     def _terminal_observation(self) -> dict[str, np.ndarray | float]:
-        obs: dict[str, np.ndarray | float] = {"contrast": np.float32(0.0)}
+        obs: dict[str, np.ndarray | float] = {"contrast": 0.0}
         if self.config.include_phase_onehot:
             obs["phase_onehot"] = np.zeros(len(self._phase_schedule), dtype=np.float32)
         if self.config.include_timing:
-            obs["t_norm"] = np.float32(0.0)
+            obs["t_norm"] = 0.0
         if self.config.expose_prior:
-            obs["block_prior"] = np.float32(self._block_prior)
+            obs["block_prior"] = float(self._block_prior)
+        if self.config.include_history:
+            obs["prev_action"] = np.zeros(3, dtype=np.float32)
+            obs["prev_reward"] = 0.0
+            obs["prev_correct"] = 0.0
         return obs
 
     def close(self) -> None:

@@ -458,7 +458,7 @@ class RDMMacaqueEnv(Env):
         - Not wait forever (time cost grows with steps)
         """
         # Base reward for correctness
-        base_reward = 1.0 if correct else 0.0
+        base_reward = 1.0 if correct else -0.5
         
         # Confidence = strength of cumulative evidence at commit time
         # Higher coherence → faster accumulation → higher confidence for same wait time

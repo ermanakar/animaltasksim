@@ -13,7 +13,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from agents.losses import LossWeights, choice_loss, history_penalty, rt_loss
+from agents.losses import (
+    LossWeights,
+    choice_loss,
+    history_penalty,
+    non_decision_supervision_loss,
+    rt_loss,
+)
 from agents.wfpt_loss import wfpt_loss
 from animaltasksim.config import ProjectPaths
 from animaltasksim.seeding import seed_everything
@@ -60,26 +66,34 @@ class CurriculumConfig:
 
     @staticmethod
     def default_rt_first() -> CurriculumConfig:
-        """Default 3-phase curriculum: RT structure → gradual choice → full balance."""
+        """Default 2-phase curriculum: WFPT → full balance."""
         phase1 = CurriculumPhase(
-            name="phase1_rt_only",
-            epochs=5,
-            loss_weights=LossWeights(choice=0.0, rt=1.0, history=0.0, drift_supervision=0.5),
-            success_criteria={"min_slope_abs": 100.0, "min_r2": 0.1, "min_rt_diff_abs": 50.0},
+            name="phase1_wfpt_only",
+            epochs=10,
+            loss_weights=LossWeights(
+                choice=0.0,
+                rt=0.0,
+                history=0.0,
+                drift_supervision=0.1,
+                non_decision_supervision=0.1,
+                wfpt=1.0,
+            ),
+            success_criteria={"min_slope_abs": 100.0, "min_r2": 0.1},
         )
         phase2 = CurriculumPhase(
-            name="phase2_add_choice",
+            name="phase2_full_balance",
             epochs=5,
-            loss_weights=LossWeights(choice=0.3, rt=0.8, history=0.05, drift_supervision=0.3),
-            success_criteria={"min_slope_abs": 80.0, "min_r2": 0.08},
+            loss_weights=LossWeights(
+                choice=1.0,
+                rt=0.0,
+                history=0.1,
+                drift_supervision=0.05,
+                non_decision_supervision=0.05,
+                wfpt=0.5,
+            ),
+            success_criteria={},
         )
-        phase3 = CurriculumPhase(
-            name="phase3_full_balance",
-            epochs=5,
-            loss_weights=LossWeights(choice=1.0, rt=0.5, history=0.1, drift_supervision=0.1),
-            success_criteria={},  # Final phase, no hard criteria
-        )
-        return CurriculumConfig(phases=[phase1, phase2, phase3])
+        return CurriculumConfig(phases=[phase1, phase2])
 
 
 @dataclass(slots=True)
@@ -372,6 +386,7 @@ class HybridDDMTrainer:
             "epoch_rt_loss": [],
             "epoch_history_penalty": [],
             "epoch_drift_supervision": [],
+            "epoch_non_decision_supervision": [],
             "epoch_drift_magnitude": [],
             "epoch_wfpt_loss": [],
             "noise": [],
@@ -382,6 +397,7 @@ class HybridDDMTrainer:
             epoch_rt = 0.0
             epoch_hist = 0.0
             epoch_drift_sup = 0.0
+            epoch_non_decision_sup = 0.0
             epoch_drift_mag = 0.0
             epoch_wfpt = 0.0
             session_count = 0
@@ -406,6 +422,7 @@ class HybridDDMTrainer:
                 drift_gain_buffer: list[torch.Tensor] = []  # Collect for supervision
                 
                 # Buffers for WFPT loss (collect all DDM params + observed choice/RT)
+                non_decision_buffer: list[torch.Tensor] = []
                 wfpt_choice_buffer: list[torch.Tensor] = []
                 wfpt_rt_buffer: list[torch.Tensor] = []
                 wfpt_drift_buffer: list[torch.Tensor] = []
@@ -424,6 +441,7 @@ class HybridDDMTrainer:
                         c = c.detach()
                     x = features[idx : idx + 1]
                     out, (h, c) = self.model(x, (h, c))
+                    non_decision_buffer.append(out["non_decision_ms"])
                     coherence = x[0, 0]
                     drift = out["drift_gain"] * coherence
                     bound = out["bound"]
@@ -510,6 +528,16 @@ class HybridDDMTrainer:
                     drift_sup_loss = drift_supervision_loss(drift_gains, target_gain=5.0)
                     total_loss = total_loss + weights.drift_supervision * drift_sup_loss
 
+                non_decision_sup_loss = torch.zeros(1, device=self.device)
+                if weights.non_decision_supervision > 0.0 and non_decision_buffer:
+                    non_decisions = torch.cat(non_decision_buffer)
+                    non_decision_sup_loss = non_decision_supervision_loss(
+                        non_decisions, target_ms=200.0
+                    )
+                    total_loss = (
+                        total_loss + weights.non_decision_supervision * non_decision_sup_loss
+                    )
+
                 # Drift magnitude regularization: anchor drift_gain scale to prevent collapse
                 drift_mag_loss = torch.zeros(1, device=self.device)
                 if weights.drift_magnitude > 0.0 and drift_gain_buffer:
@@ -557,6 +585,7 @@ class HybridDDMTrainer:
                 epoch_rt += float(total_rt_loss.detach().cpu())
                 epoch_hist += float(hist_loss.detach().cpu())
                 epoch_drift_sup += float(drift_sup_loss.detach().cpu())
+                epoch_non_decision_sup += float(non_decision_sup_loss.detach().cpu())
                 epoch_drift_mag += float(drift_mag_loss.detach().cpu())
                 epoch_wfpt += float(wfpt_loss_val.detach().cpu())
                 session_count += 1
@@ -565,6 +594,9 @@ class HybridDDMTrainer:
             metrics["epoch_rt_loss"].append(epoch_rt / max(session_count, 1))
             metrics["epoch_history_penalty"].append(epoch_hist / max(session_count, 1))
             metrics["epoch_drift_supervision"].append(epoch_drift_sup / max(session_count, 1))
+            metrics["epoch_non_decision_supervision"].append(
+                epoch_non_decision_sup / max(session_count, 1)
+            )
             metrics["epoch_drift_magnitude"].append(epoch_drift_mag / max(session_count, 1))
             metrics["epoch_wfpt_loss"].append(epoch_wfpt / max(session_count, 1))
             noise_value = torch.exp(torch.nan_to_num(self.model.log_noise, nan=0.0)).detach().cpu()
@@ -666,7 +698,7 @@ class HybridDDMTrainer:
             log_path=paths.log,
             agent=AgentMetadata(name="hybrid_ddm", version=self.config.agent_version),
             seed=self.config.seed,
-            per_step_cost=0.001,  # Reduced from 0.02 to allow slower RTs matching animal data
+            per_step_cost=0.01,
             evidence_gain=0.05,
             momentary_sigma=1.0,
             collapsing_bound=False,  # CRITICAL FIX: Disable env's auto-commit so agent's DDM controls timing!

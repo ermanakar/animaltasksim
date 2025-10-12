@@ -47,6 +47,7 @@ class PPOTrainingConfig:
     bound_threshold: float = 3.0
     intratrial_evidence_schedule: tuple[float, ...] = ()
     include_history: bool = False
+    ibl_include_history: bool = False
     # Confidence-based reward parameters
     use_confidence_reward: bool = False
     confidence_bonus_weight: float = 1.0
@@ -87,6 +88,7 @@ def _make_env(
     bound_threshold: float,
     intratrial_evidence_schedule: tuple[float, ...],
     include_history: bool,
+    ibl_include_history: bool,
     use_confidence_reward: bool = False,
     confidence_bonus_weight: float = 1.0,
     base_time_cost: float = 0.0001,
@@ -100,6 +102,7 @@ def _make_env(
             log_path=log_path,
             agent=IBLAgentMetadata(name="ppo_baseline", version=agent_version),
             seed=seed,
+            include_history=ibl_include_history,
         )
         env = IBL2AFCEnv(config)
     elif env_name == "rdm":
@@ -170,6 +173,7 @@ def train_ppo(config: PPOTrainingConfig) -> dict[str, object]:
         bound_threshold=config.bound_threshold,
         intratrial_evidence_schedule=config.intratrial_evidence_schedule,
         include_history=config.include_history,
+        ibl_include_history=config.ibl_include_history,
         use_confidence_reward=config.use_confidence_reward,
         confidence_bonus_weight=config.confidence_bonus_weight,
         base_time_cost=config.base_time_cost,
@@ -213,6 +217,7 @@ def train_ppo(config: PPOTrainingConfig) -> dict[str, object]:
         bound_threshold=config.bound_threshold,
         intratrial_evidence_schedule=config.intratrial_evidence_schedule,
         include_history=config.include_history,
+        ibl_include_history=config.ibl_include_history,
         use_confidence_reward=config.use_confidence_reward,
         confidence_bonus_weight=config.confidence_bonus_weight,
         base_time_cost=config.base_time_cost,

@@ -45,7 +45,9 @@ class PPOCLIConfig:
     collapsing_bound: bool = True
     min_bound_steps: int = 5
     bound_threshold: float = 3.0
-    include_history: bool = False
+    use_confidence_reward: bool = False
+    include_history: bool = False  # For RDM
+    ibl_include_history: bool = False  # For IBL
     intratrial_evidence_schedule: tuple[float, ...] = ()
 
 
@@ -104,6 +106,7 @@ def _train_bayes(args: TrainArgs) -> dict[str, object]:
 
 def _train_ppo(args: TrainArgs) -> dict[str, object]:
     ppo_args = asdict(args.ppo)
+    ibl_include_history = bool(ppo_args.pop("ibl_include_history"))
     per_step_cost = float(ppo_args.pop("per_step_cost"))
     evidence_gain = float(ppo_args.pop("evidence_gain"))
     momentary_sigma = float(ppo_args.pop("momentary_sigma"))
@@ -111,6 +114,7 @@ def _train_ppo(args: TrainArgs) -> dict[str, object]:
     collapsing_bound = ppo_args.pop("collapsing_bound")
     min_bound_steps = int(ppo_args.pop("min_bound_steps"))
     bound_threshold = float(ppo_args.pop("bound_threshold"))
+    use_confidence_reward = bool(ppo_args.pop("use_confidence_reward"))
     include_history = bool(ppo_args.pop("include_history"))
     intratrial_evidence_schedule = tuple(float(v) for v in ppo_args.pop("intratrial_evidence_schedule"))
     hyper = PPOHyperParams(**ppo_args)
@@ -126,7 +130,9 @@ def _train_ppo(args: TrainArgs) -> dict[str, object]:
         collapsing_bound=collapsing_bound,
         min_bound_steps=min_bound_steps,
         bound_threshold=bound_threshold,
+        use_confidence_reward=use_confidence_reward,
         include_history=include_history,
+        ibl_include_history=ibl_include_history,
         intratrial_evidence_schedule=intratrial_evidence_schedule,
         seed=args.seed,
         agent_version=args.agent_version,

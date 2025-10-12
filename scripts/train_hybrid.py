@@ -11,7 +11,12 @@ try:
 except ImportError:  # pragma: no cover - tyro optional
     tyro = None
 
-from agents.hybrid_ddm_lstm import HybridTrainingConfig, LossWeights, train_hybrid
+from agents.hybrid_ddm_lstm import (
+    CurriculumConfig,
+    HybridTrainingConfig,
+    LossWeights,
+    train_hybrid,
+)
 
 
 @dataclass(slots=True)
@@ -20,6 +25,7 @@ class LossWeightArgs:
     rt: float = 1.0
     history: float = 0.0
     drift_supervision: float = 0.0
+    non_decision_supervision: float = 0.0
     wfpt: float = 0.0
     drift_magnitude: float = 0.0
 
@@ -42,6 +48,7 @@ class TrainHybridArgs:
     max_commit_steps: int = 120
     drift_scale: float = 10.0
     loss_weights: LossWeightArgs = field(default_factory=LossWeightArgs)
+    curriculum: bool = False
 
 
 def main(args: TrainHybridArgs) -> None:
@@ -63,6 +70,7 @@ def main(args: TrainHybridArgs) -> None:
         min_commit_steps=args.min_commit_steps,
         max_commit_steps=args.max_commit_steps,
         drift_scale=args.drift_scale,
+        curriculum=CurriculumConfig.default_rt_first() if args.curriculum else None,
     )
     result = train_hybrid(config)
     print(result)

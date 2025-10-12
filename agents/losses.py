@@ -16,6 +16,7 @@ class LossWeights:
     rt: float = 1.0
     history: float = 0.0
     drift_supervision: float = 0.0
+    non_decision_supervision: float = 0.0
     wfpt: float = 0.0  # Wiener First Passage Time likelihood loss
     drift_magnitude: float = 0.0  # Regularization to anchor drift_gain scale
 
@@ -25,6 +26,7 @@ class LossWeights:
         self.rt = max(0.0, float(self.rt))
         self.history = max(0.0, float(self.history))
         self.drift_supervision = max(0.0, float(self.drift_supervision))
+        self.non_decision_supervision = max(0.0, float(self.non_decision_supervision))
         self.wfpt = max(0.0, float(self.wfpt))
         self.drift_magnitude = max(0.0, float(self.drift_magnitude))
 
@@ -51,21 +53,8 @@ def choice_loss(probs: torch.Tensor, targets: torch.Tensor, mask: torch.Tensor |
 
 
 def rt_loss(predicted: torch.Tensor, targets: torch.Tensor, mask: torch.Tensor | None = None) -> torch.Tensor:
-    """Mean-squared error loss on reaction times (scaled to seconds).
-    
-    Uses relative RT loss to focus on RT structure rather than absolute scale.
-    This helps when agent RTs are in a different range than reference data.
-    """
-    
-    # Normalize both predicted and target RTs by their means
-    # This makes the loss focus on the shape of RT-coherence relationship
-    pred_mean = predicted.mean() + 1e-6  # Avoid division by zero
-    target_mean = targets.mean() + 1e-6
-    
-    pred_normalized = predicted / pred_mean
-    target_normalized = targets / target_mean
-    
-    loss = (pred_normalized - target_normalized) ** 2
+    """Mean-squared error loss on reaction times (scaled to seconds)."""
+    loss = (predicted - targets) ** 2
     if mask is not None:
         loss = loss * mask
     normaliser = loss.numel() if mask is None else torch.clamp(mask.sum(), min=1.0)
@@ -106,4 +95,19 @@ def drift_supervision_loss(drift_gain: torch.Tensor, target_gain: float = 5.0) -
     return loss.mean()
 
 
-__all__ = ["LossWeights", "choice_loss", "rt_loss", "history_penalty", "drift_supervision_loss"]
+def non_decision_supervision_loss(
+    non_decision_ms: torch.Tensor, target_ms: float = 200.0
+) -> torch.Tensor:
+    """Penalize non-decision times that are far from a target value."""
+    loss = (non_decision_ms - target_ms) ** 2
+    return loss.mean()
+
+
+__all__ = [
+    "LossWeights",
+    "choice_loss",
+    "rt_loss",
+    "history_penalty",
+    "drift_supervision_loss",
+    "non_decision_supervision_loss",
+]
