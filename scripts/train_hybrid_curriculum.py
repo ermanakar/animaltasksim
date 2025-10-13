@@ -45,7 +45,7 @@ class TrainCurriculumArgs:
     max_trials_per_session: int | None = None
     min_commit_steps: int = 5
     max_commit_steps: int = 120
-    drift_scale: float = 7.0
+    drift_scale: float = 14.0
     
     # Curriculum configuration
     use_default_curriculum: bool = True
@@ -84,7 +84,7 @@ def main(args: TrainCurriculumArgs) -> None:
     
     # Build curriculum config
     if args.use_default_curriculum:
-        curriculum = CurriculumConfig.rt_weighted_calibration_curriculum()
+        curriculum = CurriculumConfig.history_finetune_curriculum()
     else:
         # Custom curriculum from args
         phase1 = CurriculumPhase(

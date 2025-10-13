@@ -385,6 +385,60 @@ class CurriculumConfig:
         )
         return CurriculumConfig(phases=base.phases + [phase6])
 
+    @staticmethod
+    def drift_scale_calibration_curriculum() -> CurriculumConfig:
+        """A curriculum designed to be more stable for higher drift_scale values."""
+        base = CurriculumConfig.rt_weighted_calibration_curriculum()
+        
+        # Modify phase1 to allow for a steeper slope
+        phase1_modified = base.phases[0]
+        phase1_modified.success_criteria["min_slope"] = -1500.0
+        
+        # Modify phase2 to be more gentle, protecting the slope
+        phase2_modified = CurriculumPhase(
+            name="phase2_very_gentle_choice_intro",
+            epochs=8,
+            loss_weights=LossWeights(
+                choice=0.75,  # Reduced choice weight
+                rt=0.0,
+                wfpt=1.0,  # Increased WFPT weight to maintain RT structure
+                history=0.1,
+                drift_supervision=0.2,  # Increased drift supervision
+                non_decision_supervision=0.05,
+            ),
+            max_commit_steps=150,
+            success_criteria={
+                "min_slope": -1500.0,
+                "max_slope": -200.0,
+                "max_sticky_choice": 0.8,
+            },
+        )
+        base.phases[0] = phase1_modified
+        base.phases[1] = phase2_modified
+        return base
+
+    @staticmethod
+    def history_finetune_curriculum() -> CurriculumConfig:
+        """A curriculum that adds a final history finetuning phase."""
+        base = CurriculumConfig.drift_scale_calibration_curriculum()
+        phase7 = CurriculumPhase(
+            name="phase7_history_finetune",
+            epochs=5,
+            loss_weights=LossWeights(
+                choice=2.5,
+                rt=0.0,
+                wfpt=0.9,
+                history=0.0,
+                rt_soft=0.1,
+                drift_supervision=0.1,
+                non_decision_supervision=0.05,
+                history_supervision=0.4,  # Increased history supervision
+            ),
+            max_commit_steps=200,
+            success_criteria={},
+        )
+        return CurriculumConfig(phases=base.phases + [phase7])
+
 
 @dataclass(slots=True)
 class HybridTrainingConfig:
@@ -444,7 +498,19 @@ class HybridDDMModel(nn.Module):
         super().__init__()
         self.hidden_size = hidden_size
         self.device = device
-        self.lstm = nn.LSTMCell(feature_dim, hidden_size)
+        
+        # Decompose feature dimensions
+        self.stim_dim = 3  # coherence, abs_coh, sign
+        self.history_dim = 3  # prev_action, prev_reward, prev_correct
+        self.temporal_dim = 1  # trial_index_norm
+        
+        # Architectural Change: Dedicated History Embedding
+        self.history_embed_size = 8
+        self.history_embed = nn.Linear(self.history_dim, self.history_embed_size)
+        
+        lstm_input_dim = self.stim_dim + self.history_embed_size + self.temporal_dim
+        self.lstm = nn.LSTMCell(lstm_input_dim, hidden_size)
+        
         # DDM parameter heads
         self.drift_head = nn.Linear(hidden_size, 1)
         self.bound_head = nn.Linear(hidden_size, 1)
@@ -476,7 +542,18 @@ class HybridDDMModel(nn.Module):
         state: tuple[torch.Tensor, torch.Tensor],
     ) -> tuple[dict[str, torch.Tensor], tuple[torch.Tensor, torch.Tensor]]:
         h_prev, c_prev = state
-        h, c = self.lstm(x, (h_prev, c_prev))
+        
+        # Decompose input and process history
+        stim_features = x[:, :self.stim_dim]
+        history_features = x[:, self.stim_dim:self.stim_dim + self.history_dim]
+        temporal_features = x[:, self.stim_dim + self.history_dim:]
+        
+        history_embedding = F.relu(self.history_embed(history_features))
+        
+        # Concatenate features for LSTM
+        lstm_input = torch.cat([stim_features, history_embedding, temporal_features], dim=1)
+        
+        h, c = self.lstm(lstm_input, (h_prev, c_prev))
         drift_gain = F.softplus(self.drift_head(h)) + 1e-3
         bound = F.softplus(self.bound_head(h)) + self._min_bound
         bias = torch.tanh(self.bias_head(h))
