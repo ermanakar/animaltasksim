@@ -4,6 +4,24 @@ AnimalTaskSim benchmarks AI agents on classic animal decision-making tasks using
 
 ---
 
+## 📚 New to the Project? Start Here(")
+
+**Not sure where to begin?** We've got you covered:
+
+- 📘 **[Theory & Concepts Guide](docs/THEORY_AND_CONCEPTS.md)** — Start here! Accessible introduction for all backgrounds (neuroscientists, ML researchers, students, curious visitors)
+  - Why replicate animal behavior?
+  - How do the tasks work?
+  - What are behavioral fingerprints?
+  - How does the hybrid DDM+LSTM model work?
+  
+- **[Findings Report](FINDINGS.md)** — Experimental results, what works, what doesn't, and lessons learned
+- 💻 **[Agent Operating Guide](AGENTS.md)** — Implementation standards and contribution guidelines for developers
+- ⚡ **[Quick Start](#quickstart)** — Jump straight to running experiments (see below)
+
+**TL;DR:** This project bridges neuroscience and AI by training agents that don't just win, but exhibit realistic animal-like decision-making patterns—including biases, history effects, and reaction time dynamics.
+
+---
+
 ## Recent Updates
 
 ### October 12, 2025 - Hybrid DDM+LSTM Agent Achieves Animal-like Chronometric Slope
@@ -375,8 +393,24 @@ python scripts/train_agent.py --seed SEED --env TASK --agent AGENT ...
 
 ## Roadmap Preview (v0.2)
 
+### New Tasks
+
 - **Probabilistic Reversal Learning (PRL):** bias-block reversals with perseveration metrics delivered through the same logging schema.
 - **Delayed Match-to-Sample (DMS):** delay-dependent accuracy and RT metrics sharing evaluation infrastructure.
+
+### Agent Improvements
+
+- **Hybrid DDM+LSTM for IBL 2AFC:** Adapt the hybrid agent training pipeline to work with mouse data, including:
+  - IBL reference data format compatibility
+  - Hyperparameter calibration for mouse RT scales and behavioral fingerprints
+  - Curriculum learning adapted for contrast levels vs. motion coherence
+  - Validation against mouse history effects and block structure
+
+### Infrastructure
+
+- **Web-based dashboard:** Interactive experiment browser with filtering and comparison
+- **Automated hyperparameter tuning:** Grid search and Bayesian optimization for agent calibration
+- **Multi-task transfer learning:** Pre-train agents on one task and fine-tune on another
 
 ---
 
