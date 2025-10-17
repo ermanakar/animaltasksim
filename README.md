@@ -43,6 +43,7 @@ The guardrails (longer WFPT warm-up, gentler RT penalties, higher commit window)
 We introduced a soft reaction-time penalty that targets macaque mean RTs without forcing mean-squared-error. Early sweeps (`runs/hybrid_wfpt_curriculum_timecost_soft_rt/`) keep the WFPT warm-up intact but reveal that aggressive RT pressure still flattens the chronometric slope. Iterations with modest `rt_soft` weights (0.05–0.1) now log both WFPT and soft RT losses so we can dial the trade-off deliberately.
 
 Dashboards:
+
 - [`runs/hybrid_wfpt_curriculum_timecost_attempt1/dashboard.html`](runs/hybrid_wfpt_curriculum_timecost_attempt1/dashboard.html) — baseline time-cost guardrail (flat-slope regression)
 - [`runs/hybrid_wfpt_curriculum_timecost_soft_rt/dashboard.html`](runs/hybrid_wfpt_curriculum_timecost_soft_rt/dashboard.html) — latest soft RT configuration
 
@@ -94,12 +95,17 @@ Each command respects deterministic seeding, persists `config.json`, and emits s
 animal-task-sim/
 ├─ envs/                # Gymnasium tasks + timing utilities
 ├─ agents/              # Sticky-Q, Bayesian observer, PPO, hybrid DDM agents
+├─ animaltasksim/       # Core utilities (config, logging, seeding, registry)
 ├─ eval/                # Metrics, schema validator, HTML report tooling
 ├─ scripts/             # Train / evaluate / report CLIs (frozen interfaces)
 ├─ data/                # Reference animal logs and helpers
 ├─ tests/               # Env/agent/metric + schema unit tests
+├─ docs/                # Documentation and guides
 └─ runs/                # Generated configs, logs, metrics, dashboards
+   ├─ archive/          # Archived experimental runs
+   └─ registry.json     # Experiment database
 ```
+
 
 ---
 

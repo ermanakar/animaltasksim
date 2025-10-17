@@ -1,17 +1,50 @@
+# Python
 .venv/
 __pycache__/
-.ipynb_checkpoints/
-.DS_Store
 *.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Project-specific
 runs/
 out/
+docs/
+logs/
+*.ndjson
+*.pt
+*.pth
 
+# Archived documentation (kept in docs/archive/)
 CALIBRATION_REPORT.md
 CALIBRATION_SUMMARY.md
 RDM_ENVIRONMENT_ANALYSIS.md
-data/macaque/roitman_pyddm/roitman_rts.csv
 PUBLICATION_CHECKLIST.md
 BUGFIX_SUMMARY.md
-TRAINING_PROGRESS.md
-HYBRID_SUCCESS_SUMMARY.md
 ARTICLE.md
+
+# Data files
+data/macaque/roitman_pyddm/roitman_rts.csv
+
+# Keep registry
+!runs/registry.json
+!runs/archive/
