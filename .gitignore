@@ -28,7 +28,6 @@ Thumbs.db
 # Project-specific
 runs/
 out/
-docs/
 logs/
 *.ndjson
 *.pt
@@ -48,3 +47,5 @@ data/macaque/roitman_pyddm/roitman_rts.csv
 # Keep registry
 !runs/registry.json
 !runs/archive/
+docs/ORGANIZATION.md
+docs/FEATURE_HYBRID_IBL.md
