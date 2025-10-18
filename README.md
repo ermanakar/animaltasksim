@@ -1,5 +1,10 @@
 # AnimalTaskSim
 
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Tests](https://img.shields.io/badge/tests-20%20passed-brightgreen.svg)](tests/)
+[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+
 AnimalTaskSim benchmarks AI agents on classic animal decision-making tasks using task-faithful environments, public reference data, and a schema-locked evaluation stack. The project focuses on matching animal **behavioral fingerprints**—psychometric, chronometric, history, and lapse patterns—rather than raw reward.
 
 ---
@@ -414,6 +419,70 @@ python scripts/train_agent.py --seed SEED --env TASK --agent AGENT ...
 
 ---
 
+## Acknowledgements
+
+### Development
+
+This project was developed independently outside of academia by with substantial contributions from AI coding assistants:
+
+- **Claude Code (Sonnet 4.5)** - Architecture design, implementation, and documentation
+- **OpenAI Codex (GPT-5-Codex)** - Code refinement and debugging support  
+- **Google Gemini Pro 2.5** - Additional development assistance
+
+This represents a collaboration between human domain expertise and AI implementation capability, demonstrating what's possible at the intersection of computational neuroscience and modern AI tools.
+
+### Scientific Foundation
+
+**Drift-Diffusion Modeling:**
+
+- Roger Ratcliff & Gail McKoon for establishing the DDM framework (Ratcliff & McKoon, 2008; Ratcliff & Smith, 2016)
+- Thomas Wiecki et al. for HDDM implementation and WFPT methods (Wiecki et al., 2013)
+- Navarro & Fuss for numerical methods in DDM fitting (2009)
+
+**Animal Behavioral Data:**
+
+- **International Brain Laboratory (IBL)** - For the standardized mouse 2AFC protocol and open behavioral datasets (IBL et al., 2021, *Neuron*)
+- **Shadlen Lab** - For pioneering work on macaque random-dot motion tasks and neural correlates of decision-making (Britten et al., 1992; Palmer, Huk & Shadlen, 2005)
+
+**Behavioral Analysis:**
+
+- Anne Urai et al. for work on choice history biases (Urai et al., 2019, *Nature Communications*)
+- The broader decision neuroscience community for establishing psychometric and chronometric analysis methods
+
+### Open Source Community
+
+Open-source tools that made this project possible:
+
+- **Gymnasium** - Reinforcement learning environment interface
+- **PyTorch** - Deep learning framework  
+- **Stable-Baselines3** - RL algorithm implementations
+- **Pydantic** - Data validation and schema enforcement
+- **Scientific Python ecosystem** (NumPy, SciPy, pandas, matplotlib)
+
+### Note on Academic Affiliation
+
+This project is **independent research** conducted outside of academic institutions. While it adheres to scientific rigor and reproducibility standards, it represents an exploration of what individuals can achieve with modern AI tools and open scientific data.
+
+---
+
 ## License
 
 Code is released under MIT; datasets retain their original licenses.
+
+---
+
+## Citation
+
+If you use AnimalTaskSim in your research, please cite:
+
+```bibtex
+@software{akar2025animaltasksim,
+  author = {Akar, Erman},
+  title = {AnimalTaskSim: Hybrid Drift-Diffusion × LSTM Agents Matching Animal Decision Behavior},
+  year = {2025},
+  url = {https://github.com/ermanakar/animaltasksim},
+  version = {0.1.0}
+}
+```
+
+See [`CITATION.cff`](CITATION.cff) for additional citation metadata and references.
