@@ -223,24 +223,163 @@ These steps refocus effort on stimulus realism and policy incentives rather than
 
 ---
 
-## Next Steps
+---
 
-1. **Agent-side latency models**: Give Sticky-Q and PPO explicit non-decision-time estimates that can adapt by coherence or block, rather than relying on environment delays.
-2. **Bias and lapse regularizers**: Penalize large bias deviations and encourage lapse rates that match observed animal floors instead of zero or fifty percent extremes.
-3. **History-aware losses**: Incorporate win-stay/lose-shift targets or kernel regression loss terms so agents learn multi-trial dependencies present in the data.
-4. **Roadmap readiness**: Generalize logging and evaluation hooks so Probabilistic Reversal Learning and Delayed Match-to-Sample tasks can reuse the same schema without touching CLI surfaces.
+## Synthesis: The Three Agent Archetypes (Registry Analysis)
+
+Analysis of our 21 registry entries reveals three distinct architectural families, each capturing different aspects of animal behavior while failing on complementary dimensions. This pattern suggests a clear path forward.
+
+### Archetype A: Reward Optimizers (PPO Baseline)
+
+**Representative runs**: `rdm_ppo_latest`, `20251017_ibl_ppo`, `20251018_ibl_ppo`
+
+**Signature behavior**:
+
+- Psychometric slopes: 50.0 (hyper-steep, near-deterministic)
+- Chronometric slopes: ≈0 ms/unit (perfectly flat RT curves)
+- Bias: highly variable (−207 to +0.52), unstable across tasks
+- History effects: moderate win-stay (0.55–0.78) as reward exploitation artifact
+
+**What they capture**: Task reward structure and asymptotic accuracy ceiling.
+
+**What they miss**: Evidence accumulation dynamics, speed-accuracy tradeoffs, coherence-dependent timing, stable choice biases.
+
+**Failure mode**: When environment shortcuts are removed (collapsing bounds, auto-commit), PPO agents either fire instantly (RT=60 ms) or adopt pathological repetition strategies (bias=−207, win-stay=1.0). The `rdm_ppo_latest` run exemplifies this: lapse rate reaches 49% on low-coherence trials as the agent punts decisions to maintain average reward.
+
+### Archetype B: History-Biased Heuristics (Sticky-Q)
+
+**Representative runs**: `ibl_stickyq_latency`, `20251017_ibl_stickyq`, `20251018_ibl_stickyq`
+
+**Signature behavior**:
+
+- Psychometric slopes: 30.3–33.3 (steep but more realistic than PPO)
+- Chronometric slopes: ≈0 ms/unit (flat, like PPO)
+- Bias: near-zero (−0.0001 to +0.005), stable across seeds
+- History effects: strong (win-stay 0.54–0.67, lose-shift 0.38–0.60, sticky 0.52–0.67)
+
+**What they capture**: Inter-trial dependencies (win-stay, lose-shift, choice stickiness) matching qualitative animal patterns.
+
+**What they miss**: Intra-trial dynamics. RT remains flat regardless of stimulus difficulty; the 200 ms latency in `ibl_stickyq_latency` merely shifts the intercept without creating a coherence gradient.
+
+**Critical insight**: Sticky-Q demonstrates that explicit history terms can replicate sequential biases, but tabular Q-learning with hand-engineered stickiness cannot learn to wait for evidence. The architecture has no mechanism to trade speed for accuracy.
+
+### Archetype C: Mechanistic Integrators (Hybrid DDM+LSTM)
+
+**Representative runs**: `hybrid_wfpt_curriculum`, `rdm_wfpt_regularized`, `20251017_rdm_hybridddml`, plus 13 curriculum/calibration variants
+
+**Signature behavior**:
+
+- Psychometric slopes: 5.1–32.3 (variable, often too shallow for macaque, too steep for mice with proper priors)
+- Chronometric slopes: −165 to −1828 ms/unit (consistently negative, capturing speed-accuracy tradeoff)
+- Bias: near-zero when stable (−0.002 to +0.43), but prone to collapse (+6.06 in pathological runs)
+- History effects: **consistently near chance** (win-stay 0.12–0.52, lose-shift 0.28–0.52, sticky 0.48–0.62)
+
+**What they capture**: The core decision process. These agents slow down for hard trials, speed up for easy ones, and can produce chronometric slopes that match (or overshoot) animal magnitudes. The best run (`hybrid_wfpt_curriculum`) achieves RT slope = −767 ms/unit vs. macaque reference −645 ms/unit.
+
+**What they miss**: Inter-trial memory. Across all 13+ hybrid runs, history metrics hover around 0.5, indicating the LSTM "coach" is not learning to bias the DDM based on previous outcomes. The recurrent module sets initial DDM parameters but does not carry forward reward/choice history effectively.
+
+**Failure modes**:
+
+1. **RT ceiling collapse** (`hybrid_wfpt_curriculum_timecost_attempt1`): Agent camps at max allowed RT, chronometric slope flattens, bias explodes to +6.06, sticky rate hits 0.998 (pathological repetition).
+2. **History washout** (`hybrid_wfpt_curriculum_timecost_soft_rt`): Introducing RT penalties to lower intercepts also erases history effects; win-stay drops to 0.16, lose-shift to 0.35.
+3. **Shallow psychometrics** (most runs): Curriculum learning successfully produces negative RT slopes but leaves choice curves too flat (slopes 5–8 vs. reference 17.6), suggesting drift-gain calibration or lapse terms need tuning.
 
 ---
 
-## Artifact Index
+## The Decoupling Problem
 
-- Mouse Sticky-Q latency run: `runs/ibl_stickyq_latency/`
-- Macaque PPO baseline rerun: `runs/rdm_ppo_latest/`
-- Hybrid DDM+LSTM comparison: `runs/rdm_wfpt_regularized/`
-- Reference data: `data/ibl/reference.ndjson`, `data/macaque/reference.ndjson`
-- Evaluation utilities: `scripts/evaluate_agent.py`, `scripts/make_report.py`, `scripts/make_dashboard.py`
+**Core finding**: We have successfully modeled the two key behavioral phenomena in isolation but not in a single agent.
 
-All directories contain `config.json`, `trials.ndjson`, `metrics.json`, and at least one HTML artifact for inspection.
+- **Intra-trial dynamics** (how a decision unfolds in time): Solved by Hybrid DDM+LSTM via curriculum learning on WFPT loss. Chronometric slopes are reliably negative.
+- **Inter-trial dynamics** (how one trial influences the next): Solved by Sticky-Q via explicit history terms. Win-stay/lose-shift patterns match qualitative trends.
+
+**Why hybrid agents fail on history**: The current architecture (`hybrid_ddm_lstm`) uses the LSTM to set static DDM parameters (drift rate, bound, non-decision time) at trial start. This is insufficient for creating history-dependent choice biases because:
+
+1. The LSTM receives a compressed trial history but has no direct pathway to bias the evidence accumulation process dynamically.
+2. The DDM parameters are frozen once set; subsequent evidence integration proceeds independently of past rewards/choices.
+3. Training focuses on WFPT likelihood (which rewards accurate RT distributions) and task reward (which rewards correct choices), neither of which explicitly penalize failure to carry forward trial history.
+
+---
+
+## Path Forward: Architectural Recommendations
+
+### Primary Recommendation: Recurrent Drift-Diffusion Model (R-DDM)
+
+**Motivation**: Based on registry evidence, the LSTM must influence drift *during* the decision, not just at initialization.
+
+**Proposed architecture**:
+
+- At each time-step *t*, the RNN hidden state *h_t* (which encodes trial history) combines with current sensory evidence *e_t* to compute the instantaneous drift rate: `drift_t = f(h_t, e_t, coherence)`.
+- This allows history to exert a *dynamic bias*: e.g., after a rewarded left choice, initial drift favors left, but strong rightward evidence can overcome this bias as the trial progresses.
+- The RNN learns to modulate drift based on recent outcomes, naturally producing win-stay/lose-shift effects without hand-coded sticky terms.
+
+**Expected outcome**: An R-DDM has the representational capacity to simultaneously:
+
+1. Produce negative chronometric slopes (by modulating drift based on evidence strength, already proven in static hybrid runs).
+2. Produce realistic history biases (by modulating drift based on recurrent memory state, the missing ingredient).
+
+**Implementation path**:
+
+1. Start with the proven WFPT curriculum from `hybrid_wfpt_curriculum`.
+2. Replace the static DDM parameter predictor with a recurrent drift module: `drift_t = LSTM(h_t) + gain * evidence_t`.
+3. Add auxiliary loss to penalize deviations from target win-stay/lose-shift rates during training.
+4. Monitor both chronometric *and* history metrics in each epoch to ensure no regression.
+
+### Incremental Alternative: History-Aware Hybrid Agent
+
+If a full R-DDM is too large a step, augment the existing `hybrid_ddm_lstm` with explicit history inputs.
+
+**Rationale**: The LSTM may not be learning the relevance of trial history from raw observation/reward sequences. Make history "first-class" by providing:
+
+- `prev_choice` (one-hot: left/right)
+- `prev_reward` (binary: 0/1)
+- `prev_stimulus_strength` (float: coherence or contrast)
+
+**Implementation**:
+
+- Concatenate this 3-vector to the LSTM input at trial start.
+- Optionally add an auxiliary loss: `L_history = MSE(predicted_win_stay_rate, target_win_stay_rate) + MSE(predicted_lose_shift_rate, target)`.
+- Retrain existing checkpoints with this augmented input and monitor whether history metrics rise from 0.5 baseline.
+
+**Risk**: This is a band-aid. If the fundamental issue is that DDM parameters are set statically, adding more input features may not solve the problem. However, it's a low-cost experiment that could yield useful diagnostics.
+
+---
+
+## Updated Artifact Index (21 Registry Entries)
+
+### IBL Mouse 2AFC Runs (10 entries)
+
+- **Sticky-Q**: `ibl_stickyq_latency`, `20251017_ibl_stickyq`, `20251018_ibl_stickyq`
+- **PPO**: `20251017_ibl_ppo`, `20251017_ibl_ppo_test`, `20251018_ibl_ppo`
+- **Hybrid DDM+LSTM**: `hybrid_wfpt_curriculum`, `hybrid_wfpt_curriculum_repro`, `hybrid_wfpt_curriculum_timecost`, `hybrid_wfpt_curriculum_timecost_attempt1`, `hybrid_wfpt_curriculum_attempt2_two_phase`, `hybrid_wfpt_curriculum_timecost_soft_rt`, `guarded_curriculum_v2`, `annealed_choice_v1`, `history_supervision_v1`, `history_finetune_v1`, `history_finetune_v2` (training artifacts exist, dashboard not yet generated), `final_history_embedding_agent`, `drift_scale_14.0_stable` (metrics pending), `drift_scale_14.0_stable_v2`, `rt_calibration_v1`, `rt_weighted_calibration_v1`
+
+### Macaque RDM Runs (5 entries)
+
+- **PPO**: `rdm_ppo_latest`, `20251017_rdm_ppo`
+- **Bayes Observer**: `20251017_rdm_bayes` (baseline with sensory noise model)
+- **Hybrid DDM+LSTM**: `rdm_wfpt_regularized`, `rdm_hybrid_curriculum`, `20251017_rdm_hybrid_test`, `20251017_rdm_hybridddml`
+
+### Reference Data
+
+- `data/ibl/reference.ndjson` (IBL mouse 2AFC behavioral fingerprints)
+- `data/macaque/reference.ndjson` (Roitman & Shadlen macaque RDM data)
+
+### Evaluation Pipeline
+
+- `scripts/evaluate_agent.py` (schema-compliant logging + metrics computation)
+- `scripts/make_report.py` (HTML report generation)
+- `scripts/make_dashboard.py` (comparative dashboards)
+- `runs/registry.json` (experiment registry with 21 tracked runs)
+
+---
+
+## Next Steps (Prioritized by Evidence)
+
+1. **Implement R-DDM architecture** with dynamic drift modulation during evidence accumulation, targeting simultaneous chronometric slopes *and* history effects.
+2. **History-aware loss functions**: Penalize deviations from target win-stay/lose-shift rates to provide explicit training signal for inter-trial dependencies.
+3. **Bias and lapse regularizers**: Current hybrid runs show unstable bias (ranges from near-zero to pathological +6). Add soft constraints or prior terms to keep bias within animal-observed ranges.
+4. **Psychometric calibration**: Hybrid agents produce slopes 5–10 while macaques show 17.6. Investigate drift-gain scaling and sensory noise parameters to match animal choice sensitivity.
+5. **Roadmap readiness**: Ensure R-DDM and evaluation hooks generalize to Probabilistic Reversal Learning (PRL) and Delayed Match-to-Sample (DMS) tasks without breaking schema contracts.
 
 ---
 
@@ -250,4 +389,5 @@ All directories contain `config.json`, `trials.ndjson`, `metrics.json`, and at l
 AnimalTaskSim: A Benchmark for Evaluating Behavioral Replication in AI Agents
 https://github.com/ermanakar/animaltasksim
 October 2025
+Registry: 21 experiments spanning Sticky-Q, PPO, Bayes Observer, and Hybrid DDM+LSTM agents
 ```
