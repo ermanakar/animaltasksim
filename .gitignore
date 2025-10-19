@@ -47,5 +47,8 @@ data/macaque/roitman_pyddm/roitman_rts.csv
 # Keep registry
 !runs/registry.json
 !runs/archive/
+!data/ibl/reference.ndjson
+!data/ibl/reference_single_session.ndjson
+!data/ibl/reference_multi_session.ndjson
 docs/ORGANIZATION.md
 docs/FEATURE_HYBRID_IBL.md

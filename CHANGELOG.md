@@ -161,7 +161,8 @@ LossWeights(choice=1.0, rt=0.0, wfpt=1.0, history=0.1, drift_magnitude=0.5)
   - `scripts/calibration.py`: Hyperparameter optimization
 
 - **Data**
-  - `data/ibl/reference.ndjson`: Mouse 2AFC reference data (885 trials)
+- `data/ibl/reference.ndjson`: Mouse 2AFC reference data (multi-session aggregate; 10 sessions, 8,406 trials)
+- `data/ibl/reference_single_session.ndjson`: Legacy single-session reference (885 trials)
   - `data/macaque/reference.ndjson`: Macaque RDM reference data (2611 trials)
 
 **Testing:**

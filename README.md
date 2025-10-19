@@ -102,7 +102,8 @@ AnimalTaskSim benchmarks against two canonical datasets from decision neuroscien
 **Species:** Laboratory mice across multiple institutions  
 **Citation:** [International Brain Laboratory (2021). *Neuron*](https://doi.org/10.1016/j.neuron.2021.04.001)
 
-The IBL dataset provides reproducible measurements of mouse decision-making behavior with controlled contrast levels, block structure, and lapse regimes. Our environment replicates the timing, contrast levels, and block prior structure from this multi-lab effort.
+The IBL dataset provides reproducible measurements of mouse decision-making behavior with controlled contrast levels, block structure, and lapse regimes. Our environment replicates the timing, contrast levels, and block prior structure from this multi-lab effort.  
+`data/ibl/reference.ndjson` now bundles 10 public IBL sessions (8,406 trials) to capture cross-session variability; the legacy single-session log remains available as `data/ibl/reference_single_session.ndjson` for reproducing earlier analyses.
 
 ### Macaque Random-Dot Motion
 

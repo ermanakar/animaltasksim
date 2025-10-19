@@ -361,7 +361,8 @@ If a full R-DDM is too large a step, augment the existing `hybrid_ddm_lstm` with
 
 ### Reference Data
 
-- `data/ibl/reference.ndjson` (IBL mouse 2AFC behavioral fingerprints)
+- `data/ibl/reference.ndjson` (IBL mouse 2AFC behavioral fingerprints; multi-session aggregate)
+- `data/ibl/reference_single_session.ndjson` (Legacy single-session dataset used in early experiments)
 - `data/macaque/reference.ndjson` (Roitman & Shadlen macaque RDM data)
 
 ### Evaluation Pipeline

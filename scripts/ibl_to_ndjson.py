@@ -14,7 +14,7 @@ def _clean_dict(d: dict) -> dict:
     return {k: _py(v) if not isinstance(v, dict) else _clean_dict(v) for k, v in d.items()}
 #!/usr/bin/env python
 """
-Fetch one IBL mouse session and export to data/ibl/reference.ndjson
+Fetch one IBL mouse session and export to data/ibl/reference_single_session.ndjson
 """
 import json
 import math
@@ -104,7 +104,7 @@ def main():
     ap.add_argument("--subject", default=None, help="Subject nickname (e.g., KS022)")
     ap.add_argument("--date", default=None, help="YYYY-MM-DD")
     ap.add_argument("--session", type=int, default=1, help="Session number on that date (1-based)")
-    ap.add_argument("--out", type=Path, default=Path("data/ibl/reference.ndjson"))
+    ap.add_argument("--out", type=Path, default=Path("data/ibl/reference_single_session.ndjson"))
     args = ap.parse_args()
 
     # Public access: documented in ONE quick-start (intbrainlab / international)
