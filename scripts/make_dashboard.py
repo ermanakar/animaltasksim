@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import tyro
 
@@ -31,6 +33,9 @@ class DashboardOptions:
 
     title: str = "Agent vs Animal Behavioral Comparison"
     """Dashboard title."""
+
+    reference_metrics: str | None = None
+    """Optional path to precomputed reference metrics JSON (e.g., out/ibl_reference_metrics.json)."""
 
 
 def main(opts: DashboardOptions) -> None:
@@ -76,6 +81,16 @@ def main(opts: DashboardOptions) -> None:
     print(f"  Reference: {reference_path}")
     print(f"  Output: {output_path}")
 
+    reference_metrics: dict[str, Any] | None = None
+    if opts.reference_metrics:
+        metrics_path = Path(opts.reference_metrics)
+        if not metrics_path.exists():
+            raise FileNotFoundError(f"Reference metrics file not found: {metrics_path}")
+        print(f"  Reference metrics: {metrics_path}")
+        with metrics_path.open("r", encoding="utf-8") as fh:
+            payload = json.load(fh)
+        reference_metrics = payload.get("metrics", payload)
+
     build_comparison_dashboard(
         agent_log_path=agent_path,
         animal_log_path=reference_path,
@@ -83,6 +98,7 @@ def main(opts: DashboardOptions) -> None:
         title=opts.title,
         agent_name=opts.agent_name,
         animal_name=opts.reference_name,
+        animal_metrics_override=reference_metrics,
     )
 
     print(f"\n✓ Dashboard generated successfully!")

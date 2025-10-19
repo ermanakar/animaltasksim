@@ -429,6 +429,7 @@ def build_comparison_dashboard(
     title: str = "Agent vs Animal Comparison",
     agent_name: str = "Agent",
     animal_name: str = "Animal",
+    animal_metrics_override: dict[str, Any] | None = None,
 ) -> None:
     """
     Build an interactive HTML dashboard comparing agent and animal behavior.
@@ -460,7 +461,7 @@ def build_comparison_dashboard(
     # Compute metrics
     task_name = df_agent["task"].iloc[0]
     metrics_agent = compute_all_metrics(df_agent, task_name)
-    metrics_animal = compute_all_metrics(df_animal, task_name)
+    metrics_animal = animal_metrics_override or compute_all_metrics(df_animal, task_name)
 
     # Determine stimulus column
     if "stimulus_contrast" in df_agent.columns:

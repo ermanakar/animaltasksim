@@ -50,5 +50,6 @@ data/macaque/roitman_pyddm/roitman_rts.csv
 !data/ibl/reference.ndjson
 !data/ibl/reference_single_session.ndjson
 !data/ibl/reference_multi_session.ndjson
+!out/ibl_reference_metrics.json
 docs/ORGANIZATION.md
 docs/FEATURE_HYBRID_IBL.md
