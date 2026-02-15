@@ -109,14 +109,9 @@ def compute_psychometric(df: pd.DataFrame, stimulus_key: str = "contrast") -> Ps
 
     filtered["choice_right"] = (filtered["action"] == "right").astype(float)
 
-    # Exclude zero-coherence trials from slope fitting
-    f_fit = filtered[filtered[f"stimulus_{stimulus_key}"] != 0]
-    if f_fit.empty:
-        return PsychometricMetrics(np.nan, np.nan, np.nan, np.nan)
-
-    df_for_fit = f_fit.copy()
+    # Use all stimulus levels (including zero) for the full sigmoid fit
+    df_for_fit = filtered.copy()
     df_for_fit["stimulus"] = df_for_fit[f"stimulus_{stimulus_key}"]
-    df_for_fit["choice_right"] = (df_for_fit["action"] == "right").astype(float)
     grouped = df_for_fit.groupby("stimulus")["choice_right"].agg(["mean", "count"]).reset_index()
 
     xdata = grouped["stimulus"].values.astype(float)
@@ -126,9 +121,15 @@ def compute_psychometric(df: pd.DataFrame, stimulus_key: str = "contrast") -> Ps
     if len(xdata) < 2 or np.allclose(xdata, xdata[0]):
         return PsychometricMetrics(np.nan, np.nan, np.nan, np.nan)
 
-    initial = np.array([0.0, 5.0, 0.02, 0.02], dtype=float)
+    # Estimate initial slope from data range for better convergence
+    y_range = ydata.max() - ydata.min()
+    x_range = xdata.max() - xdata.min()
+    slope_init = max(2.0, 4.0 * y_range / max(x_range, 1e-6))
+    lapse_init = max(0.001, min(0.15, ydata.min()))
+
+    initial = np.array([0.0, slope_init, lapse_init, lapse_init], dtype=float)
     lower_bounds = np.array([-np.inf, 0.01, 0.0, 0.0], dtype=float)
-    upper_bounds = np.array([np.inf, 50.0, 0.49, 0.49], dtype=float)
+    upper_bounds = np.array([np.inf, 200.0, 0.5, 0.5], dtype=float)
     weight_scale = np.sqrt(np.clip(weights, 1.0, None))
 
     def _residuals(params: np.ndarray) -> np.ndarray:
@@ -148,17 +149,10 @@ def compute_psychometric(df: pd.DataFrame, stimulus_key: str = "contrast") -> Ps
     if result is None or not result.success:
         bias = float(np.interp(0.5, ydata, xdata)) if np.isfinite(ydata).all() else np.nan
         slope = np.nan
-        lapse_low = float(max(0.0, 1.0 - ydata.max()))
-        lapse_high = float(max(0.0, ydata.min()))
+        lapse_low = float(max(0.0, ydata.min()))
+        lapse_high = float(max(0.0, 1.0 - ydata.max()))
     else:
         bias, slope, lapse_low, lapse_high = result.x
-
-    # Lapse from zero-coh only:
-    zero = filtered[filtered[f"stimulus_{stimulus_key}"] == 0]
-    lapse = float(zero["choice_right"].mean()) if not zero.empty else np.nan
-    if not np.isnan(lapse):
-        lapse_low = lapse
-        lapse_high = 1 - lapse
 
     return PsychometricMetrics(float(slope), float(bias), float(lapse_low), float(lapse_high))
 

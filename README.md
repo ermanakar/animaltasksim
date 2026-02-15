@@ -14,9 +14,9 @@ AnimalTaskSim benchmarks AI agents on classic animal decision-making tasks using
 </p>
 
 Our Hybrid DDM+LSTM agent trained on the macaque RDM task simultaneously reproduces:
+- **Psychometric sensitivity** — sigmoidal choice curve with slope 10.7, near-zero lapses (macaque: 17.6)
 - **Negative chronometric slope** — harder stimuli → slower RTs, slope −270 ms/unit (macaque: −645)
-- **Near-zero choice bias** — p(right) = 0.496 among committed trials (macaque: ≈0.50)
-- **Psychometric slope** — 10.7 (macaque: 17.6), though high lapse rates (~50%) compress the visible curve
+- **Near-zero choice bias** — p(right) = 0.496, bias = 0.002 (macaque: ≈0)
 - **History effects remain at chance** (~0.50) — an open research problem we call the [Decoupling Problem](FINDINGS.md#the-decoupling-problem)
 
 > *Figure generated from `runs/decoupling_K2_window_control/`. Regenerate with `python scripts/generate_readme_figures.py`.*
@@ -49,7 +49,7 @@ The K2 experiment achieved the first simultaneous replication of both psychometr
 
 1. **Bias Artifact Resolution**: The reported 84% "leftward bias" was a metric artifact — `p_right_overall` counted holds (66% of trials) as non-right, inflating the apparent bias. The true committed `p_right = 0.48` was balanced all along.
 2. **Response Window Fix**: The agent's `max_commit_steps=200` exceeded the environment's 120-step response phase, causing most DDM commits to fall outside the valid window. After alignment (`response_duration_override` + 300-step window), commit rate reached 100%.
-3. **Results** (`runs/decoupling_K2_window_control/`): Psych slope=10.7, chrono slope=−270 ms/unit, bias=0.007, commit rate=100%. See figure above.
+3. **Results** (`runs/decoupling_K2_window_control/`): Psych slope=10.7 (lapses ≈0), chrono slope=−270 ms/unit, bias=0.002, commit rate=100%. See figure above.
 
 ### October 12, 2025 - Hybrid DDM+LSTM Agent Achieves Animal-like Chronometric Slope
 
