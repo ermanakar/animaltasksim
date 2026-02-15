@@ -540,6 +540,7 @@ The Hybrid agent trains on its own rollouts inside the RDM environment, so the p
 **Directional success, magnitude insufficient.**
 
 The per-trial history loss produces consistent improvements on every key metric:
+
 - Chronometric slope steepened by 38% (better intra-trial dynamics)
 - RT range widened by 41% (less ceiling saturation)
 - `prev_correct_beta` improved from −0.55 to −0.12 (agent less anti-correlated with correct direction)
@@ -710,6 +711,7 @@ The LSTM sets DDM parameters (drift_gain, bound, noise, bias, non_decision_ms) o
 - **The DDM is too powerful**: With drift_gain=30 and bound=1.3, even zero-coherence trials cross the boundary purely by noise within ~95 steps. The DDM makes well-calibrated decisions regardless of history encoding.
 
 Potential architectural solutions:
+
 1. **Increase bias head range**: Scale bias output to ±0.5 instead of ±0.1, giving history a stronger lever on choice probability.
 2. **Add a prior/lapse pathway**: A separate head for "prior probability of right" that combines with DDM output, rather than folding history through DDM parameters.
 3. **Dynamic drift modulation**: Use the R-DDM approach where LSTM modulates drift at each timestep, not just at trial start.

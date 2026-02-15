@@ -51,46 +51,31 @@ The K2 experiment achieved the first simultaneous replication of both psychometr
 2. **Response Window Fix**: The agent's `max_commit_steps=200` exceeded the environment's 120-step response phase, causing most DDM commits to fall outside the valid window. After alignment (`response_duration_override` + 300-step window), commit rate reached 100%.
 3. **Results** (`runs/decoupling_K2_window_control/`): Psych slope=10.7 (lapses ≈0), chrono slope=−270 ms/unit, bias=0.002, commit rate=100%. See figure above.
 
-### October 12, 2025 - Hybrid DDM+LSTM Agent Achieves Animal-like Chronometric Slope
+### October 2025 — Hybrid DDM+LSTM Development
 
-After a series of targeted experiments, the hybrid DDM+LSTM agent now successfully replicates the negative chronometric slope observed in macaques. This was achieved by implementing a curriculum learning strategy that prioritizes the Wiener First Passage Time (WFPT) likelihood loss.
+<details>
+<summary>Click to expand: chronometric slope replication, curriculum learning, RT guardrails</summary>
 
-**Quantitative Results (`runs/hybrid_wfpt_curriculum/`):**
+#### October 12 — Chronometric Slope Achieved
 
-- **Chronometric slope:** -767 ms/unit (macaque reference: -645 ms/unit)
-- **Psychometric slope:** 7.33 (macaque: 17.56)
-- **Bias:** +0.001 (macaque: ≈0)
-- **History effects:** Near chance (~0.5), which does **not** match macaque reference (win-stay ~0.49, lose-shift ~0.52). See [The Decoupling Problem](FINDINGS.md#the-decoupling-problem).
+The hybrid DDM+LSTM agent replicated the negative chronometric slope observed in macaques
+via a two-phase curriculum prioritizing the WFPT likelihood loss.
+Run `hybrid_wfpt_curriculum`: chrono slope −767 ms/unit (macaque: −645),
+psych slope 7.33, bias +0.001. History effects remained at chance (~0.5).
 
-**Technical approach:**
+#### October 14 — Time-Cost Curriculum Guardrails
 
-1. **Curriculum Learning**: A two-phase curriculum was implemented. The first phase focuses exclusively on the WFPT loss to establish the core chronometric relationship. The second phase introduces the other behavioral losses.
-2. **WFPT Likelihood Loss**: This statistically principled loss function provides a much more stable and direct training signal for the DDM's parameters than the previously used Mean-Squared Error on reaction times.
-3. **Non-Decision Time Supervision**: A small supervision loss was added to keep the non-decision time in a plausible range.
+Updated run (`hybrid_wfpt_curriculum_timecost`) restored negative chronometric slope
+without saturating the 1.2 s cap: chrono slope −267 ms/unit, RT intercept 883 ms,
+psych slope 7.50.
 
-**Limitations:** The agent's reaction times are still globally slower than the macaques', and the psychometric slope is shallower. However, the fundamental mechanism of evidence-dependent timing has been successfully captured. See [`FINDINGS.md`](FINDINGS.md) for a complete analysis.
+#### October 15 — Soft RT Penalty Sweep
 
----
+Introduced soft RT penalty targeting macaque mean RTs.
+Aggressive RT pressure flattens the chronometric slope;
+modest `rt_soft` weights (0.05–0.1) provide the best trade-off.
 
-### October 14, 2025 - Time-Cost Curriculum Guardrails
-
-We revisited the hybrid curriculum to keep WFPT loss dominant while widening the agent’s response window (`max_commit_steps = 180`). The updated run (`runs/hybrid_wfpt_curriculum_timecost/`) restores a negative chronometric slope without saturating the 1.2 s cap.
-
-- **Chronometric slope:** −267 ms/unit (still shallower than macaque −645 ms/unit, but no longer flat)
-- **RT intercept:** 883 ms (improved from 1.26 s, still slower than 760 ms target)
-- **Psychometric slope:** 7.50 (agent remains conservative relative to 17.56 reference)
-- **History:** Win-stay 0.22 / Lose-shift 0.47 / Sticky 0.42 — indicates the agent under-utilises recent rewards and is less perseverative than macaques.
-
-The guardrails (longer WFPT warm-up, gentler RT penalties, higher commit window) keep the optimisation scientifically honest while we continue exploring soft RT regularisers and phase-level diagnostics. See [`runs/hybrid_wfpt_curriculum_timecost/dashboard.html`](runs/hybrid_wfpt_curriculum_timecost/dashboard.html) for the full comparison.
-
-### October 15, 2025 - Soft RT Penalty Sweep
-
-We introduced a soft reaction-time penalty that targets macaque mean RTs without forcing mean-squared-error. Early sweeps (`runs/hybrid_wfpt_curriculum_timecost_soft_rt/`) keep the WFPT warm-up intact but reveal that aggressive RT pressure still flattens the chronometric slope. Iterations with modest `rt_soft` weights (0.05–0.1) now log both WFPT and soft RT losses so we can dial the trade-off deliberately.
-
-Dashboards:
-
-- [`runs/hybrid_wfpt_curriculum_timecost_attempt1/dashboard.html`](runs/hybrid_wfpt_curriculum_timecost_attempt1/dashboard.html) — baseline time-cost guardrail (flat-slope regression)
-- [`runs/hybrid_wfpt_curriculum_timecost_soft_rt/dashboard.html`](runs/hybrid_wfpt_curriculum_timecost_soft_rt/dashboard.html) — latest soft RT configuration
+</details>
 
 **Current scope (v0.1):**
 
@@ -110,9 +95,10 @@ Several correctness and infrastructure improvements:
 - **Per-trial history loss**: Root cause of the [Decoupling Problem](FINDINGS.md#the-decoupling-problem) identified — batch-mean history loss gives weak gradients, and Hybrid's history estimation was fully non-differentiable. Added `per_trial_history_loss()` with per-trial MSE supervision for both R-DDM and Hybrid trainers.
 - **Ceiling-corrected chronometric slope**: When ≥2 difficulty levels are pinned at max RT, `corrected_slope` excludes ceiling levels and refits for more honest assessment.
 - **Multi-run leaderboard**: `scripts/compare_runs.py` scans all runs, computes composite scores against animal reference data, outputs color-coded HTML.
-- **57 tests** now pass (up from 40), including 20 WFPT tests and 12 per-trial history tests.
+- **Psychometric fit fix**: The lapse-parameter override in `compute_psychometric()` was overwriting fitted values with zero-coherence p(right), collapsing the curve's dynamic range to zero. Removed; lapses now come from the optimizer. Psych slope remains 10.7 but lapse_low/high drop from 0.52/0.48 to near-zero.
+- **80 tests** now pass (up from 40), including 20 WFPT tests, 12 per-trial history tests, and new metric edge-case tests.
 
-See [`FINDINGS.md`](FINDINGS.md) and [`PROJECT_TODO.md`](PROJECT_TODO.md) for full details.
+See [`FINDINGS.md`](FINDINGS.md) for full details.
 
 Read the full benchmark recap in [`FINDINGS.md`](FINDINGS.md). Dashboards are stored under `runs/` for interactive inspection.
 
@@ -204,8 +190,8 @@ Use recommended defaults? (Y/n): y
 ✓ Registry updated!
 
 Results Summary:
-  Psychometric Slope: 31.75
-  Chronometric Slope: -1813 ms/unit
+  Psychometric Slope: 10.74
+  Chronometric Slope: -270 ms/unit
   Win-Stay Rate: 0.490 (near chance — see FINDINGS.md)
 ```
 
@@ -450,8 +436,8 @@ python scripts/train_agent.py --seed SEED --env TASK --agent AGENT ...
 
 ### Infrastructure
 
-- **Seed robustness tests:** Verify metric stability across 5+ seeds
-- **Make-compare CLI:** One-command pipeline: train → evaluate → compare → report
+- ~~**Seed robustness tests:** Verify metric stability across 5+ seeds~~ ✔
+- ~~**Make-compare CLI:** One-command pipeline: train → evaluate → compare → report~~ ✔
 - **Automated registry scans:** Ensure all runs are indexed post-sweep
 
 ---
@@ -460,11 +446,11 @@ python scripts/train_agent.py --seed SEED --env TASK --agent AGENT ...
 
 ### Development
 
-This project was developed independently outside of academia by with substantial contributions from AI coding assistants:
+This project was developed independently outside of academia with substantial contributions from AI coding assistants:
 
-- **Claude Code (Sonnet 4.5)** - Architecture design, implementation, and documentation
-- **OpenAI Codex (GPT-5-Codex)** - Code refinement and debugging support  
-- **Google Gemini Pro 2.5** - Additional development assistance
+- **Claude** (Sonnet 4.5, Opus 4) - Architecture design, implementation, and documentation
+- **OpenAI Codex** - Code refinement and debugging support
+- **Google Gemini** (Pro 2.5) - Additional development assistance
 
 This represents a collaboration between human domain expertise and AI implementation capability, demonstrating what's possible at the intersection of computational neuroscience and modern AI tools.
 
