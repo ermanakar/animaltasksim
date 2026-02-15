@@ -1,5 +1,7 @@
 # Hybrid DDM + LSTM Agent Design
 
+> **Note (Feb 2026):** This is the original design document from October 2025. The implementation has since evolved — notably, the separate behavioral cloning / RT distribution / history regularization losses described in §2.1 were replaced by a unified WFPT (Wiener First Passage Time) likelihood loss with curriculum learning. See `FINDINGS.md` for current results and `agents/hybrid_ddm_lstm.py` for the current implementation.
+
 **Objective:** produce an agent that reproduces animal-like choice, reaction time, and history fingerprints on the macaque RDM task (and eventually other tasks) by combining mechanistic evidence accumulation with learned history-dependent control.
 
 ---
