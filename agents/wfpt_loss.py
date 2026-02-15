@@ -111,8 +111,9 @@ def _wfpt_small_time(
     a_exp = a.unsqueeze(-1)
     t_exp = t.unsqueeze(-1)
     
-    # Compute z + 2*k*a for all k
-    z_k = z_exp + 2.0 * k_values * a_exp  # [batch, 2*n_terms+1]
+    # Compute z + 2*k*a for all k — using absolute starting position a*z
+    # The image charges are at positions a*(z + 2k) in the standardized space
+    z_k = a_exp * (z_exp + 2.0 * k_values)  # [batch, 2*n_terms+1]
     
     # Compute exponential term
     exp_term = torch.exp(-(z_k ** 2) / (2.0 * t_exp + eps))  # [batch, 2*n_terms+1]
@@ -121,7 +122,7 @@ def _wfpt_small_time(
     summation = torch.sum(z_k * exp_term, dim=-1)  # [batch]
     
     # Combine
-    density = (base / (a * sqrt_2pi_t3 + eps)) * summation
+    density = (base / (sqrt_2pi_t3 + eps)) * summation
     
     # Log density
     log_p = torch.log(torch.clamp(density, min=eps))

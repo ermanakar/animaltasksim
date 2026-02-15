@@ -45,6 +45,16 @@ class TrialRecord(BaseModel):
     seed: int
     agent: AgentMetadata
 
+    # --- v0.2 PRL extensions (optional) ---
+    reversal: bool | None = None
+    block_index: int | None = None
+    contingency: dict[str, object] | None = None
+
+    # --- v0.2 DMS extensions (optional) ---
+    sample_stimulus: dict[str, object] | None = None
+    delay_ms: float | None = None
+    match: bool | None = None
+
     @field_validator("session_id")
     @classmethod
     def _session_not_empty(cls, value: str) -> str:

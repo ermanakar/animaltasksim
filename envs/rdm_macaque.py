@@ -357,7 +357,7 @@ class RDMMacaqueEnv(Env):
             "phase_step": self._phase_step,
         }
 
-    def reset(self, *, seed: int | None = None, options: dict | None = None):  # type: ignore[override]
+    def reset(self, *, seed: int | None = None, options: dict | None = None, forced_side: int | None = None):  # type: ignore[override]
         super().reset(seed=seed)
         s = seed if seed is not None else self.config.seed
         self._rng, actual_seed = seeding.np_random(s)
@@ -383,13 +383,16 @@ class RDMMacaqueEnv(Env):
         if self._time_cost_controller is not None:
             self._time_cost_controller.reset()
 
-        self._start_new_trial()
+        self._start_new_trial(forced_side=forced_side)
         self._maybe_sample_evidence()
         return self._build_observation(), self._default_info()
 
-    def _start_new_trial(self) -> None:
+    def _start_new_trial(self, forced_side: int | None = None) -> None:
         magnitude = float(self._rng.choice(self._coherences)) if self._rng else 0.0
-        direction_right = self._rng.random() < 0.5 if self._rng else True
+        if forced_side is not None:
+            direction_right = forced_side == 1
+        else:
+            direction_right = self._rng.random() < 0.5 if self._rng else True
         sign = 1.0 if direction_right else -1.0
         coherence_value = magnitude * sign
         if magnitude == 0.0:
@@ -429,13 +432,13 @@ class RDMMacaqueEnv(Env):
             "stimulus": self._stimulus,
             "block_prior": None,
             "action": self._response_action,
-            "correct": self._correct,
+            "correct": bool(self._correct),
             "reward": float(self._trial_reward),
             "rt_ms": None if self._rt_steps is None else float(self._rt_steps * self.config.step_ms),
             "phase_times": phase_times,
             "prev": None
             if self._prev_action is None
-            else {"action": self._prev_action, "reward": self._prev_reward, "correct": self._prev_correct},
+            else {"action": self._prev_action, "reward": self._prev_reward, "correct": bool(self._prev_correct)},
             "seed": int(self._seed or 0),
             "agent": self.config.agent.to_dict(),
         }
@@ -535,7 +538,10 @@ class RDMMacaqueEnv(Env):
         self._response_action = ACTION_NAMES[action]
         self._rt_steps = self._phase_step + 1
 
-        expected = ACTION_RIGHT if self._signed_coherence > 0 else ACTION_LEFT if self._signed_coherence < 0 else ACTION_RIGHT
+        if self._signed_coherence == 0:
+            expected = self._rng.choice([ACTION_LEFT, ACTION_RIGHT]) if self._rng else ACTION_RIGHT
+        else:
+            expected = ACTION_RIGHT if self._signed_coherence > 0 else ACTION_LEFT
         self._correct = action == expected
         
         # Use confidence-based reward if enabled, otherwise simple correct/incorrect

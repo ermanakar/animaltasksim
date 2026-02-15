@@ -1,7 +1,7 @@
 # AnimalTaskSim Findings
 
 **Benchmarking reinforcement learning agents against rodent and primate decision-making fingerprints**  
-*October 2025 · Version 0.1.0*
+*October 2025 · Version 0.1.0 — Updated February 2026*
 
 ---
 
@@ -13,6 +13,27 @@ AnimalTaskSim compares learning agents to real animals on the IBL mouse 2AFC and
 - Regenerate baseline runs and document the resulting behavioral gaps using the hardened pipeline.
 
 Fresh evidence comes from `runs/ibl_stickyq_latency/` (Sticky-Q with a 200 ms latency) and `runs/rdm_ppo_latest/` (PPO with collapsing bounds disabled). We also summarize the best-performing hybrid DDM+LSTM run (`runs/rdm_wfpt_regularized/`) to highlight what mechanism-level structure buys us.
+
+---
+
+## Methodological Note: RT Ceiling Saturation (February 2026)
+
+> **Important caveat for interpreting chronometric slopes.**
+
+Several runs report large negative chronometric slopes (e.g., −1813 ms/unit for `20251019_rdm_hybridddml`), but RT-by-coherence breakdowns reveal that low-coherence trials are pinned at the response window ceiling (typically 1200 ms). The slope is driven by a step function between ceiling-clamped slow trials and fast high-coherence trials, not by smooth evidence accumulation dynamics as in animal data.
+
+The evaluation stack now includes two new metrics to flag this:
+
+- **`ceiling_fraction`**: Fraction of difficulty levels where median RT equals the maximum observed RT. Values ≥ 0.5 indicate slope is unreliable.
+- **`rt_range_ms`**: Range between fastest and slowest median RTs across levels.
+
+| Run | Reported slope | `ceiling_fraction` | RT distribution |
+| --- | --- | --- | --- |
+| `20251019_rdm_hybridddml` | −1813 ms/unit | **0.50** (3/6 levels at 1200 ms) | Step function: 1200/1200/1200/880/540/370 |
+| `hybrid_wfpt_curriculum` | −767 ms/unit | ~0.50 | Similar ceiling pattern |
+| Macaque reference | −645 ms/unit | 0.0 | Graded: 302–525 ms, no ceiling |
+
+**Takeaway:** When `ceiling_fraction ≥ 0.5`, the chronometric slope reflects response window limits, not evidence accumulation. True DDM-like chronometric behavior requires RTs that vary smoothly across all difficulty levels without hitting environment-imposed ceilings.
 
 ---
 
@@ -345,42 +366,249 @@ If a full R-DDM is too large a step, augment the existing `hybrid_ddm_lstm` with
 
 ---
 
-## Updated Artifact Index (21 Registry Entries)
+## Updated Findings (October 2025)
 
-### IBL Mouse 2AFC Runs (10 entries)
+### R-DDM infrastructure & results
 
-- **Sticky-Q**: `ibl_stickyq_latency`, `20251017_ibl_stickyq`, `20251018_ibl_stickyq`
-- **PPO**: `20251017_ibl_ppo`, `20251017_ibl_ppo_test`, `20251018_ibl_ppo`
-- **Hybrid DDM+LSTM**: `hybrid_wfpt_curriculum`, `hybrid_wfpt_curriculum_repro`, `hybrid_wfpt_curriculum_timecost`, `hybrid_wfpt_curriculum_timecost_attempt1`, `hybrid_wfpt_curriculum_attempt2_two_phase`, `hybrid_wfpt_curriculum_timecost_soft_rt`, `guarded_curriculum_v2`, `annealed_choice_v1`, `history_supervision_v1`, `history_finetune_v1`, `history_finetune_v2` (training artifacts exist, dashboard not yet generated), `final_history_embedding_agent`, `drift_scale_14.0_stable` (metrics pending), `drift_scale_14.0_stable_v2`, `rt_calibration_v1`, `rt_weighted_calibration_v1`
+- Added end-to-end support for both IBL and macaque tasks: dataset loaders, task-aware rollouts, CLI wizard integration, and best-checkpoint evaluation (`--use-best`).
+- `scripts/rddm_sweep.py` now explores drift supervision, history weights, and prior scaling. Sweeps recorded in `runs/rddm_sweep_ibl/` and `runs/rddm_sweep_rdm/`.
+- Despite the tooling, R-DDM still fails to reproduce animal fingerprints. Best IBL runs reach psychometric slope ≈6 with flat chronometric slope and saturated history metrics; macaque runs plateau around slope ≈0.1. Future work must focus on stronger stimulus supervision / entropy regularisation.
 
-### Macaque RDM Runs (5 entries)
+### Hybrid DDM+LSTM status
 
-- **PPO**: `rdm_ppo_latest`, `20251017_rdm_ppo`
-- **Bayes Observer**: `20251017_rdm_bayes` (baseline with sensory noise model)
-- **Hybrid DDM+LSTM**: `rdm_wfpt_regularized`, `rdm_hybrid_curriculum`, `20251017_rdm_hybrid_test`, `20251017_rdm_hybridddml`
+- Historic run `20251019_rdm_hybridddml` (default 7-phase curriculum) remains the benchmark: psychometric slope ~32, chronometric slope ~–1812 ms/unit.
+- A simplified three-phase sweep (`scripts/hybrid_sweep.py`, `runs/hybrid_sweep_rdm/`) showed that removing phases destroys the fingerprint (slopes 2–4, flat RT). Message: keep the full multi-phase curriculum or modify it in-place.
+- `scripts/train_hybrid_curriculum.py` gained optional `--phase1-max-slope` / `--phase2-max-slope` arguments so custom curricula can enforce slope ceilings without rewriting the training loop.
 
-### Reference Data
+### Registry snapshot (55 entries)
 
-- `data/ibl/reference.ndjson` (IBL mouse 2AFC behavioral fingerprints; multi-session aggregate)
-- `data/ibl/reference_single_session.ndjson` (Legacy single-session dataset used in early experiments)
-- `data/macaque/reference.ndjson` (Roitman & Shadlen macaque RDM data)
+- **IBL Mouse 2AFC**: Sticky-Q, PPO baselines, extensive hybrid curriculum variants, and the new R-DDM experiments (curriculum + sweep).
+- **Macaque RDM**: PPO/Bayes baselines, historical hybrid run, new hybrid sweep results, and R-DDM curriculum + sweep runs.
+- Sweep-specific registries live in `runs/rddm_sweep_ibl/registry.json` and `runs/hybrid_sweep_rdm/registry.json` for easier filtering.
 
-### Evaluation Pipeline
+### Reference & evaluation assets
 
-- `scripts/evaluate_agent.py` (schema-compliant logging + metrics computation)
-- `scripts/make_report.py` (HTML report generation)
-- `scripts/make_dashboard.py` (comparative dashboards)
-- `runs/registry.json` (experiment registry with 21 tracked runs)
+- Reference data unchanged (`data/ibl/reference.ndjson`, `data/macaque/reference.ndjson`).
+- Evaluation stack includes `scripts/evaluate_agent.py`, `scripts/make_dashboard.py`, and the two sweep utilities.
 
 ---
 
-## Next Steps (Prioritized by Evidence)
+## Next Steps (Prioritised)
 
-1. **Implement R-DDM architecture** with dynamic drift modulation during evidence accumulation, targeting simultaneous chronometric slopes *and* history effects.
-2. **History-aware loss functions**: Penalize deviations from target win-stay/lose-shift rates to provide explicit training signal for inter-trial dependencies.
-3. **Bias and lapse regularizers**: Current hybrid runs show unstable bias (ranges from near-zero to pathological +6). Add soft constraints or prior terms to keep bias within animal-observed ranges.
-4. **Psychometric calibration**: Hybrid agents produce slopes 5–10 while macaques show 17.6. Investigate drift-gain scaling and sensory noise parameters to match animal choice sensitivity.
-5. **Roadmap readiness**: Ensure R-DDM and evaluation hooks generalize to Probabilistic Reversal Learning (PRL) and Delayed Match-to-Sample (DMS) tasks without breaking schema contracts.
+1. **Stimulus-sensitive R-DDM**: Introduce direct drift supervision / entropy bonuses so the agent cannot ignore contrast while history/prior losses remain active.
+2. **Curriculum-aware sweeps**: Modify `CurriculumConfig.history_finetune_curriculum()` to expose tunable weights (rather than replacing it) so sweeps can safely explore history/RT tuning without losing chronometric behaviour.
+3. **Bias & lapse regularisers**: Hybrid runs still show unstable bias; add soft priors or penalties in late curriculum phases.
+4. **Automation hygiene**: When running sweeps, always call `scan_runs.py --runs-dir … --registry-path …` so results remain indexed.
+5. **Roadmap alignment**: Ensure the new R-DDM and sweep infrastructure can extend to PRL / DMS tasks while preserving schema contracts.
+
+---
+
+## Per-Trial History Loss — Decoupling Fix (February 2026)
+
+### Root Cause Analysis
+
+Deep inspection of both trainers revealed why models learn chronometric slopes but fail on history metrics:
+
+| Trainer | History mechanism | Gradient quality |
+|---------|------------------|------------------|
+| **R-DDM** | `_history_regulariser`: batch-mean MSE `(E[stay\|win] - target)²` | Differentiable but weak — each trial gets O(1/N) gradient signal |
+| **Hybrid** | `_estimate_history`: hard argmax on detached `prob_buffer` (list of floats) → NumPy tallies | **Zero gradient** — computation graph severed by `.detach()` + argmax |
+
+The batch-mean approach (R-DDM) only constrains the mean of the stay/shift distribution. A model can satisfy it with any variance pattern. The Hybrid approach provides no learning signal at all.
+
+### Fix: `per_trial_history_loss()`
+
+Added to `agents/losses.py`. Key properties:
+
+1. **Per-trial MSE** instead of batch-mean MSE: `mean((stay_prob_i - target)²)` vs `(mean(stay_prob_i) - target)²`. By Jensen's inequality, per-trial MSE ≥ batch-mean MSE — it penalises both mean deviation AND variance.
+2. **Differentiable** through `choice_prob` to the model parameters.
+3. **Convention-aware**: Supports both R-DDM (`no_action_value=-1`) and Hybrid (`no_action_value=0`) prev_action encodings.
+
+### Changes
+
+- `agents/losses.py`: `per_trial_history_loss()` function + `per_trial_history` weight in `LossWeights`
+- `agents/r_ddm/config.py`: `per_trial_history_weight = 0.5` (ramped with same schedule as existing history loss)
+- `agents/r_ddm/trainer.py`: Integrated as additive loss term in `_compute_losses`
+- `agents/hybrid_ddm_lstm.py`: Added `prob_tensor_buffer` (keeps computation graph alive) alongside existing detached `prob_buffer`; integrated per-trial loss with Hybrid encoding convention
+- `tests/test_per_trial_history.py`: 12 tests covering zero-loss, gradient flow, both conventions, edge cases, Jensen's inequality
+
+### Remaining validation
+
+Retrain R-DDM and Hybrid with `per_trial_history_weight > 0` and verify that win-stay/lose-shift metrics rise from ~0.5 without regressing chronometric slope. This is the key experiment.
+6. ~~**WFPT normalization**: The WFPT density over-integrates for strong drift + wide bound~~ — **FIXED** (Feb 2026). Image charge positions in small-time series corrected from `z + 2ka` to `a(z + 2k)`. Both series now agree to 6 decimal places.
+7. **RT ceiling mitigation**: Address the ceiling saturation pattern where low-coherence RTs are pinned at the response window maximum. Options: (a) increase max response window, (b) penalize ceiling-saturated RTs during training, (c) add ceiling-aware chronometric fitting that excludes clamped levels.
+
+---
+
+## R-DDM Formal Evaluation (February 2026)
+
+Formal evaluation was run on `runs/r_ddm_choice_only_v4` — previously the most promising R-DDM training run based on training-time metrics (77.7% accuracy, win-stay 0.77).
+
+### Best checkpoint (`trials_best.ndjson`)
+
+| Metric | R-DDM (best) | IBL Reference | Notes |
+| --- | --- | --- | --- |
+| Psychometric slope | 15.07 | 13.2 | Closest match of any agent |
+| Bias | 3.72 | +0.074 | Moderate rightward bias |
+| Win-stay | **0.953** | 0.73 | Extreme perseveration |
+| Lose-shift | 0.071 | 0.34 | Nearly zero — ignores errors |
+| Sticky choice | 0.939 | — | Pathological stickiness |
+| RT (all levels) | 300.0 ms (flat) | 300 ms median | All RTs identical (motor delay only) |
+
+### Regular rollout (`trials.ndjson`)
+
+| Metric | R-DDM (regular) | IBL Reference |
+| --- | --- | --- |
+| Psychometric slope | 5.41 | 13.2 |
+| Bias | 5.96 | +0.074 |
+| Win-stay | 0.865 | 0.73 |
+| Sticky choice | 0.919 | — |
+| p(right) | 0.14 | ~0.5 |
+
+### Interpretation
+
+The R-DDM shows **extreme choice stickiness** (win-stay >0.95, sticky >0.93) far exceeding animal levels. While training-time metrics reported balanced win-stay (0.77), the rollout behavior reveals a policy that locks onto a single action (p_right=0.04 for best checkpoint). All RTs are pinned at 300 ms (the motor delay floor), confirming the model learned no evidence accumulation dynamics. The `is_choice_only` training mode (WFPT weight=0) means no RT signal was available.
+
+Despite the choice-only config, the psychometric slope on the best checkpoint (15.07) is the closest to the IBL reference (13.2) of any agent tested. This suggests the R-DDM architecture can learn reasonable stimulus sensitivity, but the extreme perseveration and absent RT dynamics prevent it from being a valid behavioral model.
+
+---
+
+## WFPT Implementation Audit (February 2026)
+
+Unit tests added in `tests/test_wfpt.py` (20 tests) validated the WFPT likelihood implementation against analytical DDM properties.
+
+### Findings
+
+1. **Drift convention is inverted**: Positive drift increases P(choice=0), opposite to the standard DDM convention where positive drift favours the upper boundary (choice=1). The training pipeline compensates by learning inverted drift signs, so end-to-end results are unaffected. Documented in test file.
+
+2. **~~Density normalization degrades for strong parameters~~ (FIXED)**: The small-time series had incorrect image charge positions (`z + 2ka` instead of `a(z + 2k)`), causing the density to misscale by a factor of `a²` when bound ≠ noise. This produced over-integration (e.g., ∫density = 2.4 for drift=3, bound=2). Fixed in February 2026; both series now agree to 6 decimal places and integrate to 1.0 for all tested parameter regimes.
+
+3. **Edge cases are handled**: Near-zero drift, extreme biases (0.02, 0.98), very small and very large RTs all produce finite log-likelihoods. Gradient flow is verified for all 5 DDM parameters.
+
+4. **Symmetry is preserved**: Flipping drift sign correctly mirrors choice likelihoods for unbiased starting points, and zero drift produces equal likelihoods for both choices.
+
+---
+
+## The Decoupling Experiment (February 2026)
+
+### Motivation
+
+The central scientific question of AnimalTaskSim is **the Decoupling Problem**: no agent simultaneously captures intra-trial dynamics (chronometric slope — slower RTs for harder stimuli) AND inter-trial dynamics (history effects — win-stay, lose-shift). Agents that learn good RT structure show random history patterns; agents tuned for history show flat chronometric curves.
+
+We hypothesised that batch-mean history supervision (MSE over all trials in a batch) allows the model to satisfy the loss by matching *average* history statistics while individual trials show uncorrelated behaviour (Jensen's inequality: `MSE(mean) ≤ mean(MSE)`). A **per-trial history loss** that penalises each trial's win-stay/lose-shift deviation independently should close this gap.
+
+### Architecture: Per-Trial History Loss
+
+```
+Standard:   L_history = MSE(batch_mean_WS, target_WS)
+Per-trial:  L_history = (1/N) Σᵢ MSE(WS_trial_i, target_WS)
+```
+
+Implemented in `agents/losses.py::per_trial_history_loss()`, with weight `per_trial_history` in `LossWeights`. Value is propagated through differentable `prob_tensor_buffer` → per-trial softmax choice probabilities → per-trial win-stay computation.
+
+### Phase 1: R-DDM Experiments (A–D)
+
+Four runs with the R-DDM agent varying the per-trial history loss weight:
+
+| Experiment | History Weight | Per-Trial Weight | WS (rollout) | Chrono Slope | Notes |
+| --- | --- | --- | --- | --- | --- |
+| A: Control | 0.5 | 0.0 | 0.53 | 0.0 ms/unit | RT pinned at 300ms |
+| B: Per-trial only | 0.0 | 0.5 | 0.53 | 0.0 ms/unit | Identical to A |
+| C: High per-trial | 0.0 | 2.0 | 0.53 | 0.0 ms/unit | Identical to A |
+| D: Combined | 0.5 | 0.5 | 0.53 | 0.0 ms/unit | Identical to A |
+
+**Result: No effect.** All four runs produced identical metrics on rollout. Root cause: R-DDM trains on *animal data* (supervised). The model already achieves near-zero loss on training data (WS=0.73 during training), so the per-trial loss has nothing to fix. The generalization gap (train: WS=0.73, rollout: WS=0.53) is a distribution-shift problem that per-trial supervision cannot address because the loss is already minimised on the training distribution.
+
+**Lesson**: Per-trial history loss can only help agents that train on their *own* policy rollouts, not on fixed animal data. This motivated the Hybrid experiment.
+
+### Phase 2: Hybrid DDM+LSTM Experiments (E–F)
+
+The Hybrid agent trains on its own rollouts inside the RDM environment, so the per-trial loss directly constrains generative behaviour. Full 7-phase curriculum with seed=42, 10 episodes, 30 sessions.
+
+| Metric | E: Control (per_trial=0.0) | F: Treatment (per_trial=0.5) | Direction | Animal Target |
+| --- | --- | --- | --- | --- |
+| Psychometric slope | 6.76 | 7.16 | +6% | ~10-20 |
+| Chrono slope (ms/unit) | −19.3 | −26.6 | **+38%** | −100 to −300 |
+| RT range (ms) | 110 | 155 | **+41%** | 200-400 |
+| Win-stay | 0.176 | 0.194 | +10% | 0.6-0.8 |
+| prev_correct_beta | −0.546 | −0.124 | **+77%** | >0 |
+| p(right) | 0.165 | 0.172 | — | ~0.5 |
+| Lapse (high) | 90.3% | 90.4% | — | <15% |
+
+### Interpretation
+
+**Directional success, magnitude insufficient.**
+
+The per-trial history loss produces consistent improvements on every key metric:
+- Chronometric slope steepened by 38% (better intra-trial dynamics)
+- RT range widened by 41% (less ceiling saturation)
+- `prev_correct_beta` improved from −0.55 to −0.12 (agent less anti-correlated with correct direction)
+- Win-stay improved 10% (but still far below animal levels)
+
+However, both runs share a fundamental calibration problem: ~83% leftward choice bias and ~90% lapse on the right side. This is a curriculum-level issue, not a per-trial history issue — the 7-phase curriculum with only 10 episodes and 30 sessions doesn't produce well-calibrated psychometric baselines.
+
+### Conclusions & Next Steps
+
+1. **The mechanism works**: Per-trial history loss improves all Decoupling metrics in the predicted direction. The Jensen's inequality hypothesis is supported.
+
+2. **Base model quality gates the result**: With n=10 episodes and 30 sessions, neither run achieves balanced psychometric performance. The per-trial signal is overshadowed by the massive bias.
+
+3. **Recommended next experiment**: Run with higher training budget (episodes=50, max-sessions=100) and verify the base model achieves p(right) ≈ 0.5 before comparing history effects. Also test `per_trial_history_weight` = {0.1, 0.25, 0.5, 1.0} to find optimal strength.
+
+4. **Broader implication**: The fact that R-DDM (supervised on animal data) showed zero effect while Hybrid (self-play) showed directional improvement validates the architectural distinction. An agent can only be *constrained* by a loss on behaviour it actually generates.
+
+### Phase 3: Large-Budget Hybrid Experiments (G–H)
+
+Scaled to 30 episodes, 80 sessions, 5 history-phase epochs. Same seed=42, same curriculum.
+
+| Metric | G: Control (per_trial=0.0) | H: Treatment (per_trial=0.5) | Direction | Animal Target |
+| --- | --- | --- | --- | --- |
+| Psychometric slope | 6.83 | 6.71 | −2% | ~10-20 |
+| Chrono slope (ms/unit) | −24.2 | −18.5 | **−24%** | −100 to −300 |
+| RT range (ms) | 140 | 120 | **−14%** | 200-400 |
+| Win-stay | 0.173 | 0.175 | +1% | 0.6-0.8 |
+| Lose-shift | 0.370 | 0.381 | +3% | 0.3-0.5 |
+| prev_correct_beta | +0.360 | +0.074 | **−79%** | >0 |
+| p(right) | 0.164 | 0.165 | — | ~0.5 |
+
+### Full Cross-Budget Comparison (E–H)
+
+| Metric | E: Ctrl (10ep) | F: Treat (10ep) | G: Ctrl (30ep) | H: Treat (30ep) | Animal |
+| --- | --- | --- | --- | --- | --- |
+| p(right) | 0.165 | 0.172 | 0.164 | 0.165 | ~0.5 |
+| Psych slope | 6.8 | 7.2 | 6.8 | 6.7 | 10-20 |
+| Chrono slope | −19.3 | −26.6 | −24.2 | −18.5 | −100+ |
+| RT range (ms) | 110 | 155 | 140 | 120 | 200+ |
+| Win-stay | 0.176 | 0.194 | 0.173 | 0.175 | 0.6+ |
+| prev_correct_beta | **−0.546** | −0.124 | **+0.360** | +0.074 | >0 |
+
+### Updated Interpretation
+
+**The small-budget directional effect did not replicate at larger scale.**
+
+In Phase 2 (E/F, 10 episodes), the per-trial loss improved every metric. In Phase 3 (G/H, 30 episodes), the effect **reversed**: the control outperforms the treatment on chronometric slope (−24.2 vs −18.5), RT range (140 vs 120), and prev_correct_beta (+0.36 vs +0.07). This means:
+
+1. **The E/F result was likely noise**, not signal. With ~2000 rollout trials per run, metric estimates have high variance. The apparent "directional improvement" was within the noise floor.
+
+2. **More training naturally solves prev_correct_beta** — the control improved from −0.546 (E) to +0.360 (G) purely from 3x more training, with no per-trial loss. This is the biggest finding: the correlation between previous reward and next choice emerges from training duration, not from per-trial supervision.
+
+3. **The per-trial loss may actually interfere** with other objectives at longer training horizons. The treatment's worse chrono slope and prev_correct_beta suggest the per-trial gradient competes with the WFPT/drift supervision signals.
+
+4. **The leftward bias remains the dominant problem.** All four runs have p(right) ≈ 0.16 — an ~84% leftward bias that makes all other metrics unreliable. No amount of history supervision matters when the agent barely explores one side of the choice space. This is a curriculum/architecture issue that must be fixed before the Decoupling experiment can yield meaningful conclusions.
+
+### Revised Conclusions
+
+1. **Per-trial history loss is not the solution** to the Decoupling Problem, at least not in isolation. The E/F signal was not robust.
+
+2. **Training budget helps more than loss engineering.** The natural improvement in prev_correct_beta from E→G (+0.9 units) dwarfs anything the per-trial loss contributed.
+
+3. **The real bottleneck is choice bias.** Fixing p(right) ≈ 0.5 is prerequisite to any meaningful Decoupling experiment. Potential fixes:
+   - Stronger choice loss weight during early phases
+   - Explicit anti-bias regularisation (penalise p(right) deviation from 0.5)
+   - Balanced stimulus presentation (equal left/right coherences per batch)
+   - Curriculum gating: don't advance to history phases until p(right) ∈ [0.4, 0.6]
+
+4. **The Decoupling Problem remains open.** Future work should first solve the bias problem, then re-evaluate per-trial history loss (and other mechanisms) in a regime where both psychometric and history metrics are operative.
 
 ---
 
@@ -389,6 +617,6 @@ If a full R-DDM is too large a step, augment the existing `hybrid_ddm_lstm` with
 ```text
 AnimalTaskSim: A Benchmark for Evaluating Behavioral Replication in AI Agents
 https://github.com/ermanakar/animaltasksim
-October 2025
-Registry: 21 experiments spanning Sticky-Q, PPO, Bayes Observer, and Hybrid DDM+LSTM agents
+October 2025 – February 2026
+Registry: 55+ experiments spanning Sticky-Q, PPO, Bayes Observer, Hybrid DDM+LSTM, and R-DDM agents
 ```

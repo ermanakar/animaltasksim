@@ -461,7 +461,13 @@ def build_comparison_dashboard(
     # Compute metrics
     task_name = df_agent["task"].iloc[0]
     metrics_agent = compute_all_metrics(df_agent, task_name)
-    metrics_animal = animal_metrics_override or compute_all_metrics(df_animal, task_name)
+    metrics_animal = compute_all_metrics(df_animal, task_name)
+    if animal_metrics_override:
+        for key, value in animal_metrics_override.items():
+            if isinstance(value, dict) and isinstance(metrics_animal.get(key), dict):
+                metrics_animal[key].update(value)  # type: ignore[arg-type]
+            else:
+                metrics_animal[key] = value
 
     # Determine stimulus column
     if "stimulus_contrast" in df_agent.columns:

@@ -44,7 +44,7 @@ class TrainCurriculumArgs:
     max_sessions: int | None = None
     max_trials_per_session: int | None = None
     min_commit_steps: int = 5
-    max_commit_steps: int = 120
+    max_commit_steps: int = 300
     drift_scale: float = 14.0
     
     # Curriculum configuration
@@ -59,6 +59,7 @@ class TrainCurriculumArgs:
     phase1_history_weight: float = 0.0
     phase1_drift_supervision_weight: float = 0.5
     phase1_min_slope: float = 100.0  # Minimum |slope| in ms/unit
+    phase1_max_slope: float | None = None
     phase1_min_r2: float = 0.1
     phase1_min_rt_diff: float = 50.0  # Minimum RT difference in ms
     
@@ -69,6 +70,7 @@ class TrainCurriculumArgs:
     phase2_history_weight: float = 0.05
     phase2_drift_supervision_weight: float = 0.3
     phase2_min_slope: float = 80.0
+    phase2_max_slope: float | None = None
     phase2_min_r2: float = 0.08
     
     # Phase 3: Full balance
@@ -78,13 +80,38 @@ class TrainCurriculumArgs:
     phase3_history_weight: float = 0.1
     phase3_drift_supervision_weight: float = 0.1
 
+    # History finetune overrides (used when default curriculum is selected)
+    history_phase_epochs: int = 5
+    history_choice_weight: float = 2.5
+    history_wfpt_weight: float = 0.9
+    history_history_weight: float = 0.0
+    history_rt_soft_weight: float = 0.1
+    history_drift_supervision_weight: float = 0.1
+    history_non_decision_supervision_weight: float = 0.05
+    history_history_supervision_weight: float = 0.4
+    history_per_trial_history_weight: float = 0.0
+    history_max_commit_steps: int = 300
+
 
 def main(args: TrainCurriculumArgs) -> None:
     """Execute curriculum training."""
     
     # Build curriculum config
     if args.use_default_curriculum:
-        curriculum = CurriculumConfig.history_finetune_curriculum()
+        curriculum = CurriculumConfig.history_finetune_curriculum(
+            history_phase_epochs=args.history_phase_epochs,
+            history_choice_weight=args.history_choice_weight,
+            history_wfpt_weight=args.history_wfpt_weight,
+            history_history_weight=args.history_history_weight,
+            history_rt_soft_weight=args.history_rt_soft_weight,
+            history_drift_supervision_weight=args.history_drift_supervision_weight,
+            history_non_decision_supervision_weight=args.history_non_decision_supervision_weight,
+            history_history_supervision_weight=args.history_history_supervision_weight,
+            history_per_trial_history_weight=args.history_per_trial_history_weight,
+            history_max_commit_steps=args.history_max_commit_steps,
+        )
+        curriculum.allow_early_stopping = args.allow_early_stopping
+        curriculum.checkpoint_each_phase = args.checkpoint_each_phase
     else:
         # Custom curriculum from args
         phase1 = CurriculumPhase(
@@ -98,6 +125,7 @@ def main(args: TrainCurriculumArgs) -> None:
             ),
             success_criteria={
                 "min_slope_abs": args.phase1_min_slope,
+                **({"max_slope_abs": args.phase1_max_slope} if args.phase1_max_slope is not None else {}),
                 "min_r2": args.phase1_min_r2,
                 "min_rt_diff_abs": args.phase1_min_rt_diff,
             },
@@ -113,6 +141,7 @@ def main(args: TrainCurriculumArgs) -> None:
             ),
             success_criteria={
                 "min_slope_abs": args.phase2_min_slope,
+                **({"max_slope_abs": args.phase2_max_slope} if args.phase2_max_slope is not None else {}),
                 "min_r2": args.phase2_min_r2,
             },
         )

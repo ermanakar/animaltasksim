@@ -1,0 +1,40 @@
+{
+  "p_right_overall": 0.49904251244733816,
+  "rt_variance": 38750.1283860942,
+  "psychometric": {
+    "slope": 17.56299001614618,
+    "bias": -0.000330160686664823,
+    "lapse_low": 0.4965197215777262,
+    "lapse_high": 0.5034802784222738
+  },
+  "chronometric": {
+    "intercept_ms": 759.2714285714286,
+    "slope_ms_per_unit": -64.52908986175123,
+    "rt_by_level": {
+      "0.0": 762.0,
+      "0.032": 756.0,
+      "0.064": 722.0,
+      "0.128": 664.0,
+      "0.256": 568.0,
+      "0.512": 443.5
+    },
+    "slope_unit": "ms_per_10pct_coherence",
+    "ceiling_fraction": 0.3333333333333333,
+    "rt_range_ms": 318.5
+  },
+  "history": {
+    "win_stay": 0.45777351247600767,
+    "lose_shift": 0.5152091254752852,
+    "sticky_choice": 0.4632183908045977,
+    "prev_choice_beta": null,
+    "prev_correct_beta": null
+  },
+  "quality": {
+    "bias_ok": true,
+    "history_ok": true,
+    "rt_ok": true,
+    "chronometric_ok": true,
+    "rt_ceiling_warning": false,
+    "degenerate": false
+  }
+}

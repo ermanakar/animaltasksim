@@ -38,9 +38,11 @@ class ExperimentMetadata(BaseModel):
     bias: float | None = None
     chronometric_slope: float | None = None
     rt_intercept: float | None = None
+    chronometric_slope_unit: str | None = None
     win_stay_rate: float | None = None
     lose_shift_rate: float | None = None
     sticky_choice_rate: float | None = None
+    quality: dict[str, bool] | None = None
     
     # File paths (relative to project root)
     config_path: str | None = None
@@ -246,19 +248,23 @@ def extract_metadata_from_run(run_dir: Path) -> ExperimentMetadata | None:
             agent = "hybrid_ddm_lstm"
     elif isinstance(config.get("agent"), str):
         agent = config.get("agent")
-    
+
     # If still unknown, infer from directory name or config structure
     if agent == "unknown":
-        if "ppo" in run_id.lower():
+        if "r_ddm" in run_id.lower() or "rollout_trials" in config:
+            agent = "ddm"
+        elif "ppo" in run_id.lower():
             agent = "ppo"
         elif "sticky" in run_id.lower() or "stickyq" in run_id.lower():
             agent = "sticky_q"
         elif "bayes" in run_id.lower():
             agent = "bayes_observer"
-        elif "hybrid" in run_id.lower() or "ddm" in run_id.lower() or "wfpt" in run_id.lower():
+        elif "hybrid" in run_id.lower() or "wfpt" in run_id.lower():
             agent = "hybrid_ddm_lstm"
         # Check config structure for hybrid agent indicators
-        elif "hidden_size" in config or "loss_weights" in config or "epochs" in config:
+        elif "rollout_trials" in config:
+            agent = "ddm"
+        elif "hidden_size" in config and "loss_weights" in config:
             agent = "hybrid_ddm_lstm"
     
     # Determine status
@@ -304,11 +310,15 @@ def extract_metadata_from_run(run_dir: Path) -> ExperimentMetadata | None:
         if "chronometric" in metrics:
             metadata.chronometric_slope = metrics["chronometric"].get("slope_ms_per_unit") or metrics["chronometric"].get("slope")
             metadata.rt_intercept = metrics["chronometric"].get("intercept_ms") or metrics["chronometric"].get("intercept")
+            metadata.chronometric_slope_unit = metrics["chronometric"].get("slope_unit")
         
         if "history" in metrics:
             metadata.win_stay_rate = metrics["history"].get("win_stay")
             metadata.lose_shift_rate = metrics["history"].get("lose_shift")
             metadata.sticky_choice_rate = metrics["history"].get("sticky_choice")
+        
+        if "quality" in metrics and isinstance(metrics["quality"], dict):
+            metadata.quality = {str(key): bool(value) for key, value in metrics["quality"].items()}
     
     # Check for other files
     if (run_dir / "trials.ndjson").exists():

@@ -19,6 +19,7 @@ from agents.losses import (
     history_penalty,
     history_supervision_loss,
     non_decision_supervision_loss,
+    per_trial_history_loss,
     rt_loss,
     soft_rt_penalty,
 )
@@ -137,7 +138,7 @@ class CurriculumConfig:
                 non_decision_supervision=0.1,
                 wfpt=0.9,
             ),
-            max_commit_steps=160,
+            max_commit_steps=300,
         )
 
         phase3 = CurriculumPhase(
@@ -152,7 +153,7 @@ class CurriculumConfig:
                 non_decision_supervision=0.1,
                 wfpt=0.7,
             ),
-            max_commit_steps=180,
+            max_commit_steps=300,
         )
 
         phases = [phase1, phase2_adj, phase3]
@@ -188,7 +189,7 @@ class CurriculumConfig:
                 drift_supervision=0.05,
                 non_decision_supervision=0.05,
             ),
-            max_commit_steps=150,
+            max_commit_steps=300,
             success_criteria={
                 "min_slope": -800.0,
                 "max_slope": -200.0,
@@ -206,7 +207,7 @@ class CurriculumConfig:
                 rt_soft=0.05,
                 non_decision_supervision=0.05,
             ),
-            max_commit_steps=200,
+            max_commit_steps=300,
             success_criteria={},  # Final phase
         )
         return CurriculumConfig(phases=[phase1, phase2, phase3])
@@ -241,7 +242,7 @@ class CurriculumConfig:
                 drift_supervision=0.1,
                 non_decision_supervision=0.05,
             ),
-            max_commit_steps=150,
+            max_commit_steps=300,
             success_criteria={
                 "min_slope": -800.0,
                 "max_slope": -200.0,
@@ -260,7 +261,7 @@ class CurriculumConfig:
                 drift_supervision=0.1,
                 non_decision_supervision=0.05,
             ),
-            max_commit_steps=200,
+            max_commit_steps=300,
             success_criteria={},
         )
         return CurriculumConfig(phases=[phase1, phase2, phase3])
@@ -295,7 +296,7 @@ class CurriculumConfig:
                 drift_supervision=0.15,  # Keep drift supervision high
                 non_decision_supervision=0.05,
             ),
-            max_commit_steps=150,
+            max_commit_steps=300,
             success_criteria={
                 "min_slope": -800.0,
                 "max_slope": -200.0,
@@ -314,7 +315,7 @@ class CurriculumConfig:
                 drift_supervision=0.1,
                 non_decision_supervision=0.05,
             ),
-            max_commit_steps=200,
+            max_commit_steps=300,
             success_criteria={},
         )
         return CurriculumConfig(phases=[phase1, phase2, phase3])
@@ -336,7 +337,7 @@ class CurriculumConfig:
                 non_decision_supervision=0.05,
                 history_supervision=0.2,  # Activate history supervision
             ),
-            max_commit_steps=200,
+            max_commit_steps=300,
             success_criteria={},
         )
         return CurriculumConfig(phases=base.phases + [phase4])
@@ -358,7 +359,7 @@ class CurriculumConfig:
                 non_decision_supervision=0.05,
                 history_supervision=0.2,
             ),
-            max_commit_steps=200,
+            max_commit_steps=300,
             success_criteria={},
         )
         return CurriculumConfig(phases=base.phases + [phase5])
@@ -380,7 +381,7 @@ class CurriculumConfig:
                 non_decision_supervision=0.05,
                 history_supervision=0.2,
             ),
-            max_commit_steps=200,
+            max_commit_steps=300,
             success_criteria={},
         )
         return CurriculumConfig(phases=base.phases + [phase6])
@@ -406,7 +407,7 @@ class CurriculumConfig:
                 drift_supervision=0.2,  # Increased drift supervision
                 non_decision_supervision=0.05,
             ),
-            max_commit_steps=150,
+            max_commit_steps=300,
             success_criteria={
                 "min_slope": -1500.0,
                 "max_slope": -200.0,
@@ -418,23 +419,36 @@ class CurriculumConfig:
         return base
 
     @staticmethod
-    def history_finetune_curriculum() -> CurriculumConfig:
+    def history_finetune_curriculum(
+        *,
+        history_phase_epochs: int = 5,
+        history_choice_weight: float = 2.5,
+        history_wfpt_weight: float = 0.9,
+        history_history_weight: float = 0.0,
+        history_rt_soft_weight: float = 0.1,
+        history_drift_supervision_weight: float = 0.1,
+        history_non_decision_supervision_weight: float = 0.05,
+        history_history_supervision_weight: float = 0.4,
+        history_per_trial_history_weight: float = 0.0,
+        history_max_commit_steps: int = 120,
+    ) -> CurriculumConfig:
         """A curriculum that adds a final history finetuning phase."""
         base = CurriculumConfig.drift_scale_calibration_curriculum()
         phase7 = CurriculumPhase(
             name="phase7_history_finetune",
-            epochs=5,
+            epochs=history_phase_epochs,
             loss_weights=LossWeights(
-                choice=2.5,
+                choice=history_choice_weight,
                 rt=0.0,
-                wfpt=0.9,
-                history=0.0,
-                rt_soft=0.1,
-                drift_supervision=0.1,
-                non_decision_supervision=0.05,
-                history_supervision=0.4,  # Increased history supervision
+                wfpt=history_wfpt_weight,
+                history=history_history_weight,
+                rt_soft=history_rt_soft_weight,
+                drift_supervision=history_drift_supervision_weight,
+                non_decision_supervision=history_non_decision_supervision_weight,
+                history_supervision=history_history_supervision_weight,
+                per_trial_history=history_per_trial_history_weight,
             ),
-            max_commit_steps=200,
+            max_commit_steps=history_max_commit_steps,
             success_criteria={},
         )
         return CurriculumConfig(phases=base.phases + [phase7])
@@ -458,7 +472,7 @@ class HybridTrainingConfig:
     max_sessions: int | None = None
     max_trials_per_session: int | None = None
     min_commit_steps: int = 5
-    max_commit_steps: int = 120
+    max_commit_steps: int = 300  # Must accommodate DDM boundary crossings at low coherence
     drift_scale: float = 10.0  # Scale drift_head initialization to enable stronger evidence effects
     curriculum: CurriculumConfig | None = None  # If set, use curriculum learning
 
@@ -916,6 +930,7 @@ class HybridDDMTrainer:
                 rt_weight = 0.0
 
                 prob_buffer: list[float] = []
+                prob_tensor_buffer: list[torch.Tensor] = []  # differentiable copy
                 drift_gain_buffer: list[torch.Tensor] = []  # Collect for supervision
                 bound_buffer: list[torch.Tensor] = []
                 bias_buffer: list[torch.Tensor] = []
@@ -958,12 +973,34 @@ class HybridDDMTrainer:
                     bias_buffer.append(out["bias"])
                     noise_buffer.append(noise)
 
-                    score = 2.0 * drift * bound / (noise**2)
-                    score = torch.nan_to_num(score, nan=0.0, posinf=10.0, neginf=-10.0)
-                    score = torch.clamp(score, -10.0, 10.0)
-                    prob_right = torch.sigmoid(score)
+                    # Exact DDM choice probability with starting-point bias.
+                    # P(right) = [1 - exp(-2vz/σ²)] / [1 - exp(-2va/σ²)]
+                    # where v=drift, z=bound+bias (distance from lower boundary),
+                    # a=2*bound (total separation), σ=noise.
+                    # At v→0:  P(right) = z/a = (bound + bias) / (2*bound).
+                    bias_val = out["bias"]  # tanh output ∈ (-1, 1)
+                    a = 2.0 * bound                             # total boundary separation
+                    z_raw = bound + bias_val                    # dist from lower bound
+                    z = torch.clamp(z_raw, min=1e-4)
+                    z = torch.min(z, a - 1e-4)
+                    sigma_sq = noise ** 2 + 1e-8
+                    v = drift
+
+                    # Smoothly blend exact formula with v→0 limit to avoid 0/0
+                    abs_v = torch.abs(v)
+                    # v→0 limit:  P = z / a
+                    p_zero = z / a
+                    # Exact formula for |v| > threshold:
+                    exp_z = torch.exp(torch.clamp(-2.0 * v * z / sigma_sq, -20.0, 20.0))
+                    exp_a = torch.exp(torch.clamp(-2.0 * v * a / sigma_sq, -20.0, 20.0))
+                    p_exact = (1.0 - exp_z) / (1.0 - exp_a + 1e-8)
+                    # Blend using smooth step on |v|
+                    blend = torch.clamp(abs_v / 0.01, 0.0, 1.0)
+                    prob_right = blend * p_exact + (1.0 - blend) * p_zero
+                    prob_right = torch.clamp(prob_right, 1e-6, 1.0 - 1e-6)
                     prob_right = torch.nan_to_num(prob_right, nan=0.5)
                     prob_buffer.append(float(prob_right.detach().cpu()))
+                    prob_tensor_buffer.append(prob_right)
 
                     abs_drift = torch.abs(drift) + 1e-3
                     kappa = abs_drift * bound / (noise**2)
@@ -1062,6 +1099,27 @@ class HybridDDMTrainer:
                         target_lose_shift=torch.tensor(session.lose_shift_target, device=self.device),
                     )
                     total_loss = total_loss + weights.history_supervision * hist_sup_loss
+
+                # Per-trial differentiable history loss
+                pt_hist_loss = torch.zeros(1, device=self.device)
+                if weights.per_trial_history > 0.0 and prob_tensor_buffer:
+                    prob_tensor = torch.cat(prob_tensor_buffer).squeeze()
+                    # Extract prev_action (idx 3) and prev_reward (idx 4) from features
+                    # Hybrid convention: prev_action -1=left, 0=none, 1=right
+                    prev_act = torch.from_numpy(session.features[:, 3]).to(self.device)
+                    prev_rew = torch.from_numpy(session.features[:, 4]).to(self.device)
+                    choice_m = torch.from_numpy(session.choice_mask).bool().to(self.device)
+                    n = min(len(prob_tensor), len(prev_act), len(choice_m))
+                    pt_hist_loss = per_trial_history_loss(
+                        choice_prob=prob_tensor[:n],
+                        prev_action=prev_act[:n],
+                        prev_reward=prev_rew[:n],
+                        target_win_stay=float(session.win_stay_target),
+                        target_lose_shift=float(session.lose_shift_target),
+                        mask=choice_m[:n],
+                        no_action_value=0.0,  # Hybrid uses 0 for "no prev action"
+                    )
+                    total_loss = total_loss + weights.per_trial_history * pt_hist_loss
 
                 # Drift supervision: penalize weak drift parameters
                 drift_sup_loss = torch.zeros(1, device=self.device)
@@ -1294,9 +1352,15 @@ class HybridDDMTrainer:
             momentary_sigma=1.0,
             collapsing_bound=False,  # CRITICAL FIX: Disable env's auto-commit so agent's DDM controls timing!
             min_bound_steps=self.config.min_commit_steps,  # Allow model's RT predictions through
+            response_duration_override=self.config.max_commit_steps,  # Align env window with agent's DDM
         )
         env = RDMMacaqueEnv(env_config)
         step_ms = env.config.step_ms
+        # Cap max_commit_steps to env's response phase duration to prevent
+        # the agent from planning commits beyond the response window (which
+        # would cause hold/timeout on every late trial).
+        response_phase = next(p for p in env._phase_schedule if p.name == "response")  # noqa: SLF001
+        effective_max_commit = min(self.config.max_commit_steps, response_phase.duration_steps)
         metrics: dict[str, list[float]] = {
             "cumulative_reward": [],
             "mean_rt_ms": [],
@@ -1353,7 +1417,7 @@ class HybridDDMTrainer:
                             noise=noise,
                             bias=bias,
                             dt=dt,
-                            max_steps=self.config.max_commit_steps,
+                            max_steps=effective_max_commit,
                         )
                         
                         # Calculate commit time: non-decision delay + DDM accumulation time
@@ -1364,14 +1428,14 @@ class HybridDDMTrainer:
                         total_rt_ms = np.clip(
                             total_rt_ms,
                             self.config.step_ms * self.config.min_commit_steps,
-                            self.config.step_ms * self.config.max_commit_steps,
+                            self.config.step_ms * effective_max_commit,
                         )
                         
                         commit_step_target = int(total_rt_ms / step_ms)
                         commit_step_target = np.clip(
                             commit_step_target,
                             self.config.min_commit_steps,
-                            self.config.max_commit_steps,
+                            effective_max_commit,
                         )
                     # Type-safe comparison with phase_step
                     phase_step_val = info.get("phase_step", 0)

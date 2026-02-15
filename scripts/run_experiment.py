@@ -54,6 +54,12 @@ AGENT_INFO = {
         "tasks": ["rdm_macaque"],
         "training_time": "~5-15 minutes",
     },
+    "r_ddm": {
+        "name": "R-DDM (Recurrent Drift-Diffusion)",
+        "description": "History-aware diffusion model trained on multi-session animal data. Optimises choice, RT, and win-stay/lose-shift statistics.",
+        "tasks": ["ibl_2afc"],
+        "training_time": "~5-10 minutes (data-driven)",
+    },
 }
 
 TASK_INFO = {
@@ -164,41 +170,74 @@ def select_agent(task: str) -> str:
 def configure_training(task: str, agent: str) -> dict:
     """Configure training parameters."""
     console.print("[bold]Step 3: Configure Training[/bold]\n", style="green")
-    
-    # Default values based on agent
-    if agent == "hybrid_ddm_lstm":
-        default_episodes = 10
-        default_trials = 200
-    elif agent == "ppo":
-        default_episodes = 5
-        default_trials = 200
+
+    if agent == "r_ddm":
+        default_epochs = 40
+        default_rollout = 1200
+
+        quick = Confirm.ask(
+            "Use recommended defaults?",
+            default=True
+        )
+
+        if quick:
+            epochs = default_epochs
+            max_sessions = None
+            rollout_trials = default_rollout
+            seed = 42
+        else:
+            epochs = int(Prompt.ask(
+                "Number of training epochs",
+                default=str(default_epochs)
+            ))
+            max_sessions_response = Prompt.ask(
+                "Max sessions to sample (leave blank for all)",
+                default=""
+            ).strip()
+            max_sessions = int(max_sessions_response) if max_sessions_response else None
+            rollout_trials = int(Prompt.ask(
+                "Number of rollout trials to log",
+                default=str(default_rollout)
+            ))
+            seed = int(Prompt.ask(
+                "Random seed (for reproducibility)",
+                default="42"
+            ))
     else:
-        default_episodes = 3
-        default_trials = 400
-    
-    # Quick or custom config
-    quick = Confirm.ask(
-        "Use recommended defaults?",
-        default=True
-    )
-    
-    if quick:
-        episodes = default_episodes
-        trials_per_episode = default_trials
-        seed = 42
-    else:
-        episodes = int(Prompt.ask(
-            "Number of episodes (training iterations)",
-            default=str(default_episodes)
-        ))
-        trials_per_episode = int(Prompt.ask(
-            "Trials per episode",
-            default=str(default_trials)
-        ))
-        seed = int(Prompt.ask(
-            "Random seed (for reproducibility)",
-            default="42"
-        ))
+        # Default values based on agent
+        if agent == "hybrid_ddm_lstm":
+            default_episodes = 10
+            default_trials = 200
+        elif agent == "ppo":
+            default_episodes = 5
+            default_trials = 200
+        else:
+            default_episodes = 3
+            default_trials = 400
+
+        # Quick or custom config
+        quick = Confirm.ask(
+            "Use recommended defaults?",
+            default=True
+        )
+
+        if quick:
+            episodes = default_episodes
+            trials_per_episode = default_trials
+            seed = 42
+        else:
+            episodes = int(Prompt.ask(
+                "Number of episodes (training iterations)",
+                default=str(default_episodes)
+            ))
+            trials_per_episode = int(Prompt.ask(
+                "Trials per episode",
+                default=str(default_trials)
+            ))
+            seed = int(Prompt.ask(
+                "Random seed (for reproducibility)",
+                default="42"
+            ))
     
     # Generate run name
     timestamp = datetime.now().strftime("%Y%m%d")
@@ -211,24 +250,45 @@ def configure_training(task: str, agent: str) -> dict:
         default=run_name
     )
     
-    config = {
-        "task": task,
-        "agent": agent,
-        "episodes": episodes,
-        "trials_per_episode": trials_per_episode,
-        "seed": seed,
-        "run_name": custom_name,
-        "output_dir": f"runs/{custom_name}",
-    }
+    if agent == "r_ddm":
+        config = {
+            "task": task,
+            "agent": agent,
+            "epochs": epochs,
+            "max_sessions": max_sessions,
+            "rollout_trials": rollout_trials,
+            "seed": seed,
+            "run_name": custom_name,
+            "output_dir": f"runs/{custom_name}",
+        }
+    else:
+        config = {
+            "task": task,
+            "agent": agent,
+            "episodes": episodes,
+            "trials_per_episode": trials_per_episode,
+            "seed": seed,
+            "run_name": custom_name,
+            "output_dir": f"runs/{custom_name}",
+        }
     
     # Summary
     console.print("\n[bold]Configuration Summary:[/bold]")
     console.print(f"  Task: {TASK_INFO[task]['name']}")
     console.print(f"  Agent: {AGENT_INFO[agent]['name']}")
-    console.print(f"  Episodes: {episodes}")
-    console.print(f"  Trials/episode: {trials_per_episode}")
-    console.print(f"  Total trials: {episodes * trials_per_episode}")
-    console.print(f"  Seed: {seed}")
+    if agent == "r_ddm":
+        console.print(f"  Epochs: {epochs}")
+        if max_sessions is not None:
+            console.print(f"  Sessions sampled: {max_sessions}")
+        else:
+            console.print("  Sessions sampled: all available")
+        console.print(f"  Rollout trials: {rollout_trials}")
+        console.print(f"  Seed: {seed}")
+    else:
+        console.print(f"  Episodes: {episodes}")
+        console.print(f"  Trials/episode: {trials_per_episode}")
+        console.print(f"  Total trials: {episodes * trials_per_episode}")
+        console.print(f"  Seed: {seed}")
     console.print(f"  Output: {config['output_dir']}\n")
     
     if not Confirm.ask("Proceed with training?", default=True):
@@ -256,6 +316,17 @@ def run_training(config: dict) -> bool:
             "--episodes", str(config["episodes"]),
             "--trials-per-episode", str(config["trials_per_episode"]),
         ]
+    elif agent == "r_ddm":
+        cmd = [
+            "python", "scripts/train_r_ddm.py",
+            "--run-dir", config["output_dir"],
+            "--task", task,
+            "--epochs", str(config["epochs"]),
+            "--seed", str(config["seed"]),
+            "--rollout-trials", str(config["rollout_trials"]),
+        ]
+        if config.get("max_sessions") is not None:
+            cmd.extend(["--max-sessions", str(config["max_sessions"])])
     else:
         # Use standard training
         # Map task names to env names expected by train_agent.py
@@ -281,6 +352,9 @@ def run_training(config: dict) -> bool:
     
     if result.returncode == 0:
         console.print("✓ [bold green]Training completed successfully![/bold green]\n")
+        best_log = Path(config["output_dir"]) / "trials_best.ndjson"
+        if best_log.exists():
+            config["best_log"] = str(best_log)
         return True
     else:
         console.print(f"✗ [bold red]Training failed![/bold red]")
@@ -292,10 +366,10 @@ def run_evaluation(config: dict) -> bool:
     """Run evaluation to generate metrics."""
     console.print("[bold]Step 5: Evaluating Agent[/bold]\n", style="green")
     
-    cmd = [
-        "python", "scripts/evaluate_agent.py",
-        "--run", config["output_dir"]
-    ]
+    use_best = config.get("best_log") is not None
+    cmd = ["python", "scripts/evaluate_agent.py", "--run", config["output_dir"]]
+    if use_best:
+        cmd.append("--use-best")
     
     console.print(f"[dim]Running: {' '.join(cmd)}[/dim]\n")
     
@@ -316,7 +390,10 @@ def generate_dashboard(config: dict) -> bool:
     console.print("[bold]Step 6: Generating Dashboard[/bold]\n", style="green")
     
     task = config["task"]
-    trials_log = f"{config['output_dir']}/trials.ndjson"
+    if config.get("best_log"):
+        trials_log = config["best_log"]
+    else:
+        trials_log = f"{config['output_dir']}/trials.ndjson"
     reference_log = TASK_INFO[task]["reference_data"]
     dashboard_path = f"{config['output_dir']}/dashboard.html"
     
@@ -326,6 +403,8 @@ def generate_dashboard(config: dict) -> bool:
         "--opts.reference-log", reference_log,
         "--opts.output", dashboard_path,
     ]
+    if task == "ibl_2afc":
+        cmd.extend(["--opts.reference-metrics", "out/ibl_reference_metrics.json"])
     
     console.print(f"[dim]Running: {' '.join(cmd)}[/dim]\n")
     

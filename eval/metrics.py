@@ -29,6 +29,10 @@ class ChronometricMetrics:
     intercept_ms: float
     slope_ms_per_unit: float
     rt_by_level: dict[float, float]
+    slope_unit: str = ""
+    ceiling_fraction: float = 0.0  # fraction of difficulty levels pinned at max RT
+    rt_range_ms: float = 0.0  # max(median RT) - min(median RT) across levels
+    corrected_slope: float | None = None  # slope with ceiling levels removed
 
 
 @dataclass(slots=True)
@@ -103,9 +107,17 @@ def compute_psychometric(df: pd.DataFrame, stimulus_key: str = "contrast") -> Ps
     if filtered.empty:
         return PsychometricMetrics(np.nan, np.nan, np.nan, np.nan)
 
-    filtered["stimulus"] = filtered[f"stimulus_{stimulus_key}"]
     filtered["choice_right"] = (filtered["action"] == "right").astype(float)
-    grouped = filtered.groupby("stimulus")["choice_right"].agg(["mean", "count"]).reset_index()
+
+    # Exclude zero-coherence trials from slope fitting
+    f_fit = filtered[filtered[f"stimulus_{stimulus_key}"] != 0]
+    if f_fit.empty:
+        return PsychometricMetrics(np.nan, np.nan, np.nan, np.nan)
+
+    df_for_fit = f_fit.copy()
+    df_for_fit["stimulus"] = df_for_fit[f"stimulus_{stimulus_key}"]
+    df_for_fit["choice_right"] = (df_for_fit["action"] == "right").astype(float)
+    grouped = df_for_fit.groupby("stimulus")["choice_right"].agg(["mean", "count"]).reset_index()
 
     xdata = grouped["stimulus"].values.astype(float)
     ydata = grouped["mean"].values.astype(float)
@@ -141,6 +153,13 @@ def compute_psychometric(df: pd.DataFrame, stimulus_key: str = "contrast") -> Ps
     else:
         bias, slope, lapse_low, lapse_high = result.x
 
+    # Lapse from zero-coh only:
+    zero = filtered[filtered[f"stimulus_{stimulus_key}"] == 0]
+    lapse = float(zero["choice_right"].mean()) if not zero.empty else np.nan
+    if not np.isnan(lapse):
+        lapse_low = lapse
+        lapse_high = 1 - lapse
+
     return PsychometricMetrics(float(slope), float(bias), float(lapse_low), float(lapse_high))
 
 
@@ -150,21 +169,66 @@ def compute_chronometric(df: pd.DataFrame, stimulus_key: str = "coherence") -> C
     mask = data["rt_used"] > 0.0
     data = data[mask]
     if data.empty:
-        return ChronometricMetrics(np.nan, np.nan, {})
+        return ChronometricMetrics(np.nan, np.nan, {}, "")
 
     data["difficulty"] = np.abs(data[f"stimulus_{stimulus_key}"])
     data["rt_used"] = data["rt_used"]
     grouped = data.groupby("difficulty")["rt_ms"].median().sort_index()
     if len(grouped) < 2:
         intercept = float(grouped.iloc[0]) if not grouped.empty else np.nan
-        return ChronometricMetrics(intercept, np.nan, grouped.to_dict())
+        rt_dict = {float(k): float(v) for k, v in grouped.items()}
+        return ChronometricMetrics(intercept, np.nan, rt_dict, f"ms_per_10pct_{stimulus_key}")
 
-    x = grouped.index.values.astype(float)
+    raw_x = grouped.index.values.astype(float)
     y = grouped.values.astype(float)
-    slope, intercept = np.polyfit(x, y, deg=1)
+
+    # Detect RT ceiling saturation: levels where median RT equals the maximum
+    max_rt = float(np.max(y))
+    min_rt = float(np.min(y))
+    rt_range = max_rt - min_rt
+    # A level is "at ceiling" if its median RT is within 1% of the max
+    ceiling_tol = max(1.0, max_rt * 0.01)
+    n_at_ceiling = int(np.sum(np.abs(y - max_rt) < ceiling_tol))
+    ceiling_fraction = n_at_ceiling / len(y) if len(y) > 0 else 0.0
+
+    percent_mode = False
+    if np.nanmax(np.abs(raw_x)) <= 1.0 + 1e-6:
+        x = raw_x * 100.0
+        percent_mode = True
+    elif np.nanmax(np.abs(raw_x)) <= 100.0 + 1e-6:
+        x = raw_x
+        percent_mode = True
+    else:
+        x = raw_x
+
+    slope_raw, intercept = np.polyfit(x, y, deg=1)
     # Convert grouped dict keys/values explicitly to avoid type issues
     rt_dict: dict[float, float] = {float(k): float(v) for k, v in grouped.items()}  # type: ignore[arg-type]
-    return ChronometricMetrics(float(intercept), float(slope), rt_dict)
+    if percent_mode:
+        slope = float(slope_raw * 10.0)
+        slope_unit = f"ms_per_10pct_{stimulus_key}"
+    else:
+        slope = float(slope_raw / 10.0)
+        slope_unit = f"ms_per_10_{stimulus_key}_units"
+
+    # Ceiling-corrected slope: exclude levels at ceiling and refit
+    # Only compute when ceiling fraction is concerning (≥ 2 levels at ceiling)
+    corrected_slope: float | None = None
+    if n_at_ceiling >= 2:
+        not_at_ceiling = np.abs(y - max_rt) >= ceiling_tol
+        x_clean = x[not_at_ceiling]
+        y_clean = y[not_at_ceiling]
+        if len(x_clean) >= 2:
+            corr_raw, _ = np.polyfit(x_clean, y_clean, deg=1)
+            if percent_mode:
+                corrected_slope = float(corr_raw * 10.0)
+            else:
+                corrected_slope = float(corr_raw / 10.0)
+
+    return ChronometricMetrics(
+        float(intercept), slope, rt_dict, slope_unit,
+        ceiling_fraction, rt_range, corrected_slope,
+    )
 
 
 def compute_history_metrics(df: pd.DataFrame) -> HistoryMetrics:
@@ -226,6 +290,8 @@ def compute_history_metrics(df: pd.DataFrame) -> HistoryMetrics:
 
 
 def _sanitize(obj: object) -> object:
+    if isinstance(obj, bool):
+        return obj
     if isinstance(obj, numbers.Real):
         value = float(obj)
         if not math.isfinite(value):
@@ -240,8 +306,85 @@ def _sanitize(obj: object) -> object:
     return obj
 
 
-def compute_all_metrics(df: pd.DataFrame, task: str) -> dict[str, object]:
+def _is_finite(value: object) -> bool:
+    if isinstance(value, bool):
+        return True
+    if isinstance(value, numbers.Real):
+        return math.isfinite(float(value))
+    return False
+
+
+def _quality_flags(metrics: dict[str, object], task: str, is_choice_only: bool = False) -> dict[str, bool]:
+    psychometric = metrics.get("psychometric", {}) or {}
+    history = metrics.get("history", {}) or {}
+    chronometric = metrics.get("chronometric", {}) or {}
+
+    bias = psychometric.get("bias")
+    win_stay = history.get("win_stay")
+    lose_shift = history.get("lose_shift")
+    sticky = history.get("sticky_choice")
+    slope = chronometric.get("slope_ms_per_unit")
+    intercept = chronometric.get("intercept_ms")
+
+    bias_ok = _is_finite(bias) and abs(float(bias)) <= 30.0
+    history_ok = (
+        _is_finite(win_stay)
+        and _is_finite(lose_shift)
+        and _is_finite(sticky)
+        and float(win_stay) < 0.95
+        and float(sticky) < 0.95
+        and float(lose_shift) > 0.05
+    )
+    rt_ok = _is_finite(intercept) and 150.0 <= float(intercept) <= 2000.0
+
+    ceiling_frac = chronometric.get("ceiling_fraction", 0.0)
+    ceiling_warning = _is_finite(ceiling_frac) and float(ceiling_frac) >= 0.5
+
+    # When ceiling is present, prefer the corrected slope for quality assessment
+    corrected = chronometric.get("corrected_slope")
+    effective_slope = corrected if (_is_finite(corrected) and ceiling_warning) else slope
+
+    chrono_ok = metrics.get("chronometric", {}).get("slope_ms_per_unit", 0.0) is not None
+    if is_choice_only:
+        chrono_ok = True
+    elif task == "ibl_2afc":
+        chrono_ok = _is_finite(effective_slope) and float(effective_slope) <= -10.0
+    elif task == "rdm":
+        chrono_ok = _is_finite(effective_slope) and float(effective_slope) <= -5.0
+    else:
+        chrono_ok = _is_finite(effective_slope)
+
+    degenerate = False
+    if not bias_ok:
+        degenerate = True
+    if not history_ok:
+        degenerate = True
+    if not rt_ok:
+        degenerate = True
+    if not chrono_ok:
+        degenerate = True
+    return {
+        "bias_ok": bias_ok,
+        "history_ok": history_ok,
+        "rt_ok": rt_ok,
+        "chronometric_ok": chrono_ok,
+        "rt_ceiling_warning": ceiling_warning,
+        "degenerate": degenerate,
+    }
+
+
+def compute_all_metrics(df: pd.DataFrame, task: str, is_choice_only: bool = False) -> dict[str, object]:
     metrics: dict[str, object] = {}
+    if not df.empty:
+        metrics["p_right_overall"] = (df["action"] == "right").mean()
+        committed = df[df["action"].isin(["left", "right"])]
+        if len(committed) > 0:
+            metrics["p_right_committed"] = (committed["action"] == "right").mean()
+        else:
+            metrics["p_right_committed"] = float("nan")
+        metrics["commit_rate"] = len(committed) / len(df)
+        metrics["rt_variance"] = df["rt_ms"].var()
+
     if task == "ibl_2afc":
         metrics["psychometric"] = _sanitize(asdict(compute_psychometric(df, stimulus_key="contrast")))
         metrics["chronometric"] = _sanitize(asdict(compute_chronometric(df, stimulus_key="contrast")))
@@ -252,15 +395,16 @@ def compute_all_metrics(df: pd.DataFrame, task: str) -> dict[str, object]:
         metrics["history"] = _sanitize(asdict(compute_history_metrics(df)))
     else:  # pragma: no cover - defensive fallback for future tasks
         metrics["history"] = _sanitize(asdict(compute_history_metrics(df)))
-    return metrics
+    metrics["quality"] = _quality_flags(metrics, task, is_choice_only)
+    return _sanitize(metrics)  # type: ignore[return-value]
 
 
-def load_and_compute(path: str | Path) -> dict[str, object]:
+def load_and_compute(path: str | Path, is_choice_only: bool = False) -> dict[str, object]:
     df = load_trials(path)
     if df.empty:
         return {}
     task = df["task"].iloc[0]
-    return compute_all_metrics(df, task)
+    return compute_all_metrics(df, task, is_choice_only)
 
 
 __all__ = [

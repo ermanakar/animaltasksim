@@ -2,7 +2,7 @@
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-20%20passed-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-80%20passed-brightgreen.svg)](tests/)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
 AnimalTaskSim benchmarks AI agents on classic animal decision-making tasks using task-faithful environments, public reference data, and a schema-locked evaluation stack. The project focuses on matching animal **behavioral fingerprints**—psychometric, chronometric, history, and lapse patterns—rather than raw reward.
@@ -38,7 +38,7 @@ After a series of targeted experiments, the hybrid DDM+LSTM agent now successful
 - **Chronometric slope:** -767 ms/unit (macaque reference: -645 ms/unit)
 - **Psychometric slope:** 7.33 (macaque: 17.56)
 - **Bias:** +0.001 (macaque: ≈0)
-- **History effects:** All near chance, consistent with reference data.
+- **History effects:** Near chance (~0.5), which does **not** match macaque reference (win-stay ~0.49, lose-shift ~0.52). See [The Decoupling Problem](FINDINGS.md#the-decoupling-problem).
 
 **Technical approach:**
 
@@ -75,8 +75,22 @@ Dashboards:
 - IBL-style mouse visual 2AFC task
 - Macaque random-dot motion discrimination task
 - Baseline agents: Sticky-Q, Bayesian observer, PPO
-- **NEW: Hybrid DDM+LSTM agent** with stochastic evidence accumulation
+- Hybrid DDM+LSTM agent with stochastic evidence accumulation
+- **R-DDM**: Recurrent Drift-Diffusion Model with GRU-based trial history
 - Metrics, reports, and `.ndjson` logs that align agents with rodent/primate data
+- **Multi-run leaderboard** (`scripts/compare_runs.py`) for cross-experiment comparison
+
+### February 2026 — Scientific Fixes & Infrastructure
+
+Several correctness and infrastructure improvements:
+
+- **WFPT normalization fix**: The small-time series used incorrect image charge positions (`z + 2ka` instead of `a(z + 2k)`), causing densities to be off by a factor of `a`. Both series now agree to 6 decimal places; `drift=3, bound=2` integrates to exactly 1.000.
+- **Per-trial history loss**: Root cause of the [Decoupling Problem](FINDINGS.md#the-decoupling-problem) identified — batch-mean history loss gives weak gradients, and Hybrid's history estimation was fully non-differentiable. Added `per_trial_history_loss()` with per-trial MSE supervision for both R-DDM and Hybrid trainers.
+- **Ceiling-corrected chronometric slope**: When ≥2 difficulty levels are pinned at max RT, `corrected_slope` excludes ceiling levels and refits for more honest assessment.
+- **Multi-run leaderboard**: `scripts/compare_runs.py` scans all runs, computes composite scores against animal reference data, outputs color-coded HTML.
+- **57 tests** now pass (up from 40), including 20 WFPT tests and 12 per-trial history tests.
+
+See [`FINDINGS.md`](FINDINGS.md) and [`PROJECT_TODO.md`](PROJECT_TODO.md) for full details.
 
 Read the full benchmark recap in [`FINDINGS.md`](FINDINGS.md). Dashboards are stored under `runs/` for interactive inspection.
 
@@ -170,7 +184,7 @@ Use recommended defaults? (Y/n): y
 Results Summary:
   Psychometric Slope: 31.75
   Chronometric Slope: -1813 ms/unit
-  Win-Stay Rate: 0.490
+  Win-Stay Rate: 0.490 (near chance — see FINDINGS.md)
 ```
 
 ### Manual Workflow (Advanced Users)
@@ -298,7 +312,7 @@ Each step is automated and can be run:
 
 ### What Each Step Does
 
-1. **Training (`train_agent.py` or `train_hybrid_curriculum.py`)**
+1. **Training (`train_agent.py`, `train_hybrid_curriculum.py`, or `train_r_ddm.py`)**
    - Trains agent on selected task environment
    - Generates trial-by-trial logs in `.ndjson` format
    - Saves model weights and training configuration
@@ -414,9 +428,9 @@ python scripts/train_agent.py --seed SEED --env TASK --agent AGENT ...
 
 ### Infrastructure
 
-- **Web-based dashboard:** Interactive experiment browser with filtering and comparison
-- **Automated hyperparameter tuning:** Grid search and Bayesian optimization for agent calibration
-- **Multi-task transfer learning:** Pre-train agents on one task and fine-tune on another
+- **Seed robustness tests:** Verify metric stability across 5+ seeds
+- **Make-compare CLI:** One-command pipeline: train → evaluate → compare → report
+- **Automated registry scans:** Ensure all runs are indexed post-sweep
 
 ---
 
