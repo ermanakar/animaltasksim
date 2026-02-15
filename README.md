@@ -7,9 +7,23 @@
 
 AnimalTaskSim benchmarks AI agents on classic animal decision-making tasks using task-faithful environments, public reference data, and a schema-locked evaluation stack. The project focuses on matching animal **behavioral fingerprints**—psychometric, chronometric, history, and lapse patterns—rather than raw reward.
 
+## Current Results at a Glance
+
+<p align="center">
+  <img src="docs/figures/k2_dashboard.png" alt="Agent vs Macaque Behavioral Fingerprints" width="800">
+</p>
+
+Our Hybrid DDM+LSTM agent trained on the macaque RDM task simultaneously reproduces:
+- **Negative chronometric slope** — harder stimuli → slower RTs, slope −270 ms/unit (macaque: −645)
+- **Near-zero choice bias** — p(right) = 0.496 among committed trials (macaque: ≈0.50)
+- **Psychometric slope** — 10.7 (macaque: 17.6), though high lapse rates (~50%) compress the visible curve
+- **History effects remain at chance** (~0.50) — an open research problem we call the [Decoupling Problem](FINDINGS.md#the-decoupling-problem)
+
+> *Figure generated from `runs/decoupling_K2_window_control/`. Regenerate with `python scripts/generate_readme_figures.py`.*
+
 ---
 
-## 📚 New to the Project? Start Here(")
+## 📚 New to the Project? Start Here
 
 **Not sure where to begin?** We've got you covered:
 
@@ -28,6 +42,14 @@ AnimalTaskSim benchmarks AI agents on classic animal decision-making tasks using
 ---
 
 ## Recent Updates
+
+### February 2026 — K2 Breakthrough: Simultaneous Psychometric + Chronometric Replication
+
+The K2 experiment achieved the first simultaneous replication of both psychometric sensitivity and negative chronometric slope. Key discoveries during this work:
+
+1. **Bias Artifact Resolution**: The reported 84% "leftward bias" was a metric artifact — `p_right_overall` counted holds (66% of trials) as non-right, inflating the apparent bias. The true committed `p_right = 0.48` was balanced all along.
+2. **Response Window Fix**: The agent's `max_commit_steps=200` exceeded the environment's 120-step response phase, causing most DDM commits to fall outside the valid window. After alignment (`response_duration_override` + 300-step window), commit rate reached 100%.
+3. **Results** (`runs/decoupling_K2_window_control/`): Psych slope=10.7, chrono slope=−270 ms/unit, bias=0.007, commit rate=100%. See figure above.
 
 ### October 12, 2025 - Hybrid DDM+LSTM Agent Achieves Animal-like Chronometric Slope
 
