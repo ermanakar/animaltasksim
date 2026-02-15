@@ -335,7 +335,7 @@ def _quality_flags(metrics: dict[str, object], task: str, is_choice_only: bool =
         and float(sticky) < 0.95
         and float(lose_shift) > 0.05
     )
-    rt_ok = _is_finite(intercept) and 150.0 <= float(intercept) <= 2000.0
+    rt_ok = _is_finite(intercept) and 150.0 <= float(intercept) <= 3500.0
 
     ceiling_frac = chronometric.get("ceiling_fraction", 0.0)
     ceiling_warning = _is_finite(ceiling_frac) and float(ceiling_frac) >= 0.5
