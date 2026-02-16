@@ -232,7 +232,7 @@ After 55+ experiments:
 
 | | Status | Detail |
 |---|--------|--------|
-| ✅ | **Chronometric curve** | Negative slope achieved — the hybrid DDM+LSTM is the first RL agent to produce realistic evidence-dependent reaction times |
+| ✅ | **Chronometric curve** | Negative slope achieved — the hybrid DDM+LSTM produces evidence-dependent reaction times via internal DDM simulation |
 | ✅ | **Psychometric curve** | Slope 10.7 vs. animal 17.6 — in the right range |
 | ✅ | **Bias** | Near-zero (0.002), matching animal data |
 | ✅ | **Curriculum learning** | Teaching RT structure first (WFPT loss), then accuracy, is critical |

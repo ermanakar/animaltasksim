@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
-import torch
 
 
 @dataclass
@@ -156,14 +155,14 @@ def analyze_synthetic_dataset(dataset: list[dict]) -> None:
     print("SYNTHETIC DATASET ANALYSIS")
     print("="*80)
     print(f"\nTotal trials: {len(dataset)}")
-    print(f"\nRT statistics:")
+    print("\nRT statistics:")
     print(f"  Mean: {rts.mean():.1f}ms")
     print(f"  Std: {rts.std():.1f}ms")
     print(f"  Range: [{rts.min():.0f}, {rts.max():.0f}]ms")
     
     print(f"\nDrift gain range: [{drift_gains.min():.2f}, {drift_gains.max():.2f}]")
     
-    print(f"\nRT by coherence:")
+    print("\nRT by coherence:")
     for coh in sorted(np.unique(abs_coh)):
         mask = abs_coh == coh
         coh_rts = rts[mask]
@@ -175,7 +174,7 @@ def analyze_synthetic_dataset(dataset: list[dict]) -> None:
     r = linreg.rvalue  # type: ignore
     r2 = r ** 2
     
-    print(f"\nRT-Coherence relationship:")
+    print("\nRT-Coherence relationship:")
     print(f"  Slope: {slope:.1f} ms/unit")
     print(f"  R²: {r2:.4f}")
     print(f"  RT difference (hard-easy): {rts[abs_coh < 0.05].mean() - rts[abs_coh > 0.5].mean():.1f}ms")

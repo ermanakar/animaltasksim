@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import asdict, dataclass
 import math
 import numbers
 from pathlib import Path
-from typing import Callable, Iterable, Sequence
+from typing import Callable
 
 import numpy as np
 import pandas as pd

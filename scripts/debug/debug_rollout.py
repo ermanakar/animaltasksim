@@ -2,7 +2,7 @@
 import torch
 import numpy as np
 from pathlib import Path
-from agents.hybrid_ddm_lstm import HybridDDMModel, HybridTrainingConfig, HybridDDMTrainer, HybridDDMPaths
+from agents.hybrid_ddm_lstm import HybridDDMModel
 from envs.rdm_macaque import RDMMacaqueEnv, RDMConfig, AgentMetadata, ACTION_HOLD, ACTION_LEFT, ACTION_RIGHT
 
 # Load trained model
@@ -116,6 +116,6 @@ while True:
     if terminated:
         break
 
-print(f"\n" + "="*80)
+print("\n" + "="*80)
 print(f"Completed {trial_count} trials, {response_phase_count} response phases")
 print("="*80)

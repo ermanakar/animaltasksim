@@ -16,7 +16,7 @@ from pathlib import Path
 
 import torch
 
-from agents.hybrid_ddm_lstm import HybridTrainingConfig, train_hybrid
+from agents.hybrid_ddm_lstm import HybridTrainingConfig
 from agents.losses import LossWeights
 from animaltasksim.config import ProjectPaths
 
@@ -100,7 +100,7 @@ def finetune_hybrid_agent(
     trainer.model.lstm.load_state_dict(checkpoint["lstm_state"])
     trainer.model.drift_head.load_state_dict(checkpoint["drift_head_state"])
     
-    print(f"✓ Loaded pretrained LSTM and drift_head")
+    print("✓ Loaded pretrained LSTM and drift_head")
     print(f"  Val loss from pretraining: {checkpoint.get('val_loss', 'N/A'):.4f}")
     print(f"  Val MAE from pretraining: {checkpoint.get('val_mae', 'N/A'):.4f}")
     print()

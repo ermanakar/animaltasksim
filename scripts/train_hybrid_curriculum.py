@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import argparse
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 try:
@@ -199,14 +199,14 @@ def main(args: TrainCurriculumArgs) -> None:
     print("TRAINING COMPLETE")
     print(f"{'='*80}")
     if "phases" in result:
-        print(f"\nPhase Summary:")
+        print("\nPhase Summary:")
         for phase_result in result["phases"]:
             status = "✓ PASSED" if phase_result["success"] else "✗ FAILED"
             print(f"  {phase_result['name']}: {status}")
             if phase_result.get("metrics"):
                 for key, val in phase_result["metrics"].items():
                     print(f"    {key}: {val:.4f}")
-    print(f"\nFinal artifacts:")
+    print("\nFinal artifacts:")
     for key, path in result["paths"].items():
         print(f"  {key}: {path}")
     print(f"\n{'='*80}\n")

@@ -159,7 +159,7 @@ def evaluate_run(run_dir: Path) -> dict | None:
 
     metrics_path = run_dir / "metrics.json"
     if not metrics_path.exists():
-        print(f"  [WARN] No metrics.json produced")
+        print("  [WARN] No metrics.json produced")
         return None
 
     with metrics_path.open() as f:
@@ -274,7 +274,7 @@ def main() -> None:
                 text=True,
             )
             if result.returncode != 0:
-                print(f"  [ERROR] Training failed!")
+                print("  [ERROR] Training failed!")
                 print(f"  stderr: {result.stderr[:500]}")
                 continue
             # Print last few lines of stdout for progress visibility
@@ -282,7 +282,7 @@ def main() -> None:
             for line in stdout_lines[-5:]:
                 print(f"  {line}")
 
-        print(f"\n  Evaluating...")
+        print("\n  Evaluating...")
         metrics = evaluate_run(spec.run_dir)
         if metrics is not None:
             kv = extract_key_metrics(metrics)
@@ -290,7 +290,7 @@ def main() -> None:
             print(f"  Key metrics: slope={kv['psych_slope']}, chrono={kv['chrono_slope']}, "
                   f"WS={kv['win_stay']}, LS={kv['lose_shift']}")
         else:
-            print(f"  [SKIP] Could not evaluate")
+            print("  [SKIP] Could not evaluate")
 
     if results:
         print_comparison_table(results)

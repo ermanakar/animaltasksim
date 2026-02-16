@@ -76,7 +76,7 @@ def main(opts: DashboardOptions) -> None:
     if not reference_path.exists():
         raise FileNotFoundError(f"Reference log not found: {reference_path}")
 
-    print(f"Building dashboard...")
+    print("Building dashboard...")
     print(f"  Agent: {agent_path}")
     print(f"  Reference: {reference_path}")
     print(f"  Output: {output_path}")
@@ -101,7 +101,7 @@ def main(opts: DashboardOptions) -> None:
         animal_metrics_override=reference_metrics,
     )
 
-    print(f"\n✓ Dashboard generated successfully!")
+    print("\n✓ Dashboard generated successfully!")
     print(f"  Open in browser: file://{output_path.absolute()}")
 
 

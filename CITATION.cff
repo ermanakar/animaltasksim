@@ -4,10 +4,7 @@ title: "AnimalTaskSim: Hybrid Drift–Diffusion × LSTM Agents Matching Animal D
 authors:
   - family-names: Akar
     given-names: Erman
-    orcid: "0000-0000-0000-0000" # optional placeholder; add if you have one
-  - family-names: ChatGPT (Noah)
-    given-names: OpenAI Collaborative Model
-version: "1.0.0"
+version: "0.1.0"
 date-released: "2025-10-10"
 repository-code: "https://github.com/ermanakar/animaltasksim"
 abstract: >
@@ -157,4 +154,4 @@ preferred-citation:
       given-names: Erman
   repository-code: "https://github.com/ermanakar/animaltasksim"
   year: 2025
-  version: "1.0.0"
+  version: "0.1.0"

@@ -146,14 +146,14 @@ def cleanup_runs(
                 print(f"  ❌ Failed to delete {run_id}: {e}")
                 failed += 1
         
-        print(f"\n✅ Cleanup complete!")
+        print("\n✅ Cleanup complete!")
         print(f"   Deleted: {deleted}")
         print(f"   Failed: {failed}")
         print(f"   Space freed: {total_size / 1024 / 1024:.1f} MB")
         print(f"\n📊 Registry updated: {len(registry.experiments)} experiments remaining")
     
     else:
-        print(f"\n[DRY RUN] Use --no-dry-run to execute deletions.")
+        print("\n[DRY RUN] Use --no-dry-run to execute deletions.")
 
 
 if __name__ == "__main__":

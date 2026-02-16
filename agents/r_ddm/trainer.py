@@ -14,7 +14,6 @@ import numpy as np
 
 import torch
 from torch import Tensor
-import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 from agents.wfpt_loss import wfpt_log_likelihood

@@ -65,13 +65,13 @@ for coh in coherences:
     pct_timeout = (np.array(ddm_steps_list) == 120).mean() * 100
     
     print(f"\nCoherence {coh:.3f}:")
-    print(f"  Model outputs:")
+    print("  Model outputs:")
     print(f"    drift_gain = {drift_gain:.4f}")
     print(f"    drift      = {drift:.4f}")
     print(f"    bound      = {bound:.4f}")
     print(f"    noise      = {noise:.4f}")
     print(f"    non_dec    = {non_decision_ms:.1f}ms")
-    print(f"  DDM simulation (100 trials):")
+    print("  DDM simulation (100 trials):")
     print(f"    Mean steps     = {mean_ddm_steps:.1f}")
     print(f"    Timeout rate   = {pct_timeout:.1f}%")
     print(f"    Mean RT (raw)  = {total_rt_ms.mean():.1f}ms ± {total_rt_ms.std():.1f}")
@@ -83,13 +83,13 @@ for coh in coherences:
     noise_per_step = noise * np.sqrt(0.01)
     snr = abs(drift_per_step) / noise_per_step if noise_per_step > 0 else 0
     
-    print(f"  Signal-to-noise:")
+    print("  Signal-to-noise:")
     print(f"    Drift/step  = {drift_per_step:.6f}")
     print(f"    Noise/step  = {noise_per_step:.6f}")
     print(f"    SNR         = {snr:.6f}")
     
     if snr < 0.01:
-        print(f"    ⚠️  SNR too low! Random walk dominates, mostly timeouts")
+        print("    ⚠️  SNR too low! Random walk dominates, mostly timeouts")
 
 print("\n" + "="*80)
 print("DIAGNOSIS:")

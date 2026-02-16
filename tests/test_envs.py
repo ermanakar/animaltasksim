@@ -6,10 +6,8 @@ import numpy as np
 import pytest
 
 from envs.ibl_2afc import (
-    ACTION_LEFT,
     ACTION_NO_OP,
     ACTION_RIGHT,
-    ACTION_NAMES,
     AgentMetadata,
     BlockConfig,
     IBL2AFCConfig,

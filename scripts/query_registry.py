@@ -20,7 +20,6 @@ Usage examples:
 """
 
 from pathlib import Path
-from typing import Annotated, Literal
 
 import tyro
 from rich.console import Console
@@ -110,7 +109,7 @@ def show_experiment(
     console.print(f"\n[bold cyan]Experiment: {exp.run_id}[/bold cyan]\n")
     
     # Basic info
-    console.print(f"[bold]Basic Information[/bold]")
+    console.print("[bold]Basic Information[/bold]")
     console.print(f"  Date: {exp.created_date}")
     console.print(f"  Task: {exp.task}")
     console.print(f"  Agent: {exp.agent}")
@@ -125,7 +124,7 @@ def show_experiment(
         console.print(f"  Training Time: {exp.training_time_min:.1f} min")
     
     # Metrics
-    console.print(f"\n[bold]Behavioral Metrics[/bold]")
+    console.print("\n[bold]Behavioral Metrics[/bold]")
     if exp.psychometric_slope is not None:
         console.print(f"  Psychometric Slope: {exp.psychometric_slope:.2f}")
     if exp.bias is not None:
@@ -142,7 +141,7 @@ def show_experiment(
         console.print(f"  Sticky Choice Rate: {exp.sticky_choice_rate:.3f}")
     
     # Files
-    console.print(f"\n[bold]Files[/bold]")
+    console.print("\n[bold]Files[/bold]")
     if exp.config_path:
         console.print(f"  Config: {exp.config_path}")
     if exp.log_path:
@@ -154,11 +153,11 @@ def show_experiment(
     
     # Tags and notes
     if exp.tags:
-        console.print(f"\n[bold]Tags[/bold]")
+        console.print("\n[bold]Tags[/bold]")
         console.print(f"  {', '.join(exp.tags)}")
     
     if exp.notes:
-        console.print(f"\n[bold]Notes[/bold]")
+        console.print("\n[bold]Notes[/bold]")
         console.print(f"  {exp.notes}")
     
     console.print()

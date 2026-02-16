@@ -1,3 +1,18 @@
+#!/usr/bin/env python
+"""
+Fetch one IBL mouse session and export to data/ibl/reference_single_session.ndjson
+"""
+import argparse
+import io
+import json
+import math
+from pathlib import Path
+
+import numpy as np
+import requests
+from one.api import ONE
+
+
 def _py(v):
     """Convert NumPy scalar types to native Python types so json.dumps won't crash."""
     try:
@@ -12,17 +27,6 @@ def _py(v):
 
 def _clean_dict(d: dict) -> dict:
     return {k: _py(v) if not isinstance(v, dict) else _clean_dict(v) for k, v in d.items()}
-#!/usr/bin/env python
-"""
-Fetch one IBL mouse session and export to data/ibl/reference_single_session.ndjson
-"""
-import json
-import math
-import argparse
-from pathlib import Path
-from one.api import ONE
-import requests, io
-import numpy as np
 
 # Helper for safe NaN checks
 def _is_nan(x):
@@ -128,7 +132,7 @@ def main():
     try:
         trials = one.load_object(eid, 'trials')
     except Exception:
-        print("⚠️ Alyx auth blocked or API error; falling back to public HTTP (FlatIron) for trials …")
+        print("Warning: Alyx auth blocked or API error; falling back to public HTTP (FlatIron) for trials...")
         trials = http_load_trials_from_flatiron(eid)
     session_id = str(eid)
     args.out.parent.mkdir(parents=True, exist_ok=True)
@@ -165,9 +169,10 @@ def main():
                 "agent": {"name": "reference_mouse", "version": "ibl_public"}
             }
             record = _clean_dict(record)
-            f.write(json.dumps(record, separators=(",", ":")) + "\n"); f.flush()
+            f.write(json.dumps(record, separators=(",", ":")) + "\n")
+            f.flush()
             prev = {"action": record["action"], "reward": record["reward"], "correct": record["correct"]}
-    print(f"✅ wrote {args.out}")
+    print(f"Wrote {args.out}")
 
 if __name__ == "__main__":
     main()

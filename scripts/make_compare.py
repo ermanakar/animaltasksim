@@ -106,7 +106,7 @@ def main(args: CompareArgs) -> None:
         print(f"  Lose-shift:         {hist.get('lose_shift', 'N/A')}")
         print(f"  Bias:               {psych.get('bias', 'N/A')}")
         print(f"  Quality flags:      {flags}")
-        print(f"\n  Leaderboard:        runs/leaderboard.html")
+        print("\n  Leaderboard:        runs/leaderboard.html")
         print(f"  Metrics:            {metrics_path}")
     else:
         print(f"\nWarning: metrics.json not found at {metrics_path}")

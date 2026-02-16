@@ -1675,10 +1675,10 @@ def train_hybrid_curriculum(config: HybridTrainingConfig) -> dict[str, Any]:
             # Early stopping if criteria not met
             if not success and curriculum.allow_early_stopping:
                 print(f"⚠️  Phase {phase.name} failed to meet success criteria.")
-                print(f"   Stopping curriculum early. Consider:")
+                print("   Stopping curriculum early. Consider:")
                 print(f"   - Adjusting phase {phase.name} hyperparameters")
-                print(f"   - Lowering success criteria")
-                print(f"   - Trying supervised pretraining (Option C1)")
+                print("   - Lowering success criteria")
+                print("   - Trying supervised pretraining (Option C1)")
                 break
         else:
             # Last phase or no criteria

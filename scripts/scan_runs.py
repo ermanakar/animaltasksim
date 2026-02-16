@@ -84,7 +84,7 @@ def scan_runs(
     
     # Summary
     if verbose:
-        print(f"\nScan complete!")
+        print("\nScan complete!")
         print(f"  Scanned: {scanned}")
         print(f"  Added: {added}")
         print(f"  Skipped: {skipped}")

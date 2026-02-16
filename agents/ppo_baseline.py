@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Literal
 
 import gymnasium as gym
-import numpy as np
 from gymnasium.wrappers import FlattenObservation
 from stable_baselines3 import PPO
 

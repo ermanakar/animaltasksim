@@ -6,7 +6,6 @@ import base64
 import io
 import json
 from pathlib import Path
-from typing import Iterable
 
 import matplotlib.pyplot as plt
 import numpy as np

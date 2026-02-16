@@ -2,7 +2,7 @@
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-80%20passed-brightgreen.svg)](tests/)
+[![CI](https://github.com/ermanakar/animaltasksim/actions/workflows/ci.yml/badge.svg)](https://github.com/ermanakar/animaltasksim/actions/workflows/ci.yml)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
 AnimalTaskSim benchmarks AI agents on classic animal decision-making tasks using task-faithful environments, public reference data, and a schema-locked evaluation stack. The project focuses on matching animal **behavioral fingerprints**—psychometric, chronometric, history, and lapse patterns—rather than raw reward.
@@ -191,9 +191,9 @@ python scripts/train_agent.py --seed SEED --env TASK --agent AGENT ...  # Re-run
 
 ## Recent Highlights
 
-### February 2026 — K2 Breakthrough
+### February 2026 — K2 Experiment
 
-The K2 experiment achieved simultaneous replication of psychometric sensitivity and negative chronometric slope. Key discoveries:
+The K2 run achieved simultaneous psychometric sensitivity and negative chronometric slope in internal benchmarks. Key findings:
 
 1. **Bias artifact resolution**: The reported 84% "leftward bias" was a metric artifact — `p_right_overall` counted holds as non-right. The true committed `p_right = 0.48` was balanced all along.
 2. **Response window fix**: The agent's `max_commit_steps=200` exceeded the environment's 120-step response phase. After alignment, commit rate reached 100%.

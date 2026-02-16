@@ -162,8 +162,7 @@ def generate_combined_figure(
         hr.get("lose_shift", np.nan),
     ]
 
-    x = np.arange(len(labels))
-    width = 0.35
+    np.arange(len(labels))
 
     # Normalize for display (different scales)
     table_data = []

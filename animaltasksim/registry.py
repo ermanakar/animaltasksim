@@ -9,10 +9,9 @@ scattered directory structures.
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Literal
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -224,7 +223,7 @@ def extract_metadata_from_run(run_dir: Path) -> ExperimentMetadata | None:
     if len(run_id) >= 8 and run_id[:8].isdigit():
         try:
             created_date = f"{run_id[:4]}-{run_id[4:6]}-{run_id[6:8]}"
-        except:
+        except Exception:
             pass
     
     # Determine task and agent from config or directory name

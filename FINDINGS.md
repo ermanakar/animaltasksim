@@ -678,7 +678,7 @@ With infrastructure bugs fixed, we re-ran the Decoupling experiment under correc
 
 **Psychometric and chronometric are now excellent — simultaneously.**
 
-This is a breakthrough relative to all prior runs:
+This is a significant improvement relative to all prior runs:
 
 1. **Psychometric slope of 10.7** — within the animal range (10–20) for the first time, with near-zero bias. The agent correctly discriminates motion direction across all coherence levels: p(right) goes from 0.002 at coh=−0.512 to 0.997 at coh=+0.512.
 

@@ -13,7 +13,6 @@ Usage:
     python scripts/organize_runs.py             # Apply changes
 """
 
-import json
 import shutil
 from pathlib import Path
 
@@ -203,7 +202,7 @@ def organize_runs(
     rename_count = sum(1 for a in actions if a["action"] == "RENAME")
     keep_count = sum(1 for a in actions if a["action"] == "KEEP")
     
-    print(f"Summary:")
+    print("Summary:")
     print(f"  Archive: {archive_count}")
     print(f"  Rename: {rename_count}")
     print(f"  Keep: {keep_count}")

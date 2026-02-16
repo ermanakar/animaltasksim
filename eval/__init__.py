@@ -14,7 +14,7 @@ __all__ = [
 
 # Dashboard is optional - import only if needed
 try:
-    from .dashboard import build_comparison_dashboard
+    from .dashboard import build_comparison_dashboard  # noqa: F401
     __all__.append("build_comparison_dashboard")
 except ImportError:
     pass

@@ -12,7 +12,7 @@ if not (run_dir / "trials.ndjson").exists():
     exit(1)
 
 # Evaluate
-import subprocess
+import subprocess  # noqa: E402
 result = subprocess.run([
     "python", "scripts/evaluate_agent.py",
     "--log", str(run_dir / "trials.ndjson"),
@@ -31,9 +31,9 @@ print("="*80)
 print()
 print("Chronometric (RT-coherence dynamics):")
 print(f"  Slope: {metrics['chronometric']['slope_ms_per_unit']:.2f} ms/unit")
-print(f"  Target: -655 ms/unit")
+print("  Target: -655 ms/unit")
 print()
-print(f"  RT by coherence:")
+print("  RT by coherence:")
 for coh, rt in metrics['chronometric']['rt_by_level'].items():
     print(f"    {coh}: {rt:.1f}ms")
 print()

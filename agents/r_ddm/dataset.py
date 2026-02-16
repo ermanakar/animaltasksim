@@ -9,7 +9,6 @@ from typing import Iterable, Sequence
 
 import numpy as np
 import torch
-import pandas as pd
 from torch.utils.data import Dataset
 
 

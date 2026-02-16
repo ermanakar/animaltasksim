@@ -24,6 +24,7 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+CLAUDE.md
 
 # Project-specific
 runs/

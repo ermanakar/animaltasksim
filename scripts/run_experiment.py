@@ -13,16 +13,14 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Literal
 
 try:
-    import tyro
     from rich.console import Console
     from rich.panel import Panel
     from rich.prompt import Prompt, Confirm
     from rich.table import Table
 except ImportError:
-    print("❌ Missing dependencies. Please install with: pip install -e '.[dev]'")
+    print("Missing dependencies. Please install with: pip install -e '.[dev]'")
     sys.exit(1)
 
 console = Console()
@@ -78,18 +76,53 @@ TASK_INFO = {
 }
 
 
+REFERENCE_TARGETS: dict[str, dict[str, str]] = {
+    "ibl_2afc": {
+        "psych_slope": "13.2 (IBL mouse)",
+        "bias": "~0.07 (slight rightward)",
+        "chrono_slope": "-36 ms/unit (mouse)",
+        "rt_intercept": "300 ms (mouse)",
+        "win_stay": "0.73 (IBL mouse)",
+        "lose_shift": "0.34 (IBL mouse)",
+        "sticky_choice": "0.69 (IBL mouse)",
+    },
+    "rdm_macaque": {
+        "psych_slope": "17.6 (macaque)",
+        "bias": "~0.0 (unbiased)",
+        "chrono_slope": "-645 ms/unit (macaque)",
+        "rt_intercept": "760 ms (macaque)",
+        "win_stay": "0.46 (macaque)",
+        "lose_shift": "0.52 (macaque)",
+        "sticky_choice": "0.46 (macaque)",
+    },
+}
+
+
+def _fmt(value: object, fmt: str = ".2f") -> str:
+    """Safely format a metric value, returning 'N/A' for None/NaN."""
+    if value is None:
+        return "N/A"
+    try:
+        f = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    if f != f:  # NaN check
+        return "N/A"
+    return f"{f:{fmt}}"
+
+
 def show_welcome():
     """Display welcome message."""
     console.print(Panel.fit(
         "[bold cyan]AnimalTaskSim - Interactive Experiment Runner[/bold cyan]\n\n"
         "This wizard will guide you through:\n"
-        "  1. Selecting task and agent\n"
-        "  2. Configuring training parameters\n"
-        "  3. Running training\n"
-        "  4. Evaluating results\n"
-        "  5. Generating dashboard\n"
-        "  6. Adding to registry\n\n"
-        "[dim]All the bells and whistles, automated! 🔔✨[/dim]",
+        "  1. Select task and agent\n"
+        "  2. Configure training parameters\n"
+        "  3. Train agent\n"
+        "  4. Evaluate behavioral metrics\n"
+        "  5. Generate comparison dashboard\n"
+        "  6. Update experiment registry\n"
+        "  7. Review results\n",
         border_style="cyan"
     ))
     console.print()
@@ -249,7 +282,21 @@ def configure_training(task: str, agent: str) -> dict:
         "Run name (identifier for this experiment)",
         default=run_name
     )
-    
+
+    # Avoid overwriting existing runs
+    output_dir = Path("runs") / custom_name
+    if output_dir.exists():
+        base = custom_name
+        suffix = 2
+        while (Path("runs") / f"{base}_v{suffix}").exists():
+            suffix += 1
+        new_name = f"{base}_v{suffix}"
+        console.print(
+            f"[yellow]Directory runs/{custom_name} already exists. "
+            f"Using runs/{new_name} instead.[/yellow]"
+        )
+        custom_name = new_name
+
     if agent == "r_ddm":
         config = {
             "task": task,
@@ -300,16 +347,17 @@ def configure_training(task: str, agent: str) -> dict:
 
 def run_training(config: dict) -> bool:
     """Run the training process."""
-    console.print("\n[bold]Step 4: Training Agent[/bold]\n", style="green")
+    console.print("\n[bold]Step 3: Training Agent[/bold]\n", style="green")
     
     task = config["task"]
     agent = config["agent"]
     
     # Build command based on agent
+    py = sys.executable
     if agent == "hybrid_ddm_lstm":
         # Use curriculum training for hybrid agent
         cmd = [
-            "python", "scripts/train_hybrid_curriculum.py",
+            py, "scripts/train_hybrid_curriculum.py",
             "--reference-log", TASK_INFO[task]["reference_data"],
             "--output-dir", config["output_dir"],
             "--seed", str(config["seed"]),
@@ -318,7 +366,7 @@ def run_training(config: dict) -> bool:
         ]
     elif agent == "r_ddm":
         cmd = [
-            "python", "scripts/train_r_ddm.py",
+            py, "scripts/train_r_ddm.py",
             "--run-dir", config["output_dir"],
             "--task", task,
             "--epochs", str(config["epochs"]),
@@ -336,7 +384,7 @@ def run_training(config: dict) -> bool:
         }
         env_name = env_map[task]
         cmd = [
-            "python", "scripts/train_agent.py",
+            py, "scripts/train_agent.py",
             "--env", env_name,
             "--agent", agent,
             "--episodes", str(config["episodes"]),
@@ -344,104 +392,114 @@ def run_training(config: dict) -> bool:
             "--seed", str(config["seed"]),
             "--out", config["output_dir"],
         ]
-    
+
     console.print(f"[dim]Running: {' '.join(cmd)}[/dim]\n")
-    
-    with console.status("[bold cyan]Training in progress...", spinner="dots"):
-        result = subprocess.run(cmd, capture_output=True, text=True)
-    
-    if result.returncode == 0:
-        console.print("✓ [bold green]Training completed successfully![/bold green]\n")
+
+    # Stream training output so long runs show progress
+    proc = subprocess.run(cmd, capture_output=False, text=True, stderr=subprocess.PIPE)
+
+    if proc.returncode == 0:
+        console.print("\n✓ [bold green]Training completed successfully![/bold green]\n")
         best_log = Path(config["output_dir"]) / "trials_best.ndjson"
         if best_log.exists():
             config["best_log"] = str(best_log)
         return True
     else:
-        console.print(f"✗ [bold red]Training failed![/bold red]")
-        console.print(f"[dim]{result.stderr}[/dim]\n")
+        console.print("✗ [bold red]Training failed![/bold red]")
+        if proc.stderr:
+            console.print(f"[dim]{proc.stderr}[/dim]\n")
         return False
 
 
 def run_evaluation(config: dict) -> bool:
     """Run evaluation to generate metrics."""
-    console.print("[bold]Step 5: Evaluating Agent[/bold]\n", style="green")
+    console.print("[bold]Step 4: Evaluating Agent[/bold]\n", style="green")
     
     use_best = config.get("best_log") is not None
-    cmd = ["python", "scripts/evaluate_agent.py", "--run", config["output_dir"]]
+    cmd = [sys.executable, "scripts/evaluate_agent.py", "--run", config["output_dir"]]
     if use_best:
         cmd.append("--use-best")
-    
+
     console.print(f"[dim]Running: {' '.join(cmd)}[/dim]\n")
-    
+
     with console.status("[bold cyan]Computing behavioral metrics...", spinner="dots"):
         result = subprocess.run(cmd, capture_output=True, text=True)
-    
+
     if result.returncode == 0:
         console.print("✓ [bold green]Evaluation completed![/bold green]\n")
         return True
     else:
-        console.print(f"✗ [bold red]Evaluation failed![/bold red]")
-        console.print(f"[dim]{result.stderr}[/dim]\n")
+        console.print("✗ [bold red]Evaluation failed![/bold red]")
+        output = (result.stdout or "") + (result.stderr or "")
+        if output.strip():
+            console.print(f"[dim]{output.strip()}[/dim]\n")
         return False
 
 
 def generate_dashboard(config: dict) -> bool:
     """Generate interactive dashboard."""
-    console.print("[bold]Step 6: Generating Dashboard[/bold]\n", style="green")
+    console.print("[bold]Step 5: Generating Dashboard[/bold]\n", style="green")
     
     task = config["task"]
+    output_dir = Path(config["output_dir"])
     if config.get("best_log"):
         trials_log = config["best_log"]
     else:
-        trials_log = f"{config['output_dir']}/trials.ndjson"
+        trials_log = str(output_dir / "trials.ndjson")
     reference_log = TASK_INFO[task]["reference_data"]
-    dashboard_path = f"{config['output_dir']}/dashboard.html"
-    
+    dashboard_path = str(output_dir / "dashboard.html")
+
     cmd = [
-        "python", "scripts/make_dashboard.py",
+        sys.executable, "scripts/make_dashboard.py",
         "--opts.agent-log", trials_log,
         "--opts.reference-log", reference_log,
         "--opts.output", dashboard_path,
     ]
-    if task == "ibl_2afc":
-        cmd.extend(["--opts.reference-metrics", "out/ibl_reference_metrics.json"])
-    
+    # Only pass reference metrics if the file actually exists
+    ibl_ref_metrics = Path("out/ibl_reference_metrics.json")
+    if task == "ibl_2afc" and ibl_ref_metrics.exists():
+        cmd.extend(["--opts.reference-metrics", str(ibl_ref_metrics)])
+
     console.print(f"[dim]Running: {' '.join(cmd)}[/dim]\n")
-    
+
     with console.status("[bold cyan]Creating visualizations...", spinner="dots"):
         result = subprocess.run(cmd, capture_output=True, text=True)
-    
+
     if result.returncode == 0:
         console.print("✓ [bold green]Dashboard generated![/bold green]")
-        console.print(f"  📊 View at: [cyan]file://{Path(dashboard_path).absolute()}[/cyan]\n")
+        console.print(f"  View at: [cyan]file://{Path(dashboard_path).absolute()}[/cyan]\n")
         return True
     else:
-        console.print(f"✗ [bold red]Dashboard generation failed![/bold red]")
-        console.print(f"[dim]{result.stderr}[/dim]\n")
+        console.print("✗ [bold red]Dashboard generation failed![/bold red]")
+        output = (result.stdout or "") + (result.stderr or "")
+        if output.strip():
+            console.print(f"[dim]{output.strip()}[/dim]\n")
         return False
 
 
 def update_registry() -> bool:
     """Update experiment registry."""
-    console.print("[bold]Step 7: Updating Registry[/bold]\n", style="green")
+    console.print("[bold]Step 6: Updating Registry[/bold]\n", style="green")
     
-    cmd = ["python", "scripts/scan_runs.py", "--overwrite"]
-    
+    cmd = [sys.executable, "scripts/scan_runs.py", "--overwrite"]
+
     with console.status("[bold cyan]Scanning experiments...", spinner="dots"):
         result = subprocess.run(cmd, capture_output=True, text=True)
-    
+
     if result.returncode == 0:
         console.print("✓ [bold green]Registry updated![/bold green]\n")
         return True
     else:
-        console.print(f"✗ [bold red]Registry update failed![/bold red]")
-        console.print(f"[dim]{result.stderr}[/dim]\n")
+        console.print("✗ [bold red]Registry update failed![/bold red]")
+        output = (result.stdout or "") + (result.stderr or "")
+        if output.strip():
+            console.print(f"[dim]{output.strip()}[/dim]\n")
         return False
 
 
 def show_results(config: dict):
     """Display final results and metrics."""
-    console.print("[bold]Step 8: Results Summary[/bold]\n", style="green")
+    console.print("[bold]Step 7: Results Summary[/bold]\n", style="green")
     
     # Load metrics
     metrics_file = Path(config["output_dir"]) / "metrics.json"
@@ -453,57 +511,63 @@ def show_results(config: dict):
         data = json.load(f)
         metrics = data.get("metrics", {})
     
+    # Look up task-appropriate reference values
+    task = config["task"]
+    ref = REFERENCE_TARGETS.get(task, REFERENCE_TARGETS["rdm_macaque"])
+
     # Display metrics
     table = Table(title="Behavioral Metrics", show_header=True, header_style="bold magenta")
     table.add_column("Metric", style="cyan", width=30)
     table.add_column("Value", width=20)
     table.add_column("Target (Reference)", width=30)
-    
+
     # Psychometric
     if "psychometric" in metrics:
         psych = metrics["psychometric"]
         table.add_row(
             "Psychometric Slope",
-            f"{psych.get('slope', 0):.2f}",
-            "17.56 (macaque) / variable (mouse)"
+            _fmt(psych.get("slope")),
+            ref["psych_slope"],
         )
         table.add_row(
             "Bias",
-            f"{psych.get('bias', 0):.4f}",
-            "~0.0 (unbiased)"
+            _fmt(psych.get("bias"), ".4f"),
+            ref["bias"],
         )
-    
+
     # Chronometric
     if "chronometric" in metrics:
         chron = metrics["chronometric"]
+        slope_str = _fmt(chron.get("slope_ms_per_unit"), ".0f")
         table.add_row(
             "Chronometric Slope",
-            f"{chron.get('slope_ms_per_unit', 0):.0f} ms/unit",
-            "-645 ms/unit (macaque)"
+            f"{slope_str} ms/unit" if slope_str != "N/A" else "N/A",
+            ref["chrono_slope"],
         )
+        intercept_str = _fmt(chron.get("intercept_ms"), ".0f")
         table.add_row(
             "RT Intercept",
-            f"{chron.get('intercept_ms', 0):.0f} ms",
-            "760 ms (macaque)"
+            f"{intercept_str} ms" if intercept_str != "N/A" else "N/A",
+            ref["rt_intercept"],
         )
-    
+
     # History
     if "history" in metrics:
         hist = metrics["history"]
         table.add_row(
             "Win-Stay Rate",
-            f"{hist.get('win_stay', 0):.3f}",
-            "0.458 (macaque) / 0.67 (mouse)"
+            _fmt(hist.get("win_stay"), ".3f"),
+            ref["win_stay"],
         )
         table.add_row(
             "Lose-Shift Rate",
-            f"{hist.get('lose_shift', 0):.3f}",
-            "0.520 (macaque)"
+            _fmt(hist.get("lose_shift"), ".3f"),
+            ref["lose_shift"],
         )
         table.add_row(
             "Sticky Choice",
-            f"{hist.get('sticky_choice', 0):.3f}",
-            "0.458 (macaque)"
+            _fmt(hist.get("sticky_choice"), ".3f"),
+            ref["sticky_choice"],
         )
     
     console.print(table)
