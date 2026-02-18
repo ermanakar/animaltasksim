@@ -942,12 +942,35 @@ This has a neuroscience interpretation: history doesn't just set the "ready posi
 
 **4. A tradeoff between history and discrimination may exist.** Psychometric slope decreases slightly with stronger history drift (6.70 → 6.04 as drift_scale increases). This mirrors animal behavior — mice with stronger history biases tend to be slightly less accurate on the current trial. The tradeoff suggests that history bias literally interferes with evidence accumulation, which is exactly what drift-rate bias does mechanistically.
 
+### Multi-Seed Validation (5 seeds)
+
+All Phase 8 results were initially from seed=42. To confirm robustness, we ran the identical v6 config (drift_scale=15.0, bias_scale=1.0, 20 Phase 7 epochs, 30 episodes, 80 sessions) across 5 seeds: {42, 123, 256, 789, 1337}.
+
+| Seed | Win-stay | Lose-shift | Sticky choice | Psych slope | Chrono slope (ms/unit) |
+| --- | --- | --- | --- | --- | --- |
+| 42 | 0.655 | 0.402 | 0.642 | 6.04 | -66.6 |
+| 123 | 0.664 | 0.417 | 0.645 | 6.58 | -68.6 |
+| 256 | 0.693 | 0.376 | 0.676 | 5.69 | -65.6 |
+| 789 | 0.649 | 0.421 | 0.633 | 6.72 | -69.1 |
+| 1337 | 0.666 | 0.407 | 0.649 | 6.51 | -63.7 |
+| **Mean** | **0.665** | **0.405** | **0.649** | **6.31** | **-66.7** |
+| **Std** | **0.015** | **0.016** | **0.015** | **0.38** | **2.0** |
+| **Target** | 0.724 | 0.427 | — | ~13.2 | negative |
+
+**Key observations:**
+
+1. **The result is robust.** Win-stay coefficient of variation is 2.3% — unusually tight for stochastic neural network training. All 5 seeds produce above-chance history effects alongside negative chronometric slope.
+2. **All phases pass on all seeds.** The 7-phase curriculum is reliable — no seed fails any phase or requires manual intervention.
+3. **The remaining gap is systematic, not stochastic.** Win-stay consistently lands at 0.649–0.693, never reaching the 0.724 target. This means closing the gap requires a mechanistic change (architecture, loss, or data), not just more seeds.
+4. **Lose-shift is essentially solved.** Mean 0.405 vs target 0.427 (95% match), with tight variance (std=0.016).
+5. **100% commit rate and quality flags OK on all seeds.** No degenerate runs, no bias warnings, no RT ceiling issues.
+
 ### What Remains
 
-- **Quantitative gap**: Win-stay 0.655 vs target 0.724. The gap may be closeable with larger drift_scale, though the psych slope tradeoff should be monitored.
-- **Psychometric slope**: Agent slope (6.04) is lower than the mouse (~13.2). This is a pre-existing gap from the IBL adaptation, not caused by history bias. The curriculum may need IBL-specific tuning.
-- **Lose-shift accuracy**: Agent lose-shift (0.402) is already within range of the mouse (0.427). This metric converged faster than win-stay.
-- **Multi-seed validation**: All results are from seed=42. Multi-seed runs are needed to confirm robustness.
+- **Win-stay gap**: Mean 0.665 vs target 0.724 (92% match). Consistent across seeds, suggesting a systematic ceiling at the current drift_scale/architecture.
+- **Psychometric slope**: Mean 6.31 vs mouse ~13.2 (48% match). This is a pre-existing gap from the IBL adaptation, not caused by history bias. IBL-specific curriculum tuning needed.
+- **Individual mouse fitting**: Current training uses 10-session aggregate. Per-mouse training could reveal whether the win-stay gap reflects inter-mouse variability.
+- **RT distribution shape**: Only medians are matched; full distribution fitting would be a more stringent test.
 
 ---
 

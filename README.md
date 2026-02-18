@@ -15,11 +15,11 @@ AnimalTaskSim benchmarks AI agents on classic animal decision-making tasks using
 
 The Hybrid DDM+LSTM agent trained on the IBL mouse 2AFC task simultaneously reproduces intra-trial **and** inter-trial dynamics — a milestone previously unachieved across 60+ experiments (the [Decoupling Problem](FINDINGS.md#the-decoupling-problem)):
 
-- **Win-stay 0.655** — tendency to repeat after rewards (IBL mouse: 0.724)
-- **Lose-shift 0.402** — tendency to switch after errors (IBL mouse: 0.427)
-- **Negative chronometric slope** −66.6 ms/unit — harder stimuli → slower RTs
-- **Psychometric sensitivity** — sigmoidal choice curve with slope 6.0 (IBL mouse: ~13.2)
-- **100% commit rate** with realistic RT range (540–1240 ms)
+- **Win-stay 0.665 ± 0.015** — tendency to repeat after rewards (IBL mouse: 0.724). Validated across 5 seeds (CV = 2.3%)
+- **Lose-shift 0.405 ± 0.016** — tendency to switch after errors (IBL mouse: 0.427)
+- **Negative chronometric slope** −66.7 ± 2.0 ms/unit — harder stimuli → slower RTs
+- **Psychometric sensitivity** — sigmoidal choice curve with slope 6.3 ± 0.4 (IBL mouse: ~13.2)
+- **100% commit rate** with realistic RT range (530–1200 ms)
 
 The key insight: history effects require **drift-rate bias** (history modulates evidence accumulation), not just starting-point bias (which only affects ambiguous trials). See [FINDINGS.md Phase 8](FINDINGS.md) for the full analysis.
 
