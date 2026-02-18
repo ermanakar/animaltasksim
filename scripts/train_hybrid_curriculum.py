@@ -31,9 +31,10 @@ class LossWeightArgs:
 @dataclass(slots=True)
 class TrainCurriculumArgs:
     """Arguments for curriculum learning training."""
-    
-    reference_log: Path = Path("data/macaque/reference.ndjson")
-    output_dir: Path = Path("runs/rdm_hybrid_curriculum")
+
+    task: str = "rdm"  # "rdm" or "ibl_2afc"
+    reference_log: Path | None = None  # Defaults based on task
+    output_dir: Path | None = None  # Defaults based on task
     agent_version: str = "0.1.0"
     trials_per_episode: int = 400
     episodes: int = 20
@@ -89,8 +90,12 @@ class TrainCurriculumArgs:
     history_drift_supervision_weight: float = 0.1
     history_non_decision_supervision_weight: float = 0.05
     history_history_supervision_weight: float = 0.4
-    history_per_trial_history_weight: float = 0.0
+    history_per_trial_history_weight: float = 0.5
     history_max_commit_steps: int = 300
+    history_bias_scale: float = 0.5  # History bias can shift starting point by ±scale*bound
+    history_drift_scale: float = 0.0  # History bias can add ±scale to drift rate (0=disabled)
+    history_freeze_except_history_bias: bool = True  # Freeze all but history_bias_head in Phase 7
+    history_bias_lr: float = 3e-3  # Dedicated LR for history_bias_head in Phase 7
 
 
 def main(args: TrainCurriculumArgs) -> None:
@@ -109,6 +114,8 @@ def main(args: TrainCurriculumArgs) -> None:
             history_history_supervision_weight=args.history_history_supervision_weight,
             history_per_trial_history_weight=args.history_per_trial_history_weight,
             history_max_commit_steps=args.history_max_commit_steps,
+            history_freeze_except_history_bias=args.history_freeze_except_history_bias,
+            history_bias_lr=args.history_bias_lr,
         )
         curriculum.allow_early_stopping = args.allow_early_stopping
         curriculum.checkpoint_each_phase = args.checkpoint_each_phase
@@ -162,10 +169,27 @@ def main(args: TrainCurriculumArgs) -> None:
             checkpoint_each_phase=args.checkpoint_each_phase,
         )
     
+    # Resolve task-dependent defaults
+    if args.reference_log is None:
+        reference_log = (
+            Path("data/ibl/reference.ndjson") if args.task == "ibl_2afc"
+            else Path("data/macaque/reference.ndjson")
+        )
+    else:
+        reference_log = args.reference_log
+    if args.output_dir is None:
+        output_dir = (
+            Path("runs/ibl_hybrid_curriculum") if args.task == "ibl_2afc"
+            else Path("runs/rdm_hybrid_curriculum")
+        )
+    else:
+        output_dir = args.output_dir
+
     # Build training config
     config = HybridTrainingConfig(
-        reference_log=args.reference_log,
-        output_dir=args.output_dir,
+        task=args.task,
+        reference_log=reference_log,
+        output_dir=output_dir,
         agent_version=args.agent_version,
         trials_per_episode=args.trials_per_episode,
         episodes=args.episodes,
@@ -181,6 +205,8 @@ def main(args: TrainCurriculumArgs) -> None:
         max_commit_steps=args.max_commit_steps,
         drift_scale=args.drift_scale,
         curriculum=curriculum,
+        history_bias_scale=args.history_bias_scale,
+        history_drift_scale=args.history_drift_scale,
     )
     
     print(f"\n{'='*80}")

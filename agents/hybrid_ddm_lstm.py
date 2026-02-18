@@ -26,6 +26,12 @@ from agents.losses import (
 from agents.wfpt_loss import wfpt_loss
 from animaltasksim.config import ProjectPaths
 from animaltasksim.seeding import seed_everything
+from envs.ibl_2afc import (
+    ACTION_NO_OP,
+    AgentMetadata as IBLAgentMetadata,
+    IBL2AFCConfig,
+    IBL2AFCEnv,
+)
 from envs.rdm_macaque import (
     ACTION_HOLD,
     ACTION_LEFT,
@@ -34,6 +40,7 @@ from envs.rdm_macaque import (
     RDMConfig,
     RDMMacaqueEnv,
 )
+from envs.utils_timing import PhaseTiming
 from eval.metrics import load_trials
 
 
@@ -58,6 +65,8 @@ class CurriculumPhase:
     success_criteria: dict[str, float] = field(default_factory=dict)
     min_commit_steps: Optional[int] = None
     max_commit_steps: Optional[int] = None
+    freeze_except_history_bias: bool = False  # Only train history_bias_head
+    history_bias_lr: Optional[float] = None  # Dedicated LR for history_bias_head
     # Success criteria keys: 'min_slope_abs', 'min_r2', 'min_rt_diff_abs'
 
 
@@ -429,8 +438,10 @@ class CurriculumConfig:
         history_drift_supervision_weight: float = 0.1,
         history_non_decision_supervision_weight: float = 0.05,
         history_history_supervision_weight: float = 0.4,
-        history_per_trial_history_weight: float = 0.0,
+        history_per_trial_history_weight: float = 0.5,
         history_max_commit_steps: int = 120,
+        history_freeze_except_history_bias: bool = True,
+        history_bias_lr: float = 3e-3,
     ) -> CurriculumConfig:
         """A curriculum that adds a final history finetuning phase."""
         base = CurriculumConfig.drift_scale_calibration_curriculum()
@@ -450,6 +461,8 @@ class CurriculumConfig:
             ),
             max_commit_steps=history_max_commit_steps,
             success_criteria={},
+            freeze_except_history_bias=history_freeze_except_history_bias,
+            history_bias_lr=history_bias_lr,
         )
         return CurriculumConfig(phases=base.phases + [phase7])
 
@@ -458,8 +471,9 @@ class CurriculumConfig:
 class HybridTrainingConfig:
     """Training and rollout configuration for the hybrid agent."""
 
-    reference_log: Path = ProjectPaths.from_cwd().data / "macaque" / "reference.ndjson"
-    output_dir: Path = field(default_factory=lambda: ProjectPaths.from_cwd().runs / "rdm_hybrid")
+    task: str = "rdm"  # "rdm" or "ibl_2afc"
+    reference_log: Path = field(default=None)  # type: ignore[assignment]  # Set in __post_init__
+    output_dir: Path = field(default=None)  # type: ignore[assignment]  # Set in __post_init__
     agent_version: str = "0.1.0"
     trials_per_episode: int = 400
     episodes: int = 10
@@ -475,6 +489,21 @@ class HybridTrainingConfig:
     max_commit_steps: int = 300  # Must accommodate DDM boundary crossings at low coherence
     drift_scale: float = 10.0  # Scale drift_head initialization to enable stronger evidence effects
     curriculum: CurriculumConfig | None = None  # If set, use curriculum learning
+    history_bias_scale: float = 0.5  # History bias can shift starting point by ±scale*bound
+    history_drift_scale: float = 0.0  # History bias can add ±scale to drift rate (0=disabled)
+
+    def __post_init__(self) -> None:
+        paths = ProjectPaths.from_cwd()
+        if self.reference_log is None:
+            if self.task == "ibl_2afc":
+                self.reference_log = paths.data / "ibl" / "reference.ndjson"
+            else:
+                self.reference_log = paths.data / "macaque" / "reference.ndjson"
+        if self.output_dir is None:
+            if self.task == "ibl_2afc":
+                self.output_dir = paths.runs / "ibl_hybrid"
+            else:
+                self.output_dir = paths.runs / "rdm_hybrid"
 
     def output_paths(self) -> HybridDDMPaths:
         out = Path(self.output_dir).resolve()
@@ -530,6 +559,26 @@ class HybridDDMModel(nn.Module):
         self.bound_head = nn.Linear(hidden_size, 1)
         self.bias_head = nn.Linear(hidden_size, 1)
         self.non_decision_head = nn.Linear(hidden_size, 1)
+
+        # History bias head (legacy, kept for backward compat with saved models):
+        # Reads LSTM hidden state → history bias. Phase 6 experiments showed this
+        # cannot learn due to gradient instability. Outputs ~0 at zero init.
+        self.history_bias_head = nn.Linear(hidden_size, 1)
+        nn.init.zeros_(self.history_bias_head.weight)
+        nn.init.zeros_(self.history_bias_head.bias)
+
+        # Separate History Network: bypasses LSTM hidden state entirely.
+        # Takes (prev_action, prev_reward) directly → "stay tendency."
+        # Models the PFC/basal ganglia history circuit that is anatomically
+        # separate from the LIP evidence accumulation circuit (the LSTM/DDM).
+        # Zero-initialized output layer → no effect until Phase 7 training.
+        self.history_network = nn.Sequential(
+            nn.Linear(2, 8),   # (prev_action, prev_reward) → 8 hidden
+            nn.ReLU(),
+            nn.Linear(8, 1),   # 8 → scalar stay_tendency
+        )
+        nn.init.zeros_(self.history_network[2].weight)
+        nn.init.zeros_(self.history_network[2].bias)
         
         # CRITICAL CALIBRATION: Initialize drift_head bias for realistic drift_gain scale
         # Target: drift_gain ~ 10-15 to match macaque RT dynamics (RT ~ 500-800ms)
@@ -571,14 +620,23 @@ class HybridDDMModel(nn.Module):
         drift_gain = F.softplus(self.drift_head(h)) + 1e-3
         bound = F.softplus(self.bound_head(h)) + self._min_bound
         bias = torch.tanh(self.bias_head(h))
+        history_bias = torch.tanh(self.history_bias_head(h))
         non_decision = F.softplus(self.non_decision_head(h)) + self._min_non_decision
         safe_log_noise = torch.nan_to_num(self.log_noise, nan=0.0, posinf=5.0, neginf=-5.0)
         safe_log_noise = torch.clamp(safe_log_noise, -5.0, 5.0)
         noise = torch.exp(safe_log_noise) + 1e-3
+
+        # Separate history network: (prev_action, prev_reward) → stay_tendency.
+        # Bypasses LSTM — models a distinct history processing circuit.
+        history_input = x[:, 3:5]  # indices 3=prev_action, 4=prev_reward
+        stay_tendency = torch.tanh(self.history_network(history_input))
+
         outputs = {
             "drift_gain": drift_gain.squeeze(-1),
             "bound": bound.squeeze(-1),
             "bias": bias.squeeze(-1),
+            "history_bias": history_bias.squeeze(-1),
+            "stay_tendency": stay_tendency.squeeze(-1),
             "non_decision_ms": non_decision.squeeze(-1),
             "noise": noise.squeeze(-1).expand_as(drift_gain.squeeze(-1)),
         }
@@ -613,7 +671,8 @@ class HybridDDMTrainer:
         df = load_trials(self.config.reference_log)
         if df.empty:
             return []
-        df = df[df["task"] == "rdm"].copy()
+        task_key = "ibl_2afc" if self.config.task == "ibl_2afc" else "rdm"
+        df = df[df["task"] == task_key].copy()
         if df.empty:
             return []
         df.sort_values(["session_id", "trial_index"], inplace=True)
@@ -684,7 +743,8 @@ class HybridDDMTrainer:
         max_idx = max(int(trials["trial_index"].max()), 1)
 
         for _, row in trials.iterrows():
-            coherence = float(row.get("stimulus_coherence", 0.0))
+            stim_key = "stimulus_contrast" if self.config.task == "ibl_2afc" else "stimulus_coherence"
+            coherence = float(row.get(stim_key, 0.0))
             sign = np.sign(coherence)
             abs_coh = abs(coherence)
             prev_action_val = self._map_prev_action(row.get("prev_action"))
@@ -811,11 +871,13 @@ class HybridDDMTrainer:
         features: np.ndarray,
     ) -> tuple[np.ndarray, np.ndarray]:
         valid = (rt_mask > 0.5) & (rt_ms > 1.0)
+        fallback_mean = 1200.0 if self.config.task == "ibl_2afc" else 750.0
+        fallback_var = 8000000.0 if self.config.task == "ibl_2afc" else 30000.0
         if not valid.any():
             length = len(rt_ms)
             return (
-                np.full(length, 750.0, dtype=np.float32),
-                np.full(length, 30000.0, dtype=np.float32),
+                np.full(length, fallback_mean, dtype=np.float32),
+                np.full(length, fallback_var, dtype=np.float32),
             )
 
         # coherence stored in first feature entry (signed); use absolute value
@@ -823,35 +885,55 @@ class HybridDDMTrainer:
         unique = np.unique(coherences[valid])
         unique.sort()
 
-        # Precompute mean/var from reference data
-        ref_means = {
-            0.0: 785.3410672853828,
-            0.032: 778.6422018348624,
-            0.064: 736.3586206896551,
-            0.128: 666.9172413793103,
-            0.256: 559.9678899082569,
-            0.512: 464.41324200913243,
-        }
-        ref_vars = {
-            0.0: 36552.229381763456,
-            0.032: 38897.03253193174,
-            0.064: 29724.092081856124,
-            0.128: 23129.02763476932,
-            0.256: 12263.618235997053,
-            0.512: 8138.849779987095,
-        }
+        # Precompute mean/var from reference data (task-specific)
+        if self.config.task == "ibl_2afc":
+            ref_means = {
+                0.0: 2253.21,
+                0.0625: 1429.98,
+                0.125: 1060.71,
+                0.25: 953.88,
+                1.0: 652.04,
+            }
+            ref_vars = {
+                0.0: 15831397.23,
+                0.0625: 8756352.73,
+                0.125: 4891653.08,
+                0.25: 6004388.71,
+                1.0: 2191865.08,
+            }
+            default_mean = 1200.0
+            default_var = 8000000.0
+        else:
+            ref_means = {
+                0.0: 785.3410672853828,
+                0.032: 778.6422018348624,
+                0.064: 736.3586206896551,
+                0.128: 666.9172413793103,
+                0.256: 559.9678899082569,
+                0.512: 464.41324200913243,
+            }
+            ref_vars = {
+                0.0: 36552.229381763456,
+                0.032: 38897.03253193174,
+                0.064: 29724.092081856124,
+                0.128: 23129.02763476932,
+                0.256: 12263.618235997053,
+                0.512: 8138.849779987095,
+            }
+            default_mean = 750.0
+            default_var = 30000.0
 
         targets = np.empty_like(rt_ms, dtype=np.float32)
         variances = np.empty_like(rt_ms, dtype=np.float32)
         for coh in unique:
             mask = coherences == coh
-            targets[mask] = ref_means.get(float(coh), 750.0)
-            variances[mask] = ref_vars.get(float(coh), 30000.0)
-        # For coherences not seen in reference, fall back to mean of neighbours
+            targets[mask] = ref_means.get(float(coh), default_mean)
+            variances[mask] = ref_vars.get(float(coh), default_var)
+        # For coherences not seen in reference, fall back to defaults
         remaining = ~np.isfinite(targets)
         if remaining.any():
-            targets[remaining] = 750.0
-            variances[remaining] = 30000.0
+            targets[remaining] = default_mean
+            variances[remaining] = default_var
         return targets, variances
 
     @staticmethod
@@ -931,6 +1013,8 @@ class HybridDDMTrainer:
 
                 prob_buffer: list[float] = []
                 prob_tensor_buffer: list[torch.Tensor] = []  # differentiable copy
+                history_prob_tensor_buffer: list[torch.Tensor] = []  # gradient-isolated for history loss
+                stay_tendency_buffer: list[torch.Tensor] = []  # from history_network
                 drift_gain_buffer: list[torch.Tensor] = []  # Collect for supervision
                 bound_buffer: list[torch.Tensor] = []
                 bias_buffer: list[torch.Tensor] = []
@@ -979,28 +1063,48 @@ class HybridDDMTrainer:
                     # a=2*bound (total separation), σ=noise.
                     # At v→0:  P(right) = z/a = (bound + bias) / (2*bound).
                     bias_val = out["bias"]  # tanh output ∈ (-1, 1)
-                    a = 2.0 * bound                             # total boundary separation
-                    z_raw = bound + bias_val                    # dist from lower bound
-                    z = torch.clamp(z_raw, min=1e-4)
-                    z = torch.min(z, a - 1e-4)
+                    history_bias_val = out["history_bias"]  # tanh output ∈ (-1, 1)
                     sigma_sq = noise ** 2 + 1e-8
                     v = drift
 
-                    # Smoothly blend exact formula with v→0 limit to avoid 0/0
-                    abs_v = torch.abs(v)
-                    # v→0 limit:  P = z / a
-                    p_zero = z / a
-                    # Exact formula for |v| > threshold:
-                    exp_z = torch.exp(torch.clamp(-2.0 * v * z / sigma_sq, -20.0, 20.0))
-                    exp_a = torch.exp(torch.clamp(-2.0 * v * a / sigma_sq, -20.0, 20.0))
-                    p_exact = (1.0 - exp_z) / (1.0 - exp_a + 1e-8)
-                    # Blend using smooth step on |v|
-                    blend = torch.clamp(abs_v / 0.01, 0.0, 1.0)
-                    prob_right = blend * p_exact + (1.0 - blend) * p_zero
-                    prob_right = torch.clamp(prob_right, 1e-6, 1.0 - 1e-6)
-                    prob_right = torch.nan_to_num(prob_right, nan=0.5)
+                    def _ddm_choice_prob(
+                        bias_input: torch.Tensor,
+                        bound_input: torch.Tensor,
+                        v_input: torch.Tensor,
+                        sigma_sq_input: torch.Tensor,
+                    ) -> torch.Tensor:
+                        """Compute P(right) from DDM parameters."""
+                        a = 2.0 * bound_input
+                        z_raw = bound_input + bias_input
+                        z = torch.clamp(z_raw, min=1e-4)
+                        z = torch.min(z, a - 1e-4)
+                        abs_v = torch.abs(v_input)
+                        p_zero = z / a
+                        exp_z = torch.exp(torch.clamp(-2.0 * v_input * z / sigma_sq_input, -20.0, 20.0))
+                        exp_a = torch.exp(torch.clamp(-2.0 * v_input * a / sigma_sq_input, -20.0, 20.0))
+                        p_exact = (1.0 - exp_z) / (1.0 - exp_a + 1e-8)
+                        blend = torch.clamp(abs_v / 0.01, 0.0, 1.0)
+                        p = blend * p_exact + (1.0 - blend) * p_zero
+                        p = torch.clamp(p, 1e-6, 1.0 - 1e-6)
+                        return torch.nan_to_num(p, nan=0.5)
+
+                    # Standard choice probability (for choice loss, WFPT — uses original bias only)
+                    prob_right = _ddm_choice_prob(bias_val, bound, v, sigma_sq)
                     prob_buffer.append(float(prob_right.detach().cpu()))
                     prob_tensor_buffer.append(prob_right)
+
+                    # Collect stay_tendency from separate history network.
+                    # The history_network bypasses the LSTM — it takes
+                    # (prev_action, prev_reward) directly, modeling a separate
+                    # PFC/basal ganglia circuit for history-dependent biases.
+                    stay_tendency_val = out["stay_tendency"]
+                    stay_tendency_buffer.append(stay_tendency_val)
+
+                    # Also collect legacy history_prob for backward compat
+                    history_bias_scale = getattr(self.config, "history_bias_scale", 0.5)
+                    history_logit = history_bias_val * history_bias_scale * 4.0
+                    history_prob_stay = torch.sigmoid(history_logit)
+                    history_prob_tensor_buffer.append(history_prob_stay)
 
                     abs_drift = torch.abs(drift) + 1e-3
                     kappa = abs_drift * bound / (noise**2)
@@ -1100,25 +1204,41 @@ class HybridDDMTrainer:
                     )
                     total_loss = total_loss + weights.history_supervision * hist_sup_loss
 
-                # Per-trial differentiable history loss
+                # Per-trial history loss using the SEPARATE HISTORY NETWORK.
+                # stay_tendency comes from history_network(prev_action, prev_reward),
+                # which bypasses the LSTM entirely. Convert to P(stay) via sigmoid
+                # for the training loss; in rollout, stay_tendency shifts the DDM
+                # starting point directly.
                 pt_hist_loss = torch.zeros(1, device=self.device)
-                if weights.per_trial_history > 0.0 and prob_tensor_buffer:
-                    prob_tensor = torch.cat(prob_tensor_buffer).squeeze()
-                    # Extract prev_action (idx 3) and prev_reward (idx 4) from features
-                    # Hybrid convention: prev_action -1=left, 0=none, 1=right
+                if weights.per_trial_history > 0.0 and stay_tendency_buffer:
+                    stay_tendency_tensor = torch.cat(stay_tendency_buffer).squeeze()
+                    # Convert stay_tendency to P(stay) via sigmoid
+                    history_bias_scale = getattr(self.config, "history_bias_scale", 0.5)
+                    stay_prob = torch.sigmoid(stay_tendency_tensor * history_bias_scale * 4.0)
+                    # Extract prev_action and prev_reward from features
                     prev_act = torch.from_numpy(session.features[:, 3]).to(self.device)
                     prev_rew = torch.from_numpy(session.features[:, 4]).to(self.device)
                     choice_m = torch.from_numpy(session.choice_mask).bool().to(self.device)
-                    n = min(len(prob_tensor), len(prev_act), len(choice_m))
-                    pt_hist_loss = per_trial_history_loss(
-                        choice_prob=prob_tensor[:n],
-                        prev_action=prev_act[:n],
-                        prev_reward=prev_rew[:n],
-                        target_win_stay=float(session.win_stay_target),
-                        target_lose_shift=float(session.lose_shift_target),
-                        mask=choice_m[:n],
-                        no_action_value=0.0,  # Hybrid uses 0 for "no prev action"
-                    )
+                    n = min(len(stay_prob), len(prev_act), len(choice_m))
+                    stay_prob = stay_prob[:n]
+                    prev_act = prev_act[:n]
+                    prev_rew = prev_rew[:n]
+                    choice_m = choice_m[:n]
+                    # Valid = has a previous action and is a commit trial
+                    valid = prev_act.ne(0.0) & choice_m
+                    win_mask = valid & (prev_rew > 0.5)
+                    lose_mask = valid & (prev_rew <= 0.5)
+                    target_ws = float(session.win_stay_target)
+                    target_ls = float(session.lose_shift_target)
+                    if win_mask.any():
+                        # Win: push P(stay) toward target_win_stay
+                        target = torch.full_like(stay_prob[win_mask], target_ws)
+                        pt_hist_loss = pt_hist_loss + F.mse_loss(stay_prob[win_mask], target)
+                    if lose_mask.any():
+                        # Lose: push P(shift)=1-P(stay) toward target_lose_shift
+                        shift_prob = 1.0 - stay_prob
+                        target = torch.full_like(shift_prob[lose_mask], target_ls)
+                        pt_hist_loss = pt_hist_loss + F.mse_loss(shift_prob[lose_mask], target)
                     total_loss = total_loss + weights.per_trial_history * pt_hist_loss
 
                 # Drift supervision: penalize weak drift parameters
@@ -1342,23 +1462,44 @@ class HybridDDMTrainer:
     # Rollout in environment
     # ------------------------------------------------------------------
     def rollout(self, paths: HybridDDMPaths) -> dict[str, float]:
-        env_config = RDMConfig(
-            trials_per_episode=self.config.trials_per_episode,
-            log_path=paths.log,
-            agent=AgentMetadata(name="hybrid_ddm", version=self.config.agent_version),
-            seed=self.config.seed,
-            per_step_cost=0.01,
-            evidence_gain=0.05,
-            momentary_sigma=1.0,
-            collapsing_bound=False,  # CRITICAL FIX: Disable env's auto-commit so agent's DDM controls timing!
-            min_bound_steps=self.config.min_commit_steps,  # Allow model's RT predictions through
-            response_duration_override=self.config.max_commit_steps,  # Align env window with agent's DDM
-        )
-        env = RDMMacaqueEnv(env_config)
+        # Task-conditional environment setup
+        if self.config.task == "ibl_2afc":
+            custom_phases = (
+                PhaseTiming("iti", 10),
+                PhaseTiming("stimulus", 10),
+                PhaseTiming("response", self.config.max_commit_steps),
+                PhaseTiming("outcome", 10),
+            )
+            ibl_config = IBL2AFCConfig(
+                trials_per_episode=self.config.trials_per_episode,
+                log_path=paths.log,
+                agent=IBLAgentMetadata(name="hybrid_ddm", version=self.config.agent_version),
+                seed=self.config.seed,
+                phase_schedule=custom_phases,
+            )
+            env = IBL2AFCEnv(ibl_config)
+            wait_action = ACTION_NO_OP
+            new_trial_phase = "iti"
+        else:
+            rdm_config = RDMConfig(
+                trials_per_episode=self.config.trials_per_episode,
+                log_path=paths.log,
+                agent=AgentMetadata(name="hybrid_ddm", version=self.config.agent_version),
+                seed=self.config.seed,
+                per_step_cost=0.01,
+                evidence_gain=0.05,
+                momentary_sigma=1.0,
+                collapsing_bound=False,
+                min_bound_steps=self.config.min_commit_steps,
+                response_duration_override=self.config.max_commit_steps,
+            )
+            env = RDMMacaqueEnv(rdm_config)
+            wait_action = ACTION_HOLD
+            new_trial_phase = "fixation"
+
         step_ms = env.config.step_ms
         # Cap max_commit_steps to env's response phase duration to prevent
-        # the agent from planning commits beyond the response window (which
-        # would cause hold/timeout on every late trial).
+        # the agent from planning commits beyond the response window.
         response_phase = next(p for p in env._phase_schedule if p.name == "response")  # noqa: SLF001
         effective_max_commit = min(self.config.max_commit_steps, response_phase.duration_steps)
         metrics: dict[str, list[float]] = {
@@ -1369,26 +1510,25 @@ class HybridDDMTrainer:
             observation, info = env.reset(seed=self.config.seed + episode)
             h, c = self.model.init_state()
             cumulative_reward = 0.0
-            planned_action = ACTION_HOLD
-            commit_step_target = env.config.min_bound_steps
+            planned_action = wait_action
+            commit_step_target = self.config.min_commit_steps
             rt_tracker: list[float] = []
             prev_action_val = 0.0
             prev_reward = 0.0
             prev_correct = 0.0
-            current_coherence = float(getattr(env, "_signed_coherence", 0.0))
+            current_stimulus = self._get_stimulus(env)
             while True:
                 phase = info["phase"]
                 if phase == "response":
                     if info["phase_step"] == 0:
-                        current_coherence = float(getattr(env, "_signed_coherence", 0.0))
+                        current_stimulus = self._get_stimulus(env)
                         trial_idx_val = info.get("trial_index", 0)
-                        # Type narrowing for info dict values
                         trial_idx = int(trial_idx_val) if isinstance(trial_idx_val, (int, float)) else 0
                         trial_norm = float(trial_idx) / max(
                             self.config.trials_per_episode, 1
                         )
                         features = self._features_from_trial(
-                            current_coherence,
+                            current_stimulus,
                             prev_action_val,
                             prev_reward,
                             prev_correct,
@@ -1396,56 +1536,57 @@ class HybridDDMTrainer:
                         )
                         x = torch.from_numpy(features).unsqueeze(0).to(self.device)
                         out, (h, c) = self.model(x, (h, c))
-                        
+
                         # Extract DDM parameters
-                        coherence = x[0, 0].item()
+                        stimulus = x[0, 0].item()
                         drift_gain = out["drift_gain"].item()
                         bound = out["bound"].item()
                         noise = out["noise"].item()
                         bias = out["bias"].item()
+                        stay_tendency = out["stay_tendency"].item()
                         non_decision_ms = out["non_decision_ms"].item()
-                        
-                        # Compute drift from coherence and drift_gain
-                        drift = drift_gain * coherence
-                        
-                        # Run stochastic DDM simulation
-                        # dt corresponds to step_ms in seconds
-                        dt = self.config.step_ms / 1000.0  # Convert to seconds
+
+                        # Combine DDM bias with history-dependent stay bias
+                        prev_direction = 1.0 if prev_action_val == 1 else (-1.0 if prev_action_val == -1 else 0.0)
+                        # Starting-point bias: affects ambiguous trials
+                        stay_shift = stay_tendency * self.config.history_bias_scale * bound
+                        combined_start = bias + stay_shift * prev_direction
+                        # Drift-rate bias: affects ALL trials including high-coherence
+                        history_drift = stay_tendency * self.config.history_drift_scale * prev_direction
+
+                        drift = drift_gain * stimulus + history_drift
+
+                        dt = self.config.step_ms / 1000.0
                         planned_action, ddm_steps = self._simulate_ddm(
                             drift=drift,
                             bound=bound,
                             noise=noise,
-                            bias=bias,
+                            bias=combined_start,
                             dt=dt,
                             max_steps=effective_max_commit,
                         )
-                        
-                        # Calculate commit time: non-decision delay + DDM accumulation time
+
                         ddm_time_ms = ddm_steps * self.config.step_ms
                         total_rt_ms = non_decision_ms + ddm_time_ms
-                        
-                        # Ensure within bounds
                         total_rt_ms = np.clip(
                             total_rt_ms,
                             self.config.step_ms * self.config.min_commit_steps,
                             self.config.step_ms * effective_max_commit,
                         )
-                        
                         commit_step_target = int(total_rt_ms / step_ms)
                         commit_step_target = np.clip(
                             commit_step_target,
                             self.config.min_commit_steps,
                             effective_max_commit,
                         )
-                    # Type-safe comparison with phase_step
                     phase_step_val = info.get("phase_step", 0)
                     current_step = int(phase_step_val) if isinstance(phase_step_val, (int, float)) else 0
                     if current_step + 1 >= commit_step_target:
                         action = planned_action
                     else:
-                        action = ACTION_HOLD
+                        action = wait_action
                 else:
-                    action = ACTION_HOLD
+                    action = wait_action
                 observation, reward, terminated, truncated, info = env.step(action)
                 cumulative_reward += float(reward)
                 if info["phase"] == "outcome" and info.get("phase_step", 0) == 0:
@@ -1458,11 +1599,15 @@ class HybridDDMTrainer:
                         prev_action_val = -1.0
                     else:
                         prev_action_val = 0.0
-                    expected_right = current_coherence >= 0.0
+                    # Determine correct answer (task-dependent for zero-stimulus)
+                    if self.config.task == "ibl_2afc" and abs(current_stimulus) < 1e-6:
+                        block_prior = float(info.get("block_prior", 0.5))
+                        expected_right = block_prior > 0.5
+                    else:
+                        expected_right = current_stimulus >= 0.0
                     prev_correct = 1.0 if (planned_action == ACTION_RIGHT) == expected_right else 0.0
                     prev_reward = float(reward)
-                if info["phase"] == "fixation" and info.get("phase_step", 0) == 0:
-                    # New trial about to begin; keep previous summary from last outcome.
+                if info["phase"] == new_trial_phase and info.get("phase_step", 0) == 0:
                     pass
                 if terminated:
                     metrics["cumulative_reward"].append(cumulative_reward)
@@ -1473,6 +1618,12 @@ class HybridDDMTrainer:
             "mean_reward": float(np.mean(metrics["cumulative_reward"])) if metrics["cumulative_reward"] else 0.0,
             "mean_rt_ms": float(np.mean(metrics["mean_rt_ms"])) if metrics["mean_rt_ms"] else 0.0,
         }
+
+    def _get_stimulus(self, env: Any) -> float:
+        """Extract the signed stimulus value from the environment (task-dependent)."""
+        if self.config.task == "ibl_2afc":
+            return float(env._stimulus.get("contrast", 0.0))  # noqa: SLF001
+        return float(getattr(env, "_signed_coherence", 0.0))
 
     def _features_from_trial(
         self,
@@ -1515,6 +1666,7 @@ def _evaluate_phase_success(
     trials_path: Path,
     criteria: dict[str, float],
     reference_path: Path,
+    task: str = "rdm",
 ) -> tuple[bool, dict[str, float]]:
     """Evaluate whether phase success criteria are met."""
     from scipy import stats as scipy_stats
@@ -1526,13 +1678,14 @@ def _evaluate_phase_success(
     if df.empty:
         return False, {}
 
-    # Filter for valid trials for chronometric analysis
-    filtered = df[(df["rt_ms"].notnull()) & (df["stimulus_coherence"].notnull())].copy()
+    # Filter for valid trials for chronometric analysis (task-dependent stimulus key)
+    stim_col = "stimulus_contrast" if task == "ibl_2afc" else "stimulus_coherence"
+    filtered = df[(df["rt_ms"].notnull()) & (df[stim_col].notnull())].copy()
     if filtered.empty:
         return False, {}
 
     rts = filtered["rt_ms"].values.astype(float)
-    coherences = filtered["stimulus_coherence"].values.astype(float)
+    coherences = filtered[stim_col].values.astype(float)
     abs_coh = np.abs(coherences)
 
     # Compute RT-coherence metrics
@@ -1614,8 +1767,31 @@ def train_hybrid_curriculum(config: HybridTrainingConfig) -> dict[str, Any]:
         )
         print(f"{'='*80}\n")
 
+        # Optionally freeze all params except history modules for this phase
+        original_optimizer = None
+        frozen_params: list[tuple[str, torch.nn.Parameter]] = []
+        if phase.freeze_except_history_bias:
+            # Save original optimizer and freeze non-history params
+            original_optimizer = trainer.optimizer
+            for name, param in trainer.model.named_parameters():
+                # Keep history_network and history_bias_head trainable
+                if "history_network" not in name and "history_bias_head" not in name:
+                    param.requires_grad_(False)
+                    frozen_params.append((name, param))
+            # Create dedicated optimizer for history modules only
+            hb_lr = phase.history_bias_lr or trainer.config.learning_rate * 10
+            history_params = list(trainer.model.history_network.parameters()) + \
+                             list(trainer.model.history_bias_head.parameters())
+            trainer.optimizer = torch.optim.Adam(history_params, lr=hb_lr)
+
         # Train with phase-specific loss weights
         phase_metrics = trainer.train(loss_weights=phase.loss_weights)
+
+        # Unfreeze and restore optimizer if we froze
+        if original_optimizer is not None:
+            for name, param in frozen_params:
+                param.requires_grad_(True)
+            trainer.optimizer = original_optimizer
 
         # Restore epoch count (commit window persists unless overridden later)
         trainer.config.epochs = original_epochs
@@ -1651,6 +1827,7 @@ def train_hybrid_curriculum(config: HybridTrainingConfig) -> dict[str, Any]:
                 temp_paths.log,
                 phase.success_criteria,
                 config.reference_log,
+                task=config.task,
             )
             
             phase_result: dict = {

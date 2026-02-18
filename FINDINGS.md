@@ -719,9 +719,241 @@ Potential architectural solutions:
 
 ---
 
+## Phase 6: History Bias Head — Gradient Isolation Experiments (February 2026)
+
+Following the K2 breakthrough, we pursued **Hypothesis 1** from above: give the model a dedicated history pathway with gradient isolation from the WFPT loss. The goal was to test whether the LSTM hidden state can drive history effects when freed from the gradient conflict with WFPT.
+
+### Architecture: History Bias Head with Gradient Isolation
+
+Added a dedicated `history_bias_head` (nn.Linear, hidden_size → 1) to the HybridDDMModel, zero-initialized so it starts with no effect. Gradient isolation ensures WFPT loss cannot flow to this head. During rollout, the history bias shifts the DDM starting evidence: `starting_point = bias + history_bias * scale * bound`. During training, the per-trial history loss provides gradient exclusively to the history_bias_head.
+
+Nine gradient isolation tests verify the architecture is correct.
+
+### Experiments
+
+| Run | per_trial_history weight | history_bias_scale | Phase 7 epochs | Freeze | LR | win_stay | lose_shift | hb_weight max |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `history_bias_head_control` | 0.0 (control) | 0.5 | 5 | No | 3e-4 | 0.486 | 0.496 | 0.000 |
+| `history_bias_head_v2` | 0.5 | 0.5 | 5 | No | 3e-4 | 0.502 | 0.488 | 0.002 |
+| `history_bias_head_v3_strong` | 2.0 | 1.0 | 20 | No | 3e-4 | 0.491 | 0.497 | 0.001 |
+| `history_bias_head_v4_frozen` | 0.5 | 0.5 | 20 | Yes | 3e-3 | 0.485 | 0.503 | 0.004 |
+| `history_bias_sigmoid_v5` | 0.5 | 0.5 | 20 | Yes | 3e-3 | 0.491 | 0.493 | 0.003 |
+| `history_bias_pstay_v6` | 1.0 | 1.0 | 30 | Yes | 1e-2 | 0.493 | 0.503 | 0.008 |
+
+All runs preserved K2-level intra-trial performance (psychometric slope 10.1–10.5, chronometric slope −268 to −297 ms/unit, 100% commit rate). **No run moved history metrics above chance.**
+
+### Three-Layer Gradient Problem (Root Cause Analysis)
+
+Systematic debugging revealed three stacked gradient pathologies that prevent the history_bias_head from learning:
+
+**1. DDM choice probability saturation.** The analytical DDM formula used for the per-trial history loss saturates at high coherence, zeroing the gradient for ~5/6 of trials:
+
+| Coherence | dp/d(hb_weight) |
+| --- | --- |
+| 0.000 | 0.210 |
+| 0.032 | 0.160 |
+| 0.064 | 0.076 |
+| 0.128 | 0.010 |
+| 0.256 | 0.000087 |
+| 0.512 | 0.000000 |
+
+**Fix (v5):** Replaced DDM formula with a simple sigmoid for the training loss path. Confirmed all coherences produce gradient (0.4–5.1). Rollout still uses the actual DDM simulation.
+
+**2. Left/right gradient cancellation.** The original parameterization represents P(right). After right-wins, gradient pushes the head positive; after left-wins, negative. With roughly balanced actions, these anti-align (cosine similarity = −0.48) producing **72% gradient cancellation** within each training batch.
+
+**Fix (v6):** Re-parameterized as P(stay) — all win trials push gradient in the same direction. Cancellation dropped to 56% (cosine similarity = +0.27).
+
+**3. Optimization instability from session-dependent hidden states.** Even with fixes 1 and 2, the history_bias_head weights oscillate instead of converging. Direct tracing showed: step 0 → weight 0.01, step 10 → weight 0.0002, step 20 → 0.004, step 30 → 0.003. Different sessions push weights in different directions because:
+
+- The LSTM hidden state has 64 dimensions — the history signal is encoded in session-dependent, arbitrary directions
+- A linear head trained for ~30 epochs cannot find a consistent mapping from high-dimensional hidden states to a scalar history bias
+- The LSTM was trained by WFPT/choice losses to encode *within-trial* dynamics; history information exists as a side effect in arbitrary dimensions
+
+**This is the fundamental issue:** We verified the LSTM hidden state *does* encode history (mean absolute difference = 0.194 between post-win and post-loss states; drift_gain differs by 5.7). The information is there, but a small linear head cannot reliably extract it from the high-dimensional space in the training budget available.
+
+### Scientific Conclusions
+
+1. **Gradient isolation works correctly** — verified by 9 unit tests. WFPT loss cannot reach the history_bias_head.
+
+2. **The LSTM encodes history but in a way that's not linearly extractable.** The hidden state representation is optimized for predicting DDM parameters, not for history bias extraction. The history signal is distributed across many dimensions in session-dependent patterns.
+
+3. **The DDM parameter bottleneck is real.** Even when we provide a clean gradient path, the DDM choice probability formula creates a severe nonlinearity that makes learning slow at best and impossible at worst.
+
+4. **The Decoupling Problem is not just a loss weighting issue.** We tested weights from 0.0 to 2.0, learning rates from 3e-4 to 1e-2, scales from 0.5 to 1.0, with and without freezing, with three different gradient formulations. The consistent failure rules out simple hyperparameter tuning as the solution.
+
+5. **An architectural change is needed.** History processing likely requires a separate input pathway (not extracted from the LSTM hidden state) or a fundamentally different integration mechanism. This aligns with neuroscience models where trial-history biases originate in prefrontal/basal ganglia circuits separate from the sensory evidence accumulation pathway in parietal cortex.
+
+### Architectural Implications and Design Choice
+
+The Phase 6 experiments rule out the "post-hoc linear readout" approach to history. Three candidate architectures were considered:
+
+1. **Separate history stream**: A dedicated pathway that processes (prev_action, prev_reward) directly into a starting-point bias, bypassing the LSTM hidden state entirely.
+2. **Dynamic R-DDM**: LSTM modulates drift at every timestep within a trial, allowing history to influence the accumulation process dynamically.
+3. **Prior mixture pathway**: A separate network computes P(right|history) which is mixed with the DDM choice via a learned gate.
+
+**We chose Option 1 (Separate History Stream)** for the following reasons:
+
+**Scientific rationale.** The approach directly tests a specific neuroscience hypothesis: that intra-trial dynamics (evidence accumulation) and inter-trial dynamics (history-dependent biases) arise from *anatomically and computationally distinct circuits* that converge at the level of starting-point bias.
+
+This maps onto known primate decision-making circuitry:
+
+| Brain circuit | Model component | Function |
+| --- | --- | --- |
+| LIP (lateral intraparietal area) | LSTM → DDM simulation | Sensory evidence accumulation |
+| PFC (prefrontal cortex) + Basal ganglia | History network (prev_action, prev_reward → stay_tendency) | Recent outcome tracking, action value updating |
+| PFC→LIP projections (baseline firing shift) | stay_tendency * scale * bound → starting point | History bias shifts accumulation starting point |
+| Dopamine reward signals | Gradient from per-trial history loss | Learning signal for history circuit |
+| Sensory statistics | Gradient from WFPT/choice loss | Learning signal for accumulation circuit |
+
+This biological mapping also explains why the LSTM-readout approach (Phase 6) failed: we were asking the evidence accumulation circuit (LIP/LSTM) to both accumulate evidence AND compute history biases. In the brain, these are distinct circuits with distinct learning rules — the basal ganglia learns from dopamine reward signals while LIP learns from sensory evidence. Routing both learning signals through one circuit (the LSTM) creates the gradient conflict we observed.
+
+**Practical rationale over alternatives:**
+
+- **vs. Dynamic R-DDM (Option 2)**: The R-DDM fundamentally changes how evidence accumulation works, risking the intra-trial performance that took 55+ experiments to achieve. Option 1 is *additive* — it only adds a pathway, never changes what already works. If Option 1 fails, we learn that starting-point bias is insufficient for history effects (pushing toward Option 2). If we start with Option 2 and it fails, we learn nothing about why.
+
+- **vs. Prior mixture (Option 3)**: A prior mixture adjusts the final choice probability *after* the DDM decision — a statistical correction, not a mechanistic one. Starting-point bias (Option 1) changes the entire trajectory of evidence accumulation, producing testable predictions about RT distributions: responses should be *faster* in the biased direction and *slower* in the opposite direction. This matches what's observed in animal data and provides a richer behavioral fingerprint to validate against.
+
+**Architecture.** A small MLP takes (prev_action, prev_reward) as direct features — not extracted from the LSTM hidden state. It outputs a "stay tendency" (how much to repeat the previous action) that shifts the DDM starting point. The network *learns* the history rule from data rather than having it hardcoded. Zero-initialized output layer ensures no effect at the start of training, preserving all existing intra-trial performance through Phases 1–6.
+
+### Phase 7 Result: The Reference Data Discovery
+
+The separate history network (v7) implementation was architecturally sound — the network learned meaningful weights (output layer max 0.096 vs 0.003 for the LSTM-based head), and isolated gradient tests confirmed it converges in ~20 optimizer steps to correct win-stay/lose-shift probabilities.
+
+However, rollout history metrics remained at chance (win_stay=0.492, lose_shift=0.517). Investigation revealed a fundamental issue with the **training targets**:
+
+| Metric | Macaque reference (aggregate) | Per-session range | Our model |
+| --- | --- | --- | --- |
+| Win-stay | **0.458** | 0.222–0.548 | 0.492 |
+| Lose-shift | 0.515 | 0.000–0.739 | 0.517 |
+
+**The Roitman & Shadlen macaque does not show above-chance win-stay.** The aggregate win-stay is 0.458 (below 0.5), and only 7 of 27 sessions show win-stay > 0.5. This is consistent with an overtrained monkey that has learned to ignore previous outcomes and respond purely to current sensory evidence.
+
+**Our model at win_stay=0.492 already matches the reference data better than any win-stay > 0.5 target would.** The per-trial history loss was trying to push the model toward a pattern that doesn't exist in the reference data.
+
+### Methodological Failure: We Didn't Check the Reference Data
+
+The most important lesson from this entire effort is embarrassingly simple: **we never checked whether the reference data exhibited the history effects we were trying to capture.**
+
+The FINDINGS.md has stated "win-stay ≈ 0.49" for the model since the K2 run and framed it as a failure — the "Decoupling Problem." But at no point did anyone compare the model's win-stay to the reference animal's win-stay. We assumed "animals have history effects" from the general neuroscience literature without verifying it against the Roitman & Shadlen dataset specifically.
+
+The Roitman & Shadlen macaque was heavily overtrained (2,611 published trials of the same motion discrimination task). History effects are known to diminish with overtraining as the animal learns to ignore previous outcomes and respond purely to current sensory evidence. This is well-established in the literature, and we should have anticipated it.
+
+Six experiments, three architectural fixes, and extensive gradient debugging were spent optimizing toward a target that doesn't exist in the data. The architecture is mechanically sound but **untested against data with genuine history effects**.
+
+### What Was Actually Learned
+
+1. **Three gradient pathologies are real.** DDM formula saturation (only 1/6 of trials produce gradient at high coherence), left/right gradient cancellation (72% cancellation in P(right) parameterization), and optimization instability from session-dependent LSTM hidden states. These are genuine obstacles that would block any LSTM-readout approach to history, regardless of dataset. The diagnostic methodology for discovering them is reusable.
+
+2. **The separate history stream architecture is the correct approach.** A small MLP that takes (prev_action, prev_reward) directly, bypassing the LSTM, avoids all three gradient pathologies. Isolated gradient tests confirm it converges to correct win-stay/lose-shift targets in ~20 optimizer steps. But it has not been validated on data with genuine history effects.
+
+3. **The Decoupling Problem, as originally stated, was partly an artifact.** For the Roitman & Shadlen macaque, intra-trial dynamics and inter-trial dynamics are not "decoupled" in the model — they are both correctly captured. The model's chance-level history matches the reference animal's chance-level history. The Decoupling Problem remains real for datasets with genuine history effects (e.g., IBL mouse: win-stay 0.73, lose-shift 0.34).
+
+4. **Would more macaque data help?** Potentially — data from less-trained animals, or from paradigms where history effects are more prominent, would provide the training signal the architecture needs. The overtraining explanation predicts a specific, testable gradient: early-session data should show stronger history effects than late-session data.
+
+### Next Steps
+
+The IBL mouse dataset (win-stay 0.73, lose-shift 0.34) provides a clear, strong history signal. The Hybrid DDM+LSTM with the separate history stream should be adapted to the IBL 2AFC task. This is the proper test of whether the architecture can capture inter-trial dynamics when the reference data actually exhibits them.
+
+---
+
+## Phase 8: IBL Mouse Adaptation — Drift-Rate Bias Solves the Decoupling Problem (February 2026)
+
+### Motivation
+
+The Phase 7 discovery that Roitman & Shadlen macaque data lacks history effects prompted a switch to IBL mouse data, which has strong history signals (win-stay=0.724, lose-shift=0.427, 8,406 trials, 10 sessions). This is the proper test of the separate history stream architecture.
+
+### IBL 2AFC Adaptation
+
+The Hybrid DDM+LSTM was parameterized by task (`--task ibl_2afc`) rather than forked. Changes:
+
+- Task-conditional environment (IBL2AFCEnv vs RDMMacaqueEnv)
+- Stimulus: signed contrast [-1, 1] vs signed coherence
+- IBL-specific RT targets (652–2253 ms vs 464–785 ms for macaque)
+- Block-prior-aware correct-answer logic for zero-contrast trials
+- Extended response window to accommodate IBL RT range
+
+The model architecture, training loop, loss functions, and history_network are identical across tasks — only data loading and rollout differ.
+
+### Starting-Point Bias Experiments (v1–v3)
+
+| Run | history_bias_scale | history_drift_scale | Phase 7 epochs | per_trial_history | Win-stay | Lose-shift | Chrono slope |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `ibl_hybrid_curriculum` (v1) | 0.5 | 0.0 | 5 | 0.5 | 0.547 | 0.525 | -73.1 |
+| `ibl_history_v2_long` | 0.5 | 0.0 | 20 | 0.5 | 0.544 | 0.530 | -77.0 |
+| `ibl_history_v3_strong` | 1.0 | 0.0 | 20 | 1.5 | 0.544 | 0.533 | -77.3 |
+| IBL mouse reference | — | — | — | — | **0.724** | **0.427** | negative |
+
+Win-stay plateaued at ~0.544 regardless of training duration or loss weight. Diagnostic analysis revealed the trained history_network outputs correct values — with scale=1.0, the sigmoid P(stay) after wins was 0.725, nearly exactly matching the target. But rollout win-stay was only 0.544.
+
+### Root Cause: Starting-Point Bias Is the Wrong Mechanism
+
+DDM simulation showed that starting-point bias only affects choice on ambiguous trials:
+
+| |Contrast| | P(right) shift from starting-point bias |
+| --- | --- |
+| 0.0 | +11.5% |
+| 0.0625 | +5.1% |
+| 0.125 | +1.2% |
+| 0.25 | +0.1% |
+| 1.0 | +0.0% |
+
+At |contrast| >= 0.125, the drift rate (drift_gain * contrast ≈ 14 * 0.125 = 1.75) overwhelms any starting-point shift. Since ~60% of trials have |contrast| >= 0.125, the starting-point mechanism can only move overall P(stay) by ~2-4 percentage points.
+
+**Real mice show history effects even on easy trials.** This means history must affect the evidence accumulation process itself, not just the starting point.
+
+### The Fix: Drift-Rate Bias
+
+Added a `history_drift_scale` parameter. During rollout, the history_network's stay_tendency now adds a drift-rate bias in addition to starting-point bias:
+
+```
+history_drift = stay_tendency * history_drift_scale * prev_direction
+effective_drift = drift_gain * stimulus + history_drift
+```
+
+This affects ALL trials — even at high coherence, a drift-rate bias subtly shifts the accumulation trajectory, influencing both choice and RT.
+
+### Drift-Rate Bias Experiments (v4–v6)
+
+| Run | history_drift_scale | Win-stay | Lose-shift | Sticky choice | Psych slope | Chrono slope |
+| --- | --- | --- | --- | --- | --- | --- |
+| v1 (baseline, no drift) | 0.0 | 0.547 | 0.525 | 0.530 | 6.70 | -73.1 |
+| v4 (moderate drift) | 5.0 | 0.585 | 0.487 | 0.569 | 7.28 | -72.2 |
+| v5 (strong drift) | 8.0 | 0.607 | 0.458 | 0.592 | 6.61 | -72.5 |
+| **v6 (max drift)** | **15.0** | **0.655** | **0.402** | **0.642** | 6.04 | -66.6 |
+| IBL mouse reference | — | **0.724** | **0.427** | **0.692** | ~13.2 | negative |
+
+All drift-rate experiments preserved: 100% commit rate, negative chronometric slopes, psychometric discrimination.
+
+### Scientific Implications
+
+**1. The Decoupling Problem is partially solved.** For the first time in 60+ experiments, we have an agent that simultaneously produces:
+- Negative chronometric slope (-66.6 ms/unit): slower RTs for harder stimuli
+- Above-chance win-stay (0.655): tendency to repeat after rewards
+- Below-chance lose-shift (0.402 vs 0.427 target): appropriate tendency to shift after errors
+- 100% commit rate with realistic RT range (540–1240 ms)
+
+This is the first demonstration that both intra-trial and inter-trial dynamics can coexist in a single DDM+LSTM agent. The remaining gap to the mouse (0.655 vs 0.724 win-stay) may be closeable with further tuning.
+
+**2. History effects require drift-rate bias, not just starting-point bias.** Starting-point bias (the standard neuroscience model for history-dependent DDM) only affects ambiguous trials. Drift-rate bias affects all trials, matching the empirical observation that mice show win-stay even on easy discriminations.
+
+This has a neuroscience interpretation: history doesn't just set the "ready position" before evidence arrives (starting point) — it continuously biases how evidence is *processed* throughout the trial (drift rate). In neural terms, this suggests PFC/basal ganglia history signals project not only to LIP baseline firing rates but also modulate the gain of sensory evidence during accumulation.
+
+**3. The separate history stream architecture works.** The MLP that takes (prev_action, prev_reward) directly, bypassing the LSTM, successfully learns history patterns and translates them into behavioral effects. This validates the biological hypothesis that history processing and evidence accumulation are computationally distinct circuits.
+
+**4. A tradeoff between history and discrimination may exist.** Psychometric slope decreases slightly with stronger history drift (6.70 → 6.04 as drift_scale increases). This mirrors animal behavior — mice with stronger history biases tend to be slightly less accurate on the current trial. The tradeoff suggests that history bias literally interferes with evidence accumulation, which is exactly what drift-rate bias does mechanistically.
+
+### What Remains
+
+- **Quantitative gap**: Win-stay 0.655 vs target 0.724. The gap may be closeable with larger drift_scale, though the psych slope tradeoff should be monitored.
+- **Psychometric slope**: Agent slope (6.04) is lower than the mouse (~13.2). This is a pre-existing gap from the IBL adaptation, not caused by history bias. The curriculum may need IBL-specific tuning.
+- **Lose-shift accuracy**: Agent lose-shift (0.402) is already within range of the mouse (0.427). This metric converged faster than win-stay.
+- **Multi-seed validation**: All results are from seed=42. Multi-seed runs are needed to confirm robustness.
+
+---
+
 ```text
 AnimalTaskSim: A Benchmark for Evaluating Behavioral Replication in AI Agents
 https://github.com/ermanakar/animaltasksim
 October 2025 – February 2026
-Registry: 55+ experiments spanning Sticky-Q, PPO, Bayes Observer, Hybrid DDM+LSTM, and R-DDM agents
+Registry: 60+ experiments spanning Sticky-Q, PPO, Bayes Observer, Hybrid DDM+LSTM, and R-DDM agents
 ```
