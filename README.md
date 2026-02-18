@@ -10,23 +10,27 @@ AnimalTaskSim benchmarks AI agents on classic animal decision-making tasks using
 ## Current Results
 
 <p align="center">
-  <img src="docs/figures/k2_dashboard.png" alt="Agent vs Macaque Behavioral Fingerprints" width="800">
+  <img src="docs/figures/ibl_v6_dashboard.png" alt="Agent vs IBL Mouse Behavioral Comparison" width="800">
 </p>
 
-The Hybrid DDM+LSTM agent trained on the macaque RDM task simultaneously reproduces:
-- **Psychometric sensitivity** — sigmoidal choice curve with slope 10.7, near-zero lapses (macaque reference: 17.6)
-- **Negative chronometric slope** — harder stimuli → slower RTs, slope −270 ms/unit (macaque: −645)
-- **Near-zero choice bias** — p(right) = 0.496, bias = 0.002 (macaque: ≈0)
-- **History effects at chance** (~0.50) — an open research problem called the [Decoupling Problem](FINDINGS.md#the-decoupling-problem)
+The Hybrid DDM+LSTM agent trained on the IBL mouse 2AFC task simultaneously reproduces intra-trial **and** inter-trial dynamics — a milestone previously unachieved across 60+ experiments (the [Decoupling Problem](FINDINGS.md#the-decoupling-problem)):
 
-> *Figure from `runs/decoupling_K2_window_control/`. Regenerate with `python scripts/generate_readme_figures.py`.*
+- **Win-stay 0.655** — tendency to repeat after rewards (IBL mouse: 0.724)
+- **Lose-shift 0.402** — tendency to switch after errors (IBL mouse: 0.427)
+- **Negative chronometric slope** −66.6 ms/unit — harder stimuli → slower RTs
+- **Psychometric sensitivity** — sigmoidal choice curve with slope 6.0 (IBL mouse: ~13.2)
+- **100% commit rate** with realistic RT range (540–1240 ms)
+
+The key insight: history effects require **drift-rate bias** (history modulates evidence accumulation), not just starting-point bias (which only affects ambiguous trials). See [FINDINGS.md Phase 8](FINDINGS.md) for the full analysis.
+
+> *Figure from `runs/ibl_drift_v6_max/`. Dashboard: `python scripts/make_dashboard.py --opts.agent-log runs/ibl_drift_v6_max/trials.ndjson --opts.reference-log data/ibl/reference.ndjson --opts.output dashboard.html`*
 
 ---
 
 ## New to the Project?
 
 - 📘 **[Theory & Concepts Guide](docs/THEORY_AND_CONCEPTS.md)** — Accessible introduction covering the tasks, behavioral fingerprints, and the hybrid DDM+LSTM model
-- **[Findings Report](FINDINGS.md)** — Experimental results across 55+ runs, what works, what doesn't
+- **[Findings Report](FINDINGS.md)** — Experimental results across 60+ runs, what works, what doesn't
 - 💻 **[Agent Operating Guide](AGENTS.md)** — Implementation standards and contribution guidelines
 - ⚡ **[Quick Start](#quickstart)** — Jump straight to running experiments
 
@@ -191,23 +195,26 @@ python scripts/train_agent.py --seed SEED --env TASK --agent AGENT ...  # Re-run
 
 ## Recent Highlights
 
-### February 2026 — K2 Experiment
+### February 2026 — Decoupling Problem Partially Solved
 
-The K2 run achieved simultaneous psychometric sensitivity and negative chronometric slope in internal benchmarks. Key findings:
+The Decoupling Problem — no agent simultaneously captures intra-trial dynamics (chronometric slope) AND inter-trial dynamics (history effects) — is partially solved:
 
-1. **Bias artifact resolution**: The reported 84% "leftward bias" was a metric artifact — `p_right_overall` counted holds as non-right. The true committed `p_right = 0.48` was balanced all along.
-2. **Response window fix**: The agent's `max_commit_steps=200` exceeded the environment's 120-step response phase. After alignment, commit rate reached 100%.
-3. **Results** (`runs/decoupling_K2_window_control/`): Psych slope=10.7 (lapses ≈0), chrono slope=−270 ms/unit, bias=0.002, commit rate=100%.
+1. **IBL mouse adaptation**: The Hybrid DDM+LSTM now supports both macaque RDM (`--task rdm`) and IBL mouse 2AFC (`--task ibl_2afc`) tasks via a single parameterized codebase.
+2. **Drift-rate history bias**: Starting-point bias only affects ambiguous trials. Adding drift-rate bias — history modulates evidence accumulation itself — produces history effects across all difficulty levels.
+3. **Results** (`runs/ibl_drift_v6_max/`): Win-stay=0.655, lose-shift=0.402, chrono slope=−66.6 ms/unit, 100% commit rate.
+4. **Separate history stream**: A dedicated MLP bypassing the LSTM processes (prev_action, prev_reward) → stay_tendency, validated by 14 gradient isolation tests.
 
-### February 2026 — Scientific Fixes & Infrastructure
+### February 2026 — K2 Experiment (Macaque RDM)
 
-- **WFPT normalization fix**: Both small-time/large-time series now agree to 6 decimal places; `drift=3, bound=2` integrates to exactly 1.000.
-- **Per-trial history loss**: Root cause of the Decoupling Problem identified. Added `per_trial_history_loss()` with per-trial MSE supervision.
-- **Ceiling-corrected chronometric slope**: `corrected_slope` excludes ceiling levels for more honest assessment.
-- **Multi-run leaderboard**: `scripts/compare_runs.py` scans all runs, computes composite scores, outputs color-coded HTML.
-- **80 tests** now pass (up from 40).
+The K2 run solved intra-trial dynamics on the macaque task: psych slope=10.7, chrono slope=−270 ms/unit, 100% commit rate. History remained at chance (~0.50), which turned out to match the overtrained macaque reference data (win-stay=0.458).
 
-See [`FINDINGS.md`](FINDINGS.md) for full experimental details.
+### February 2026 — Infrastructure
+
+- **WFPT normalization fix**: Both series agree to 6 decimal places.
+- **Ceiling-corrected chronometric slope**: Excludes ceiling levels for honest assessment.
+- **93 tests** now pass (up from 40).
+
+See [`FINDINGS.md`](FINDINGS.md) for full experimental details across 60+ experiments.
 
 ---
 
@@ -220,7 +227,8 @@ See [`FINDINGS.md`](FINDINGS.md) for full experimental details.
 
 ### Agent Improvements
 
-- **Hybrid DDM+LSTM for IBL 2AFC:** Adapt the hybrid agent for mouse data, including contrast-level curriculum and mouse behavioral fingerprints.
+- **Close the history gap:** Win-stay 0.655 vs target 0.724 — further tuning of drift-rate bias scale, curriculum, and multi-seed validation.
+- **Improve psychometric slope on IBL:** Agent slope (6.0) vs mouse (~13.2) — IBL-specific curriculum tuning needed.
 
 ---
 
