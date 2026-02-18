@@ -123,7 +123,7 @@ Even when the answer is completely obvious, real animals occasionally get it wro
 
 ## The Brain Inside the Agent: How the Hybrid Model Works
 
-Standard reinforcement learning algorithms can't produce realistic behavioral fingerprints — they respond instantly (no reaction times) and treat every trial independently (no history effects). AnimalTaskSim's answer is a **hybrid model** that combines two components:
+Standard reinforcement learning algorithms can't produce realistic behavioral fingerprints — they respond instantly (no reaction times) and treat every trial independently (no history effects). AnimalTaskSim's answer is a **hybrid model** that combines three components:
 
 ### The Player: Drift-Diffusion Model (DDM)
 
@@ -135,9 +135,22 @@ This is why the DDM naturally produces the chronometric fingerprint: harder deci
 
 ### The Coach: LSTM Neural Network
 
-The LSTM watches the history of recent trials — what the agent chose, whether it was rewarded, how strong the evidence was — and uses that to adjust the DDM's settings for the next trial.
+The LSTM watches the history of recent trials — what the agent chose, whether it was rewarded, how strong the evidence was — and uses that to adjust the DDM's settings for the next trial. It outputs per-trial DDM parameters: drift gain (how strongly to weight evidence), boundary height (speed-accuracy tradeoff), bias (left/right starting preference), and non-decision time (motor delay).
 
-### The Full System: Coach Sets the Player's Strategy
+### The Habit Circuit: Separate History Network
+
+A key insight from 60+ experiments: the LSTM alone cannot produce history effects. Even when trained with explicit history supervision, the LSTM's learned history patterns get washed out during the DDM evidence accumulation process.
+
+The solution is a **separate history network** — a small MLP that takes only the previous trial's action and reward as input, bypasses the LSTM entirely, and outputs a **stay tendency**: how much the agent is biased toward repeating its last choice.
+
+This mirrors a real biological circuit: the prefrontal cortex and basal ganglia process recent reward history through a pathway that is computationally distinct from the sensory evidence accumulation happening in areas like LIP/MT. The history network models this separation.
+
+The stay tendency influences the DDM through two mechanisms:
+
+- **Starting-point bias:** Shifts where the evidence accumulation begins (toward the previous choice if stay tendency is positive). This mostly affects ambiguous trials.
+- **Drift-rate bias:** Adds a continuous push to the evidence accumulation itself, biasing how evidence is *processed* throughout the trial. This is the critical mechanism — it affects decisions at all difficulty levels, matching the observation that real mice show win-stay even on easy discriminations.
+
+### The Full System
 
 ```mermaid
 flowchart TD
@@ -150,10 +163,14 @@ flowchart TD
         L["LSTM Network\nLearns patterns across trials"]
     end
 
+    subgraph Habit["History Network (MLP)"]
+        HN["Separate MLP\nBypass LSTM entirely"]
+    end
+
     subgraph Params["Per-Trial DDM Settings"]
-        D["drift · how strongly to weight evidence"]
+        D["drift · evidence weight + history drift bias"]
         B["boundary · speed vs accuracy tradeoff"]
-        BI["bias · left/right starting preference"]
+        BI["bias · starting point + history shift"]
     end
 
     subgraph Player["DDM Player"]
@@ -167,9 +184,12 @@ flowchart TD
 
     S --> L
     H --> L
+    H --> HN
     L --> D
     L --> B
     L --> BI
+    HN -->|"stay tendency"| D
+    HN -->|"stay tendency"| BI
     D --> P
     B --> P
     BI --> P
@@ -179,21 +199,24 @@ flowchart TD
 
 **How it works in practice:**
 
-After a winning streak on the left, the LSTM might nudge the DDM's starting position slightly leftward (→ history effect). On an easy trial, it might lower the boundary so the DDM decides faster. On a hard trial, it might raise the boundary to be more cautious. The DDM then runs its evidence-accumulation process with those settings, producing both a choice and a realistic reaction time.
+The LSTM sets the DDM's base parameters — how strongly to weight evidence, how cautious to be. The history network independently computes a stay tendency from the previous trial's outcome. If the agent was rewarded on the left, the stay tendency pushes the DDM's starting point toward "left" *and* adds a continuous drift-rate bias that makes left-favoring evidence slightly stronger throughout deliberation. The DDM then runs its evidence-accumulation process with these combined settings, producing both a choice and a realistic reaction time.
 
-### Training: WFPT Loss
+The drift-rate bias is what finally cracked the Decoupling Problem: starting-point bias alone only matters on ambiguous trials (at high contrast, the stimulus evidence overwhelms any starting-point shift). Drift-rate bias continuously influences evidence processing, producing history effects even on easy trials — just as real mice do.
 
-The system learns by comparing its behavior to real animal data using the **Wiener First Passage Time (WFPT) distribution** — the mathematical formula for "given these DDM settings, what's the probability of this specific choice and reaction time?"
+### Training: Curriculum Learning with WFPT Loss
+
+The system learns through a **7-phase curriculum** that gradually introduces different objectives. This order matters — trying to learn everything simultaneously fails.
 
 ```mermaid
 flowchart LR
-    A["Agent plays\ntrial in simulator"] --> B["Compare choice + RT\nagainst animal data"]
-    B --> C["WFPT: How probable is\nthe animal's behavior\nunder these DDM settings?"]
-    C --> D["Adjust LSTM weights\nto increase probability"]
-    D --> A
+    A["Phase 1\nWFPT warmup\n(RT structure)"] --> B["Phases 2-3\nAdd choice loss\n(accuracy)"]
+    B --> C["Phases 4-6\nHistory supervision\nRT calibration"]
+    C --> D["Phase 7\nHistory finetune\n(freeze DDM, train history)"]
 ```
 
-Over time, the LSTM learns to set DDM parameters that produce behavior matching the real animal.
+The core training signal is the **Wiener First Passage Time (WFPT) distribution** — the mathematical formula for "given these DDM settings, what's the probability of this specific choice and reaction time?" By maximizing the WFPT likelihood of real animal data, the agent learns DDM parameters that naturally produce animal-like behavior.
+
+In Phase 7 (history finetuning), all DDM parameters are frozen and only the history network trains. This prevents the history signal from degrading the already-learned RT structure — a failure mode discovered across dozens of experiments.
 
 ---
 
@@ -211,14 +234,15 @@ From the logs, compute all four metrics: psychometric slope, chronometric slope,
 
 Generate dashboards that overlay agent curves on animal curves:
 
-| Metric | Agent | Animal | Match |
-|--------|------:|-------:|-------|
-| Psychometric Slope | 10.7 | 17.56 | 61% |
-| Chronometric Slope | −270 ms/unit | −645 ms/unit | ✓ negative |
-| Win-Stay Rate | 0.49 | 0.46 | ⚠ ~chance |
-| Bias | 0.002 | 0.000 | ✓ 99% |
+| Metric | Agent | IBL Mouse | Match |
+|--------|------:|----------:|-------|
+| Psychometric Slope | 6.0 | ~13.2 | Correct shape, gap remains |
+| Chronometric Slope | −66.6 ms/unit | negative | ✓ negative |
+| Win-Stay Rate | 0.655 | 0.724 | ✓ 90% |
+| Lose-Shift Rate | 0.402 | 0.427 | ✓ 94% |
+| Commit Rate | 100% | 100% | ✓ |
 
-> *Example output from the K2 experiment. See [FINDINGS.md](../FINDINGS.md) for full results.*
+> *Example output from the `ibl_drift_v6_max` experiment (IBL mouse 2AFC). See [FINDINGS.md](../FINDINGS.md) for full results.*
 
 ### Step 4: Iterate
 
@@ -228,18 +252,19 @@ Adjust the model, retrain, re-evaluate. The goal is to close the gap across all 
 
 ## Where Things Stand (Honest Assessment)
 
-After 55+ experiments:
+After 60+ experiments across both tasks:
 
 | | Status | Detail |
 |---|--------|--------|
-| ✅ | **Chronometric curve** | Negative slope achieved — the hybrid DDM+LSTM produces evidence-dependent reaction times via internal DDM simulation |
-| ✅ | **Psychometric curve** | Slope 10.7 vs. animal 17.6 — in the right range |
-| ✅ | **Bias** | Near-zero (0.002), matching animal data |
-| ✅ | **Curriculum learning** | Teaching RT structure first (WFPT loss), then accuracy, is critical |
-| ⚠️ | **History effects** | Win-stay/lose-shift hover at chance (~0.50) — this is the **Decoupling Problem** |
-| ⚠️ | **RT intercepts** | ~130ms slower than macaques on average |
+| ✅ | **Chronometric curve** | Negative slope achieved on both tasks — the hybrid DDM+LSTM produces evidence-dependent reaction times via internal DDM simulation |
+| ✅ | **Psychometric curve** | Correct sigmoidal shape on both tasks (IBL: slope 6.0 vs mouse ~13.2; RDM: slope 10.7 vs macaque 17.6) |
+| ✅ | **History effects** | Win-stay 0.655 (target 0.724), lose-shift 0.402 (target 0.427) — the first agent to show above-chance history alongside negative chronometric slope |
+| ✅ | **Curriculum learning** | 7-phase curriculum with frozen history finetuning is critical — teaching everything simultaneously fails |
+| ✅ | **Dual-task support** | Single parameterized codebase supports both IBL mouse 2AFC and macaque RDM tasks |
+| ⚠️ | **Psychometric slope gap** | Agent slope (6.0) vs IBL mouse (~13.2) — the agent is less sensitive to contrast changes than real mice |
+| ⚠️ | **History gap** | Win-stay 0.655 vs target 0.724 — partially closed but not fully matched |
 
-> **The Decoupling Problem:** The agent can match either reaction time patterns OR history effects, but not both simultaneously. This is the core open research challenge. See [FINDINGS.md](../FINDINGS.md) for details.
+> **The Decoupling Problem is partially solved.** For the first time, an agent simultaneously produces negative chronometric slope (intra-trial dynamics) AND above-chance win-stay/lose-shift (inter-trial dynamics). The key was drift-rate bias: history modulates evidence *accumulation*, not just starting position. The remaining gaps (win-stay 0.655 vs 0.724, psychometric slope 6.0 vs ~13.2) may be closeable with further tuning. See [FINDINGS.md](../FINDINGS.md) for the full 60+ experiment narrative.
 
 ---
 
@@ -261,8 +286,8 @@ python scripts/run_experiment.py   # Interactive wizard
 ### Want to Contribute?
 
 1. Read [AGENTS.md](../AGENTS.md) for coding standards
-2. Run `pytest tests/` (80+ tests should pass)
-3. Areas where help is especially welcome: solving the Decoupling Problem, new agent architectures, additional tasks (PRL, DMS)
+2. Run `pytest tests/` (93 tests should pass)
+3. Areas where help is especially welcome: closing the remaining history and psychometric gaps, new agent architectures, additional tasks (PRL, DMS)
 
 ---
 
@@ -275,8 +300,11 @@ python scripts/run_experiment.py   # Interactive wizard
 | **Coherence** | In RDM: what % of dots move together (higher = easier) |
 | **Contrast** | In IBL: how visible the pattern is (higher = easier) |
 | **DDM** | Drift-Diffusion Model — the "player" that accumulates evidence |
+| **Decoupling Problem** | The challenge of simultaneously producing realistic RT dynamics AND history effects in a single agent |
+| **Drift-rate bias** | History signal that modulates evidence *accumulation* — affects all trials, not just ambiguous ones |
 | **Fingerprint** | The pattern of accuracy, speed, history, and lapses that characterize a decision-maker |
 | **History effects** | How past trials influence current decisions |
+| **History network** | Separate MLP that bypasses the LSTM to compute stay tendency from previous action/reward |
 | **Lapse** | A mistake on an easy trial |
 | **LSTM** | Long Short-Term Memory — the "coach" that learns from trial history |
 | **Psychometric** | Related to accuracy measurement |
@@ -295,6 +323,6 @@ python scripts/run_experiment.py   # Interactive wizard
 - Urai et al. (2019). *Nature Communications* — History effects in decision-making
 
 **Project Documentation:**
-- [FINDINGS.md](../FINDINGS.md) — Full experimental results (55+ experiments)
+- [FINDINGS.md](../FINDINGS.md) — Full experimental results (60+ experiments)
 - [AGENTS.md](../AGENTS.md) — Developer guide and coding standards
 - [README.md](../README.md) — Installation and quickstart
