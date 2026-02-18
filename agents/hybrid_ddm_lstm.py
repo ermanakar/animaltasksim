@@ -19,7 +19,6 @@ from agents.losses import (
     history_penalty,
     history_supervision_loss,
     non_decision_supervision_loss,
-    per_trial_history_loss,
     rt_loss,
     soft_rt_penalty,
 )

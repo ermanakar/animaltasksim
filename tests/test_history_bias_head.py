@@ -100,8 +100,6 @@ class TestSeparateHistoryStream:
             model.history_network[0].weight.fill_(0.5)
             model.history_network[2].weight.fill_(0.5)
 
-        state = model.init_state(1)
-
         # Same history features, different coherence
         x_low = torch.tensor([[0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.5]])
         x_high = torch.tensor([[0.5, 0.5, 1.0, 1.0, 1.0, 1.0, 0.5]])
