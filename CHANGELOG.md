@@ -6,6 +6,48 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.2.0] - 2026-02-19
+
+### Added
+
+- **Separate history network architecture**: MLP bypass path (2→8→1, ReLU, zero-init) that computes `stay_tendency` from (prev_action, prev_reward), independent of LSTM evidence processing. Mirrors biological separation between PFC/basal ganglia (history) and LIP/parietal (evidence).
+- **Drift-rate bias mechanism**: History modulates evidence accumulation throughout the trial via `drift = gain × stimulus + stay_tendency × drift_scale × prev_direction`. This produces history effects at all difficulty levels, unlike starting-point bias which only affects ambiguous trials.
+- **IBL 2AFC support for Hybrid agent**: `train_hybrid_curriculum.py` now supports `--task ibl_2afc` with auto-inferred reference data, contrast-based stimulus processing, and IBL-specific phase timing.
+- **Per-trial history loss** (`agents/losses.py`): Supervises P(stay) on every individual trial rather than batch-level aggregation, avoiding Jensen's inequality artifacts.
+- **Multi-seed validation** (`scripts/seed_sweep.py`): Runs 5 seeds sequentially, computes mean ± std across seeds, writes structured results to `sweep_results.json`.
+- **14 new tests**: History architecture tests (`test_history_bias_head.py`, `test_per_trial_history.py`), seed robustness tests (`test_seed_robustness.py`), schema v0.2 tests (`test_schema_v02.py`). Total: 93 tests.
+
+### Fixed
+
+- **WFPT image charge positions**: Corrected small-time series to use `z + 2ka` (not `z + 2k`). Both series now agree to 6 decimal places.
+- **Bias measurement artifact**: Discovered that "84% leftward bias" was holds counted in denominator. Added `p_right_committed` metric that excludes holds. All prior Hybrid conclusions reassessed.
+- **DDM timing alignment**: Response duration override ensures `max_commit_steps` matches environment response phase, preventing artificial hold rates.
+
+### Changed
+
+- **Curriculum updated to 7 phases**: WFPT warmup → gentle choice → annealed choice → history supervision → RT calibration → RT weighting → history finetune (frozen DDM, only history_network trains).
+- **Loss weight defaults**: WFPT dominant in early phases, per-trial history loss in Phase 7 with separate learning rate (3e-3 vs 1e-3 main).
+
+### Results (IBL 2AFC, 5-seed validation)
+
+| Metric | Agent (mean ± std) | IBL Mouse | Match |
+|--------|-------------------|-----------|-------|
+| Win-stay | 0.665 ± 0.015 | 0.724 | 92% |
+| Lose-shift | 0.405 ± 0.016 | 0.427 | 95% |
+| Chrono slope | -66.7 ± 2.0 ms/unit | negative | direction ✓ |
+| Psych slope | 6.31 ± 0.38 | ~13.2 | 48% |
+| Commit rate | 100% | 100% | exact |
+
+Config: `--task ibl_2afc --history-drift-scale 15.0 --episodes 30 --max-sessions 80`
+
+### Removed
+
+- Superseded scripts: `train_hybrid.py`, `pretrain_hybrid.py`, `finetune_hybrid.py`, `calibration.py`, `eval_wfpt.py`, `make_compare.py`, `generate_readme_figures.py`, `experiment_decoupling.py`, debug scripts.
+- Duplicate data: `data/ibl/reference_multi_session.ndjson` (identical to `reference.ndjson`).
+- Root-level one-off scripts: `count_actions.py`, `analyze_rollout.py`.
+
+---
+
 ## [0.1.2] - 2025-10-12
 
 Added
@@ -68,13 +110,13 @@ Added
   - The environment's `collapsing_bound=True` was overriding the agent's learned commit step, causing all RTs to collapse to a minimum.
   - Setting `collapsing_bound=False` delegates timing control to the agent's DDM, restoring correct RT dynamics.
 
-- **Type annotations in debug scripts**: Corrected type hints in `debug_ddm_rollout.py` and `debug_rollout.py`.
+- **Type annotations in debug scripts**: Corrected type hints in debug scripts (since removed in v0.2.0).
 
 ### Changed items
 
 - **Hybrid DDM+LSTM Agent**:
   - Loss tracking now includes `epoch_drift_magnitude`.
-  - The `drift_magnitude` parameter is exposed in the CLI (`scripts/train_hybrid.py`).
+  - The `drift_magnitude` parameter is exposed in the CLI.
   - Documentation was updated with diagnostic process and results.
 
 ### Results (Attempt 11: `runs/rdm_wfpt_regularized/`)
@@ -154,11 +196,11 @@ LossWeights(choice=1.0, rt=0.0, wfpt=1.0, history=0.1, drift_magnitude=0.5)
 
 - **Scripts**
   - `scripts/train_agent.py`: Train baseline agents
-  - `scripts/train_hybrid.py`: Train hybrid DDM+LSTM agent
+  - `scripts/train_hybrid_curriculum.py`: Train hybrid DDM+LSTM agent
   - `scripts/evaluate_agent.py`: Compute metrics
   - `scripts/make_report.py`: Generate HTML reports
   - `scripts/make_dashboard.py`: Generate comparison dashboards
-  - `scripts/calibration.py`: Hyperparameter optimization
+  - `scripts/run_experiment.py`: Interactive experiment wizard
 
 - **Data**
 - `data/ibl/reference.ndjson`: Mouse 2AFC reference data (multi-session aggregate; 10 sessions, 8,406 trials)

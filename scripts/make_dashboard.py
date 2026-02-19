@@ -12,7 +12,7 @@ import tyro
 from eval.dashboard import build_comparison_dashboard
 
 
-@dataclass
+@dataclass(slots=True)
 class DashboardOptions:
     """Options for generating comparison dashboards."""
 

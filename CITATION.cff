@@ -4,8 +4,8 @@ title: "AnimalTaskSim: Hybrid Drift–Diffusion × LSTM Agents Matching Animal D
 authors:
   - family-names: Akar
     given-names: Erman
-version: "0.1.0"
-date-released: "2025-10-10"
+version: "0.2.0"
+date-released: "2026-02-19"
 repository-code: "https://github.com/ermanakar/animaltasksim"
 abstract: >
   AnimalTaskSim provides hybrid DDM + LSTM agents trained to reproduce
@@ -153,5 +153,5 @@ preferred-citation:
     - family-names: Akar
       given-names: Erman
   repository-code: "https://github.com/ermanakar/animaltasksim"
-  year: 2025
-  version: "0.1.0"
+  year: 2026
+  version: "0.2.0"

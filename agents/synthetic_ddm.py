@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 
 
-@dataclass
+@dataclass(slots=True)
 class SyntheticDDMConfig:
     """Configuration for synthetic DDM data generation."""
     

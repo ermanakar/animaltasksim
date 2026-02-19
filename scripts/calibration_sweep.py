@@ -19,7 +19,7 @@ from agents.hybrid_ddm_lstm import (
 )
 
 
-@dataclass
+@dataclass(slots=True)
 class SweepRunner:
     """Configure and run a calibration sweep."""
 

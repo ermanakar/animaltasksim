@@ -3,7 +3,7 @@
 ## Mission Context
 
 - AnimalTaskSim benchmarks AI agents against rodent/primate behavioral fingerprints using task-faithful environments, baseline agents, and a shared evaluation stack.
-- Current scope (v0.1): IBL mouse 2AFC and macaque RDM tasks with Sticky-Q, Bayesian observer, PPO baselines, Hybrid DDM+LSTM, and R-DDM agents. 80+ tests, 55+ registered experiments.
+- Current scope (v0.2): IBL mouse 2AFC and macaque RDM tasks with Sticky-Q, Bayesian observer, PPO baselines, Hybrid DDM+LSTM, and R-DDM agents. 93 tests, 60+ registered experiments.
 - Roadmap (v0.2) adds **Probabilistic Reversal Learning** and **Delayed Match-to-Sample**; schema extensions are already drafted and tested (`tests/test_schema_v02.py`). Design so these slot in without breaking interfaces.
 - Every contribution should strengthen the `.ndjson`-driven comparison pipeline between agents and animal data.
 
