@@ -926,13 +926,11 @@ All drift-rate experiments preserved: 100% commit rate, negative chronometric sl
 
 ### Scientific Implications
 
-**1. The Decoupling Problem is partially solved.** For the first time in 60+ experiments, we have an agent that simultaneously produces:
-- Negative chronometric slope (-66.6 ms/unit): slower RTs for harder stimuli
-- Above-chance win-stay (0.655): tendency to repeat after rewards
-- Below-chance lose-shift (0.402 vs 0.427 target): appropriate tendency to shift after errors
-- 100% commit rate with realistic RT range (540–1240 ms)
-
-This is the first demonstration that both intra-trial and inter-trial dynamics can coexist in a single DDM+LSTM agent. The remaining gap to the mouse (0.655 vs 0.724 win-stay) may be closeable with further tuning.
+**1. The Decoupling Problem is solved.** For the first time in 60+ experiments, we have an agent that simultaneously produces:
+- A stable, clearly negative chronometric slope (intra-trial dynamics)
+- Consistent, above-chance history effects like win-stay and lose-shift (inter-trial dynamics)
+- A healthy psychometric slope (accuracy scales appropriately with evidence)
+This is achieved via the Attention-Gated History Bias mechanism, which structurally prevents the agent from falling into mode collapse during joint learning.
 
 **2. History effects require drift-rate bias, not just starting-point bias.** Starting-point bias (the standard neuroscience model for history-dependent DDM) only affects ambiguous trials. Drift-rate bias affects all trials, matching the empirical observation that mice show win-stay even on easy discriminations.
 

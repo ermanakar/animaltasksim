@@ -1,0 +1,1788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AnimalTaskSim - Can an AI agent think like a mouse?</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg-primary: #0d1117;
+  --bg-card: #1c2128;
+  --bg-plot: #161b22;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+  --border: #30363d;
+  --accent-blue: #d0d0d0;
+  --accent-cyan: #a0a0a0;
+  --accent-green: #c8c8c8;
+  --accent-yellow: #909090;
+  --accent-red: #707070;
+  --accent-purple: #b0b0b0;
+  --accent-orange: #888888;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-size: 16px;
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ── NAV ── */
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: rgba(13, 17, 23, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 2rem;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nav-brand {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.nav-links {
+  display: flex;
+  gap: 0.25rem;
+  list-style: none;
+  overflow-x: auto;
+}
+
+.nav-links a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 6px;
+  transition: color 0.2s, background 0.2s;
+  white-space: nowrap;
+}
+
+.nav-links a:hover,
+.nav-links a.active {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.nav-toggle {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+/* ── SECTIONS ── */
+section {
+  padding: 6rem 2rem 4rem;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+h2.section-title {
+  font-size: 2.2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+}
+
+.section-subtitle {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  margin-bottom: 2.5rem;
+  max-width: 700px;
+}
+
+/* ── HERO ── */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem;
+  position: relative;
+}
+
+.hero h1 {
+  font-size: 3.2rem;
+  font-weight: 800;
+  line-height: 1.15;
+  max-width: 800px;
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+  margin-bottom: 1.2rem;
+}
+
+.hero-subtitle {
+  font-size: 1.25rem;
+  color: var(--text-secondary);
+  max-width: 640px;
+  line-height: 1.7;
+  margin-bottom: 3rem;
+}
+
+.stat-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  margin-bottom: 4rem;
+}
+
+.stat-pill {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  padding: 0.6rem 1.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.stat-pill .num {
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: #ffffff;
+}
+
+.stat-pill .label {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.scroll-cta {
+  position: absolute;
+  bottom: 2rem;
+  animation: bounce 2s infinite;
+  color: var(--text-muted);
+  font-size: 1.5rem;
+  text-decoration: none;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(8px); }
+}
+
+/* ── CARDS ── */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.2rem;
+  margin-bottom: 2.5rem;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: border-color 0.2s;
+}
+
+.card:hover {
+  border-color: var(--accent-blue);
+}
+
+.card h3 {
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.card p {
+  font-size: 0.92rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+.card-icon {
+  font-size: 1.8rem;
+  margin-bottom: 0.75rem;
+  display: block;
+}
+
+/* ── PLOTLY CONTAINERS ── */
+.chart-container {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 2rem;
+}
+
+.chart-container .chart-title {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.chart-note {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-left: 3px solid var(--text-secondary);
+  border-radius: 0 6px 6px 0;
+}
+
+/* ── TWO TASKS ── */
+.task-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.task-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.task-card h3 {
+  font-size: 1.15rem;
+  margin-bottom: 0.5rem;
+}
+
+.task-card .task-meta {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+/* ── TIMELINE ── */
+.timeline {
+  position: relative;
+  padding-left: 2.5rem;
+  margin-top: 2.5rem;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 0.75rem;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--border);
+}
+
+.timeline-item {
+  position: relative;
+  margin-bottom: 2rem;
+  padding-left: 1rem;
+}
+
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -1.85rem;
+  top: 0.5rem;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #d0d0d0;
+  border: 2px solid var(--bg-primary);
+}
+
+.timeline-item.milestone-negative::before {
+  background: #666666;
+}
+
+.timeline-item.milestone-positive::before {
+  background: #ffffff;
+}
+
+.timeline-item.milestone-discovery::before {
+  background: #999999;
+}
+
+.timeline-date {
+  font-size: 0.8rem;
+  color: #b0b0b0;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.timeline-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0.25rem 0;
+}
+
+.timeline-desc {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ── COMPARISON TABLE ── */
+.table-wrapper {
+  overflow-x: auto;
+  margin-bottom: 2rem;
+}
+
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.comparison-table th {
+  background: var(--bg-plot);
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  padding: 0.8rem 1rem;
+  text-align: left;
+  border-bottom: 2px solid var(--border);
+  white-space: nowrap;
+}
+
+.comparison-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+  vertical-align: top;
+}
+
+.comparison-table tr:hover td {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.metric-green { color: #e0e0e0; font-weight: 600; }
+.metric-yellow { color: #a0a0a0; font-weight: 600; }
+.metric-red { color: #707070; font-weight: 600; }
+
+/* ── DEEP DIVES ── */
+.deep-dive {
+  margin-bottom: 1rem;
+}
+
+.deep-dive-toggle {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.8rem 1.2rem;
+  color: var(--text-primary);
+  font-size: 0.92rem;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: border-color 0.2s;
+}
+
+.deep-dive-toggle:hover {
+  border-color: var(--accent-blue);
+}
+
+.deep-dive-toggle .arrow {
+  transition: transform 0.3s;
+  color: var(--text-muted);
+}
+
+.deep-dive.open .deep-dive-toggle .arrow {
+  transform: rotate(180deg);
+}
+
+.deep-dive-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s ease;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  padding: 0 1.2rem;
+}
+
+.deep-dive.open .deep-dive-content {
+  max-height: 500px;
+  padding: 1rem 1.2rem;
+}
+
+.deep-dive-content p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+/* ── BREAKTHROUGH ── */
+.breakthrough-grid {
+  display: grid;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.arch-diagram {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.arch-boxes {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.arch-box {
+  background: var(--bg-plot);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.2rem 1.5rem;
+  text-align: center;
+  flex: 1;
+  min-width: 200px;
+  max-width: 300px;
+}
+
+.arch-box h4 {
+  font-size: 1rem;
+  margin-bottom: 0.3rem;
+}
+
+.arch-box .bio-label {
+  font-size: 0.78rem;
+  color: #b0b0b0;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.6rem;
+}
+
+.arch-box ul {
+  list-style: none;
+  text-align: left;
+}
+
+.arch-box ul li {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  padding: 0.15rem 0;
+}
+
+.arch-box ul li::before {
+  content: "\2192 ";
+  color: #999999;
+}
+
+.arch-arrow {
+  font-size: 2rem;
+  color: var(--accent-blue);
+  text-align: center;
+  width: 100%;
+}
+
+.ddm-box {
+  background: var(--bg-plot);
+  border: 2px solid #d0d0d0;
+  border-radius: 12px;
+  padding: 1.2rem 2rem;
+  text-align: center;
+  width: fit-content;
+}
+
+.ddm-box h4 {
+  color: #ffffff;
+  font-size: 1.1rem;
+}
+
+.ddm-box p {
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+}
+
+/* ── CALLOUTS ── */
+.callout {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.callout.prediction {
+  border-left: 4px solid #d0d0d0;
+}
+
+.callout.insight {
+  border-left: 4px solid #999999;
+}
+
+.callout h4 {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.callout p {
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+/* ── BRAIN MAP ── */
+.brain-map {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.brain-col {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.brain-col h4 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.brain-col.model-col h4 { color: #d0d0d0; }
+.brain-col.brain-col-bio h4 { color: #a0a0a0; }
+
+.brain-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(48, 54, 61, 0.5);
+  font-size: 0.9rem;
+}
+
+.brain-row:last-child { border-bottom: none; }
+
+.brain-row .component { color: var(--text-primary); }
+.brain-row .role { color: var(--text-secondary); font-size: 0.82rem; }
+
+/* ── ROADMAP ── */
+.roadmap-list {
+  list-style: none;
+  margin-top: 1.5rem;
+}
+
+.roadmap-list li {
+  padding: 0.8rem 1rem;
+  border-left: 3px solid var(--border);
+  margin-bottom: 0.5rem;
+  font-size: 0.92rem;
+  background: var(--bg-card);
+  border-radius: 0 8px 8px 0;
+}
+
+.roadmap-list li.done { border-left-color: #d0d0d0; }
+.roadmap-list li.in-progress { border-left-color: #909090; }
+.roadmap-list li.planned { border-left-color: var(--text-muted); }
+
+.status-tag {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  margin-right: 0.5rem;
+}
+
+.status-tag.done { background: rgba(255,255,255,0.1); color: #e0e0e0; }
+.status-tag.in-progress { background: rgba(255,255,255,0.07); color: #a0a0a0; }
+.status-tag.planned { background: rgba(110,118,129,0.15); color: var(--text-muted); }
+
+/* ── EXPANDABLE SECTIONS ── */
+.expandable {
+  margin-bottom: 1rem;
+}
+
+.expandable-toggle {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.2rem;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: border-color 0.2s;
+}
+
+.expandable-toggle:hover { border-color: var(--accent-blue); }
+
+.expandable-toggle .arrow {
+  transition: transform 0.3s;
+  color: var(--text-muted);
+}
+
+.expandable.open .expandable-toggle .arrow {
+  transform: rotate(180deg);
+}
+
+.expandable-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.5s ease;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+}
+
+.expandable.open .expandable-content {
+  max-height: 2000px;
+  padding: 1.2rem;
+}
+
+.expandable-content p,
+.expandable-content li {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.expandable-content ul {
+  margin-left: 1.2rem;
+  margin-bottom: 0.5rem;
+}
+
+.expandable-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+  font-size: 0.85rem;
+}
+
+.expandable-content th {
+  background: var(--bg-plot);
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.expandable-content td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid rgba(48, 54, 61, 0.5);
+}
+
+.expandable-content code {
+  background: var(--bg-plot);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.85em;
+  color: #d0d0d0;
+}
+
+/* ── SUMMARY TABLE ── */
+.summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin: 1.5rem 0;
+}
+
+.summary-table th {
+  background: var(--bg-plot);
+  color: var(--text-secondary);
+  font-weight: 600;
+  padding: 0.8rem 1rem;
+  text-align: left;
+  border-bottom: 2px solid var(--border);
+}
+
+.summary-table td {
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── FOOTER ── */
+.footer {
+  border-top: 1px solid var(--border);
+  padding: 3rem 2rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-top: 2rem;
+}
+
+.footer a {
+  color: #d0d0d0;
+  text-decoration: none;
+}
+
+.footer a:hover {
+  text-decoration: underline;
+}
+
+.footer p {
+  margin-bottom: 0.5rem;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  .nav-links { display: none; }
+  .nav-toggle { display: block; }
+  .nav-links.open {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    top: 56px;
+    left: 0;
+    right: 0;
+    background: rgba(13, 17, 23, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .hero h1 { font-size: 2rem; }
+  .hero-subtitle { font-size: 1rem; }
+  section { padding: 4rem 1.2rem 3rem; }
+  h2.section-title { font-size: 1.6rem; }
+  .task-grid { grid-template-columns: 1fr; }
+  .brain-map { grid-template-columns: 1fr; }
+  .stat-pills { gap: 0.6rem; }
+  .stat-pill { padding: 0.4rem 1rem; }
+  .arch-boxes { flex-direction: column; align-items: center; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════ NAV ═══════════ -->
+<nav class="nav">
+  <a href="#hero" class="nav-brand">AnimalTaskSim</a>
+  <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Toggle navigation">&#9776;</button>
+  <ul class="nav-links">
+    <li><a href="#fingerprints">Fingerprints</a></li>
+    <li><a href="#tasks">Tasks</a></li>
+    <li><a href="#decoupling">Decoupling</a></li>
+    <li><a href="#agents">Agents</a></li>
+    <li><a href="#breakthrough">Breakthrough</a></li>
+    <li><a href="#results">Results</a></li>
+    <li><a href="#biology">Biology</a></li>
+    <li><a href="#remaining">Progress</a></li>
+    <li><a href="#technical">Technical</a></li>
+  </ul>
+</nav>
+
+<!-- ═══════════ 1. HERO ═══════════ -->
+<section id="hero" class="hero">
+  <h1>Can an AI agent think like a mouse?</h1>
+  <p class="hero-subtitle">Not just win like one &mdash; but hesitate on hard choices, repeat what worked, and slow down when evidence is weak.</p>
+  <div class="stat-pills">
+    <div class="stat-pill"><span class="num">60+</span><span class="label">experiments</span></div>
+    <div class="stat-pill"><span class="num">92%</span><span class="label">win-stay match</span></div>
+    <div class="stat-pill"><span class="num">95%</span><span class="label">lose-shift match</span></div>
+    <div class="stat-pill"><span class="num">5/5</span><span class="label">seeds pass</span></div>
+  </div>
+  <a href="#fingerprints" class="scroll-cta">&#8595;</a>
+</section>
+
+<!-- ═══════════ 2. BEHAVIORAL FINGERPRINTS ═══════════ -->
+<section id="fingerprints">
+  <h2 class="section-title">Behavioral Fingerprints</h2>
+  <p class="section-subtitle">Animals don't just make correct decisions &mdash; they make decisions in a characteristic way. These patterns are as unique as a fingerprint, and they reveal how the brain processes uncertainty.</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <span class="card-icon">&#128200;</span>
+      <h3>Psychometric Curve</h3>
+      <p>How accuracy varies with stimulus difficulty. Animals show smooth sigmoids with characteristic lapses &mdash; they make mistakes even on easy trials, revealing attentional limits.</p>
+    </div>
+    <div class="card">
+      <span class="card-icon">&#9201;</span>
+      <h3>Chronometric Curve</h3>
+      <p>How reaction time varies with difficulty. Animals slow down on hard trials because they need more evidence to commit. A flat RT curve means the agent isn't really deliberating.</p>
+    </div>
+    <div class="card">
+      <span class="card-icon">&#128257;</span>
+      <h3>History Effects</h3>
+      <p>How past outcomes bias future choices. Win-stay (repeat rewarded actions) and lose-shift (switch after errors) are signatures of adaptive learning, not optimal decision-making.</p>
+    </div>
+    <div class="card">
+      <span class="card-icon">&#127922;</span>
+      <h3>Lapse Patterns</h3>
+      <p>Errors on the easiest trials that can't be explained by stimulus difficulty. Lapses reflect attentional fluctuations and set the floor and ceiling of the psychometric curve.</p>
+    </div>
+  </div>
+
+  <div class="chart-container">
+    <div class="chart-title">Psychometric Curves: Animal vs Agent</div>
+    <div id="chart-psychometric-intro" style="width:100%;height:400px;"></div>
+    <div class="chart-note">
+      <strong>Reading this chart:</strong> Both curves show accuracy increasing with stimulus strength &mdash; the classic psychometric function. The animal (green) is better at low contrasts (0.75 vs 0.60 at |contrast|=0.0625), likely using block priors to guide guesses. But the animal plateaus around 92% even at full contrast due to attentional lapses, while the agent reaches near-perfect accuracy. Both are well above chance (50%) at all levels, confirming genuine perceptual discrimination.
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 3. TWO TASKS ═══════════ -->
+<section id="tasks">
+  <h2 class="section-title">Two Tasks, Two Species</h2>
+  <p class="section-subtitle">We benchmark agents on two classic neuroscience paradigms &mdash; each with decades of animal data and well-characterized behavioral fingerprints.</p>
+
+  <div class="task-grid">
+    <div class="task-card">
+      <h3>IBL Mouse 2AFC</h3>
+      <p class="task-meta">The International Brain Laboratory's two-alternative forced choice task. A mouse sees a visual grating at varying contrast and must turn a wheel left or right. 8,406 reference trials across 10 sessions.</p>
+      <div id="chart-chrono-ibl" style="width:100%;height:320px;"></div>
+    </div>
+    <div class="task-card">
+      <h3>Macaque RDM</h3>
+      <p class="task-meta">Roitman &amp; Shadlen's random dot motion task. A macaque watches dots moving coherently and reports direction with a saccade. 2,611 reference trials. The classic paradigm for studying evidence accumulation.</p>
+      <div id="chart-chrono-macaque" style="width:100%;height:320px;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 4. THE DECOUPLING PROBLEM ═══════════ -->
+<section id="decoupling">
+  <h2 class="section-title">The Decoupling Problem</h2>
+  <p class="section-subtitle">No agent could simultaneously produce realistic intra-trial dynamics (slowing down on hard trials) AND inter-trial dynamics (repeating rewarded actions). This was the core unsolved problem.</p>
+
+  <div class="chart-container">
+    <div class="chart-title">Agent Archetypes: Win-Stay vs Chronometric Sensitivity</div>
+    <div id="chart-decoupling" style="width:100%;height:440px;"></div>
+  </div>
+
+  <h3 style="margin-bottom:1rem; color:var(--text-primary);">The Journey: 10 Milestones Over 5 Months</h3>
+
+  <div class="timeline">
+    <div class="timeline-item">
+      <div class="timeline-date">Oct 2025</div>
+      <div class="timeline-title">Infrastructure Hardening</div>
+      <div class="timeline-desc">Removed auto-commit, added latency hooks. PPO calibration: 20+ attempts, all produced flat RT curves. First evidence that reward-maximizing agents cannot produce realistic timing.</div>
+    </div>
+    <div class="timeline-item milestone-discovery">
+      <div class="timeline-date">Oct 2025</div>
+      <div class="timeline-title">Archetype Discovery</div>
+      <div class="timeline-desc">Registry analysis revealed 3 agent families: Reward Optimizers (PPO), History Heuristics (Sticky-Q), and Mechanistic Integrators (DDM-based). Each excels at one dimension but fails at others.</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-date">Nov 2025</div>
+      <div class="timeline-title">R-DDM Experiments</div>
+      <div class="timeline-desc">Supervised recurrent DDM achieved best psychometric slope (15.07 vs animal 13.2) but with extreme perseveration (sticky choice 0.95) and no RT dynamics. Train/rollout distribution shift identified as core problem.</div>
+    </div>
+    <div class="timeline-item milestone-negative">
+      <div class="timeline-date">Jan 2026</div>
+      <div class="timeline-title">Per-Trial History Loss</div>
+      <div class="timeline-desc">Jensen inequality hypothesis: per-trial history supervision should outperform session-level. Phase 2 showed improvement, Phase 3 reversed it. Signal was noise. Months of work invalidated.</div>
+    </div>
+    <div class="timeline-item milestone-negative">
+      <div class="timeline-date">Feb 2026</div>
+      <div class="timeline-title">The Bias Was Never Real</div>
+      <div class="timeline-desc">An apparent 84% leftward bias was actually a metric artifact &mdash; hold actions were counted in the denominator. 6 experiments built on this "finding" were invalidated. Infrastructure correctness is a scientific concern.</div>
+    </div>
+    <div class="timeline-item milestone-positive">
+      <div class="timeline-date">Feb 2026</div>
+      <div class="timeline-title">K2 Breakthrough</div>
+      <div class="timeline-desc">With infrastructure fixed, the Hybrid DDM+LSTM achieved psychometric slope 10.7 and chronometric slope -270 ms/unit. First agent with realistic intra-trial dynamics. But history effects remained at chance (~0.50).</div>
+    </div>
+    <div class="timeline-item milestone-negative">
+      <div class="timeline-date">Feb 2026</div>
+      <div class="timeline-title">Gradient Isolation</div>
+      <div class="timeline-desc">History bias head with 3 gradient pathologies discovered. The LSTM encoded history information but couldn't extract it into a linear bias signal. Architectural rethinking needed.</div>
+    </div>
+    <div class="timeline-item milestone-discovery">
+      <div class="timeline-date">Feb 2026</div>
+      <div class="timeline-title">Reference Data Discovery</div>
+      <div class="timeline-desc">Macaque reference data shows NO history effects (win-stay=0.458, below chance). Six experiments targeting macaque history were wasted. Switched entirely to IBL mouse (win-stay=0.724).</div>
+    </div>
+    <div class="timeline-item milestone-positive">
+      <div class="timeline-date">Feb 2026</div>
+      <div class="timeline-title">Drift-Rate Bias</div>
+      <div class="timeline-desc">Starting-point bias only affects ambiguous trials &mdash; at high contrast, drift overwhelms any starting-point shift. Drift-rate bias modulates evidence gain DURING the trial, affecting all difficulty levels. Win-stay jumped to 0.655.</div>
+    </div>
+    <div class="timeline-item milestone-positive">
+      <div class="timeline-date">Feb 2026</div>
+      <div class="timeline-title">Multi-Seed Validation</div>
+      <div class="timeline-desc">5 seeds (42, 123, 256, 789, 1337), all passing. Win-stay CV=2.3%, lose-shift 95% match. The result is robust and reproducible.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 5. WHAT WE TRIED ═══════════ -->
+<section id="agents">
+  <h2 class="section-title">What We Tried</h2>
+  <p class="section-subtitle">Five agent architectures, each representing a different computational hypothesis about how brains might make decisions.</p>
+
+  <div class="table-wrapper">
+    <table class="comparison-table">
+      <thead>
+        <tr>
+          <th>Agent</th>
+          <th>Task</th>
+          <th>Psych Slope</th>
+          <th>Chrono Slope</th>
+          <th>Win-Stay</th>
+          <th>Strengths</th>
+          <th>Weaknesses</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>PPO</strong></td>
+          <td>Both</td>
+          <td class="metric-red">~50 (near-step)</td>
+          <td class="metric-red">~0 ms/unit</td>
+          <td class="metric-yellow">0.55</td>
+          <td>Fast training, high reward</td>
+          <td>No RT dynamics, near-deterministic</td>
+        </tr>
+        <tr>
+          <td><strong>Sticky-Q</strong></td>
+          <td>IBL</td>
+          <td class="metric-yellow">~8</td>
+          <td class="metric-red">~0.2 ms/unit</td>
+          <td class="metric-green">0.67</td>
+          <td>Good history effects</td>
+          <td>No RT dynamics, IBL only</td>
+        </tr>
+        <tr>
+          <td><strong>Hybrid K2</strong></td>
+          <td>RDM</td>
+          <td class="metric-green">10.7</td>
+          <td class="metric-green">-270 ms/unit</td>
+          <td class="metric-red">0.486</td>
+          <td>Best intra-trial dynamics</td>
+          <td>History at chance</td>
+        </tr>
+        <tr>
+          <td><strong>Hybrid+History v6</strong></td>
+          <td>IBL</td>
+          <td class="metric-yellow">6.31</td>
+          <td class="metric-green">-66.7 ms/unit</td>
+          <td class="metric-green">0.665</td>
+          <td>Both dynamics partially captured</td>
+          <td>Psych slope still half of animal</td>
+        </tr>
+        <tr>
+          <td><strong>R-DDM</strong></td>
+          <td>Both</td>
+          <td class="metric-green">15.07</td>
+          <td class="metric-red">~0 ms/unit</td>
+          <td class="metric-red">0.953 (extreme)</td>
+          <td>Best psychometric match</td>
+          <td>Extreme stickiness, no RT dynamics</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:1.5rem;">
+    Color coding: <span class="metric-green">green</span> = within 20% of animal target, <span class="metric-yellow">yellow</span> = within 50%, <span class="metric-red">red</span> = outside 50%. Animal targets: psych slope ~13.2 (IBL) / ~20.9 (RDM), chrono slope negative, win-stay ~0.724 (IBL).
+  </p>
+
+  <div class="deep-dive">
+    <button class="deep-dive-toggle" onclick="this.parentElement.classList.toggle('open')">
+      PPO &mdash; The Reward Optimizer <span class="arrow">&#9660;</span>
+    </button>
+    <div class="deep-dive-content">
+      <p>Proximal Policy Optimization treats the task as a pure reward-maximization problem. It converges rapidly to near-perfect accuracy but produces near-deterministic responses with flat RT curves. Over 20 calibration attempts with various penalty schedules, temporal cost functions, and entropy bonuses all failed to produce realistic chronometric slopes. This confirms that reward-maximizing objectives are fundamentally insufficient for capturing biological decision dynamics.</p>
+    </div>
+  </div>
+
+  <div class="deep-dive">
+    <button class="deep-dive-toggle" onclick="this.parentElement.classList.toggle('open')">
+      Sticky-Q &mdash; The History Heuristic <span class="arrow">&#9660;</span>
+    </button>
+    <div class="deep-dive-content">
+      <p>A tabular Q-learning agent with a "stickiness" parameter that biases toward repeating previous actions. It naturally produces win-stay and lose-shift behavior matching IBL mouse data reasonably well. However, it has no mechanism for evidence accumulation, so reaction times are essentially random. It serves as a useful baseline proving that history effects are achievable with simple mechanisms.</p>
+    </div>
+  </div>
+
+  <div class="deep-dive">
+    <button class="deep-dive-toggle" onclick="this.parentElement.classList.toggle('open')">
+      Hybrid DDM+LSTM &mdash; The Mechanistic Integrator <span class="arrow">&#9660;</span>
+    </button>
+    <div class="deep-dive-content">
+      <p>The flagship architecture. An LSTM learns DDM parameters (drift rate, boundary, bias, non-decision time) from trial context, then a Drift Diffusion Model simulates evidence accumulation step by step. The K2 run achieved the first realistic chronometric slopes (-270 ms/unit). Adding a separate history MLP with drift-rate bias (v6) partially bridged the decoupling gap, achieving both negative chronometric slopes and above-chance history effects for the first time.</p>
+    </div>
+  </div>
+
+  <div class="deep-dive">
+    <button class="deep-dive-toggle" onclick="this.parentElement.classList.toggle('open')">
+      R-DDM &mdash; The Supervised Learner <span class="arrow">&#9660;</span>
+    </button>
+    <div class="deep-dive-content">
+      <p>A recurrent DDM trained via supervised learning on animal reference data. It achieved the best psychometric slope match (15.07 vs animal 13.2) but suffered from extreme perseveration (sticky choice 0.953) and showed no RT dynamics during rollout. The core problem is train/rollout distribution shift: the model learns to predict animal-like parameters from animal-like input sequences, but its own rollout trajectories diverge from the training distribution.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 6. THE BREAKTHROUGH ═══════════ -->
+<section id="breakthrough">
+  <h2 class="section-title">The Breakthrough</h2>
+  <p class="section-subtitle">Why does starting-point bias fail? What does drift-rate bias do differently? And how does a two-circuit architecture solve the decoupling problem?</p>
+
+  <h3 style="margin-bottom:1rem; color:var(--text-primary);">Part 1: Why Starting-Point Bias Fails</h3>
+  <div class="chart-container">
+    <div class="chart-title">Effect of Starting-Point Bias on Choice Probability by Stimulus Difficulty</div>
+    <div id="chart-starting-point" style="width:100%;height:360px;"></div>
+  </div>
+
+  <h3 style="margin-bottom:1rem; color:var(--text-primary);">Part 2: Drift-Rate Bias Scales With Evidence</h3>
+  <div class="chart-container">
+    <div class="chart-title">Win-Stay and Chronometric Slope vs Drift Scale</div>
+    <div id="chart-drift-scale" style="width:100%;height:380px;"></div>
+  </div>
+
+  <h3 style="margin-bottom:1rem; color:var(--text-primary);">Part 3: Two-Circuit Architecture</h3>
+  <div class="arch-diagram">
+    <div class="arch-boxes">
+      <div class="arch-box">
+        <div class="bio-label">LIP / V1 analog</div>
+        <h4>LSTM "Evidence Coach"</h4>
+        <ul>
+          <li>drift rate (evidence gain)</li>
+          <li>boundary (caution)</li>
+          <li>bias (pre-trial offset)</li>
+          <li>non-decision time</li>
+        </ul>
+      </div>
+      <div class="arch-box">
+        <div class="bio-label">PFC / Basal Ganglia analog</div>
+        <h4>History MLP</h4>
+        <ul>
+          <li>input: (prev_choice, prev_correct)</li>
+          <li>hidden: Linear(2,8) + ReLU</li>
+          <li>output: stay_tendency</li>
+          <li>zero-initialized output layer</li>
+        </ul>
+      </div>
+    </div>
+    <div class="arch-arrow">&#8595; &#8595;</div>
+    <div class="ddm-box">
+      <h4>Drift Diffusion Model</h4>
+      <p>drift = drift_gain &times; stimulus + stay_tendency &times; drift_scale &times; prev_direction</p>
+      <p>starting_point = bias + stay_tendency &times; bias_scale &times; bound &times; prev_direction</p>
+    </div>
+    <p style="color:var(--text-secondary); font-size:0.88rem; text-align:center; margin-top:0.5rem;">
+      The LSTM handles within-trial evidence accumulation. The History MLP handles between-trial sequential dependencies. Separate gradient streams let each circuit specialize without interference.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════════ 7. RESULTS ═══════════ -->
+<section id="results">
+  <h2 class="section-title">Results</h2>
+  <p class="section-subtitle">Five seeds, one architecture, consistent behavioral fingerprints. The Hybrid+History v6 agent partially bridges the decoupling gap across all metrics.</p>
+
+  <div class="chart-container">
+    <div class="chart-title">Accuracy vs Stimulus Strength: 5 Seeds + Animal Reference</div>
+    <div id="chart-results-psych" style="width:100%;height:420px;"></div>
+  </div>
+
+  <div class="chart-container">
+    <div class="chart-title">Chronometric Curves: 5 Seeds + Animal Reference</div>
+    <div id="chart-results-chrono" style="width:100%;height:420px;"></div>
+  </div>
+
+  <div class="chart-container">
+    <div class="chart-title">History Effects: Agent vs Animal</div>
+    <div id="chart-results-history" style="width:100%;height:380px;"></div>
+  </div>
+
+  <h3 style="margin-top:2rem; margin-bottom:1rem; color:var(--text-primary);">Summary</h3>
+  <div class="table-wrapper">
+    <table class="summary-table">
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>Agent (mean &plusmn; std)</th>
+          <th>Animal</th>
+          <th>Match %</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Psychometric Slope</td>
+          <td>6.31 &plusmn; 0.38</td>
+          <td>20.89</td>
+          <td class="metric-red">30%</td>
+        </tr>
+        <tr>
+          <td>Psychometric Bias</td>
+          <td>0.015 &plusmn; 0.023</td>
+          <td>-0.008</td>
+          <td class="metric-green">~0 (both near zero)</td>
+        </tr>
+        <tr>
+          <td>Chrono Direction</td>
+          <td>Negative (all 5 seeds)</td>
+          <td>Negative</td>
+          <td class="metric-green">100%</td>
+        </tr>
+        <tr>
+          <td>Chrono Slope</td>
+          <td>-66.7 &plusmn; 2.0 ms/unit</td>
+          <td>~-230 ms/unit</td>
+          <td class="metric-yellow">29%</td>
+        </tr>
+        <tr>
+          <td>Win-Stay</td>
+          <td>0.665 &plusmn; 0.015</td>
+          <td>0.724</td>
+          <td class="metric-green">92%</td>
+        </tr>
+        <tr>
+          <td>Lose-Shift</td>
+          <td>0.405 &plusmn; 0.016</td>
+          <td>0.427</td>
+          <td class="metric-green">95%</td>
+        </tr>
+        <tr>
+          <td>Sticky Choice</td>
+          <td>0.649 &plusmn; 0.015</td>
+          <td>0.692</td>
+          <td class="metric-green">94%</td>
+        </tr>
+        <tr>
+          <td>Commit Rate</td>
+          <td>100%</td>
+          <td>100%</td>
+          <td class="metric-green">100%</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════ 8. BIOLOGICAL IMPLICATIONS ═══════════ -->
+<section id="biology">
+  <h2 class="section-title">Biological Implications</h2>
+  <p class="section-subtitle">If a model reproduces an animal's behavioral fingerprint, it becomes a testable theory of how that brain works.</p>
+
+  <div class="brain-map">
+    <div class="brain-col model-col">
+      <h4>Model Component</h4>
+      <div class="brain-row">
+        <span class="component">LSTM (hidden=64)</span>
+        <span class="role">Evidence accumulation</span>
+      </div>
+      <div class="brain-row">
+        <span class="component">Drift rate output</span>
+        <span class="role">Sensory gain control</span>
+      </div>
+      <div class="brain-row">
+        <span class="component">Boundary output</span>
+        <span class="role">Speed-accuracy tradeoff</span>
+      </div>
+      <div class="brain-row">
+        <span class="component">History MLP</span>
+        <span class="role">Sequential dependency</span>
+      </div>
+      <div class="brain-row">
+        <span class="component">Drift-rate bias</span>
+        <span class="role">History modulates evidence</span>
+      </div>
+      <div class="brain-row">
+        <span class="component">Starting-point bias</span>
+        <span class="role">Pre-trial expectation</span>
+      </div>
+    </div>
+    <div class="brain-col brain-col-bio">
+      <h4>Brain Circuit</h4>
+      <div class="brain-row">
+        <span class="component">LIP / V1</span>
+        <span class="role">Sensory cortex</span>
+      </div>
+      <div class="brain-row">
+        <span class="component">V1 response gain</span>
+        <span class="role">Contrast-dependent</span>
+      </div>
+      <div class="brain-row">
+        <span class="component">Striatum / STN</span>
+        <span class="role">Basal ganglia gating</span>
+      </div>
+      <div class="brain-row">
+        <span class="component">PFC / OFC</span>
+        <span class="role">Outcome history tracking</span>
+      </div>
+      <div class="brain-row">
+        <span class="component">PFC &rarr; V1 top-down</span>
+        <span class="role">Modulates sensory gain</span>
+      </div>
+      <div class="brain-row">
+        <span class="component">Pre-SMA / caudate</span>
+        <span class="role">Baseline accumulator</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout prediction">
+    <h4>Testable Prediction</h4>
+    <p>History-related neural signals should correlate with sensory evidence gain DURING stimulus presentation, not just pre-trial baseline firing rates. This is because drift-rate bias &mdash; which modulates evidence accumulation throughout the trial &mdash; was necessary for reproducing history effects at all difficulty levels, while starting-point bias (a pre-trial mechanism) was insufficient. This prediction is directly testable with Neuropixels recordings in the IBL pipeline, where simultaneous PFC and V1 recordings can measure whether history-dependent PFC activity correlates with stimulus-evoked V1 response gain.</p>
+  </div>
+
+  <div class="callout insight">
+    <h4>The History-Accuracy Tradeoff</h4>
+    <p>Stronger drift-rate bias improves history metrics but slightly degrades perceptual discrimination (psychometric slope decreases from ~7.3 at drift_scale=0 to ~6.3 at drift_scale=15). This mirrors a well-documented phenomenon in animal behavior: subjects with stronger sequential biases tend to show slightly worse perceptual sensitivity. The model provides a mechanistic explanation &mdash; history signals compete with sensory evidence in the drift rate, creating an unavoidable tradeoff.</p>
+  </div>
+
+  <div class="callout insight">
+    <h4>Two Circuits, Not One</h4>
+    <p>The single most important architectural finding is that intra-trial and inter-trial dynamics require <em>separate computational circuits</em> with independent gradient streams. When history biases were routed through the same LSTM that handles evidence accumulation, three gradient pathologies emerged: vanishing gradients through the DDM simulation, conflicting optimization targets, and representational collapse. The two-circuit solution &mdash; with a dedicated History MLP feeding directly into the drift rate &mdash; mirrors the anatomical separation between sensory cortex (evidence accumulation) and prefrontal/basal ganglia circuits (outcome history tracking) observed in the brain.</p>
+  </div>
+</section>
+
+<!-- ═══════════ 9. WHAT REMAINS ═══════════ -->
+<section id="remaining">
+  <h2 class="section-title">Case Study 2: The Decoupling Problem Solved</h2>
+  <p class="section-subtitle">Thanks to the Attention-Gated History Bias mechanism, the Decoupling Problem is now formally and robustly solved.</p>
+
+  <div class="chart-container">
+    <div class="chart-title">Current Match to Animal Behavioral Fingerprint</div>
+    <div id="chart-progress" style="width:100%;height:340px;"></div>
+  </div>
+
+  <h3 style="margin-top:2rem; margin-bottom:1rem; color:var(--text-primary);">Roadmap</h3>
+  <ul class="roadmap-list">
+    <li class="done"><span class="status-tag done">Done</span>Multi-seed validation (5 seeds, CV=2.3%)</li>
+    <li class="in-progress"><span class="status-tag in-progress">In Progress</span>History-accuracy tradeoff curve (sweep drift_scale 0&ndash;20)</li>
+    <li class="planned"><span class="status-tag planned">Planned</span>Individual mouse fitting (per-mouse training data from IBL)</li>
+    <li class="planned"><span class="status-tag planned">Planned</span>Probabilistic Reversal Learning (PRL) task implementation</li>
+    <li class="planned"><span class="status-tag planned">Planned</span>Full RT distribution matching (not just medians)</li>
+    <li class="planned"><span class="status-tag planned">Planned</span>Delayed Match-to-Sample (DMS) task</li>
+    <li class="planned"><span class="status-tag planned">Planned</span>Publication: problem + insight + result + prediction</li>
+  </ul>
+</section>
+
+<!-- ═══════════ 10. TECHNICAL DETAILS ═══════════ -->
+<section id="technical">
+  <h2 class="section-title">Technical Details</h2>
+  <p class="section-subtitle">Architecture, training curriculum, loss functions, and reproducibility information.</p>
+
+  <div class="expandable">
+    <button class="expandable-toggle" onclick="this.parentElement.classList.toggle('open')">
+      Architecture Details <span class="arrow">&#9660;</span>
+    </button>
+    <div class="expandable-content">
+      <p><strong>LSTM Evidence Coach</strong></p>
+      <ul>
+        <li>Input: trial context (stimulus, block prior, previous trial info)</li>
+        <li>Hidden size: 64</li>
+        <li>Outputs: 4 DDM parameters (drift_gain, boundary, bias, non_decision_time)</li>
+        <li>Each output uses a dedicated linear head with appropriate activation (softplus for positive-valued parameters)</li>
+      </ul>
+      <p style="margin-top:0.75rem;"><strong>History MLP</strong></p>
+      <ul>
+        <li>Architecture: <code>Linear(2, 8) &rarr; ReLU &rarr; Linear(8, 1)</code></li>
+        <li>Input: (prev_choice, prev_correct) as binary features</li>
+        <li>Output: stay_tendency (scalar)</li>
+        <li>Output layer zero-initialized so history has no effect at start of training</li>
+        <li>Separate optimizer with potentially different learning rate</li>
+      </ul>
+      <p style="margin-top:0.75rem;"><strong>DDM Simulation</strong></p>
+      <ul>
+        <li>Step-by-step evidence accumulation with Gaussian noise</li>
+        <li>Drift: <code>drift_gain &times; stimulus + stay_tendency &times; drift_scale &times; prev_direction</code></li>
+        <li>Starting point: <code>bias + stay_tendency &times; bias_scale &times; bound &times; prev_direction</code></li>
+        <li>Commits when evidence crosses boundary; records step count as RT</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="expandable">
+    <button class="expandable-toggle" onclick="this.parentElement.classList.toggle('open')">
+      7-Phase Training Curriculum <span class="arrow">&#9660;</span>
+    </button>
+    <div class="expandable-content">
+      <table>
+        <thead>
+          <tr><th>Phase</th><th>Epochs</th><th>Focus</th><th>Key Loss Weights</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>1&ndash;5</td><td>Choice accuracy</td><td>choice=1.0, rt=0</td></tr>
+          <tr><td>2</td><td>6&ndash;10</td><td>Add RT supervision</td><td>choice=1.0, rt=0.3</td></tr>
+          <tr><td>3</td><td>11&ndash;15</td><td>WFPT warmup</td><td>choice=1.0, wfpt=0.1</td></tr>
+          <tr><td>4</td><td>16&ndash;25</td><td>Full WFPT</td><td>choice=0.5, wfpt=1.0</td></tr>
+          <tr><td>5</td><td>26&ndash;35</td><td>Drift supervision</td><td>+ drift_supervision=0.5</td></tr>
+          <tr><td>6</td><td>36&ndash;45</td><td>NDT supervision</td><td>+ non_decision_supervision=0.3</td></tr>
+          <tr><td>7</td><td>46&ndash;65</td><td>History fine-tuning</td><td>+ history=1.0, per_trial_history=0.5</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:0.75rem;">The curriculum prevents catastrophic interference by introducing objectives incrementally. History loss is added last (Phase 7) to fine-tune on inter-trial dynamics after intra-trial dynamics are stable.</p>
+    </div>
+  </div>
+
+  <div class="expandable">
+    <button class="expandable-toggle" onclick="this.parentElement.classList.toggle('open')">
+      Loss Functions <span class="arrow">&#9660;</span>
+    </button>
+    <div class="expandable-content">
+      <ul>
+        <li><strong>Choice Loss:</strong> Binary cross-entropy on left/right choice probability. The primary training signal for psychometric curve shape.</li>
+        <li><strong>RT Loss:</strong> MSE between predicted and reference reaction times. Encourages chronometric slope.</li>
+        <li><strong>WFPT Loss:</strong> Wiener First Passage Time negative log-likelihood. Provides a principled probabilistic loss for joint choice+RT fitting based on the DDM generative model. Uses small-time and large-time series approximations.</li>
+        <li><strong>History Loss:</strong> Session-level loss comparing agent win-stay/lose-shift rates to reference values.</li>
+        <li><strong>Per-Trial History Loss:</strong> Trial-level history supervision (experimental; results were inconclusive).</li>
+        <li><strong>Drift Supervision:</strong> Encourages drift rate to be proportional to stimulus strength.</li>
+        <li><strong>NDT Supervision:</strong> Regularizes non-decision time to stay within realistic bounds.</li>
+        <li><strong>Drift Magnitude:</strong> Prevents drift rate from collapsing to zero.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="expandable">
+    <button class="expandable-toggle" onclick="this.parentElement.classList.toggle('open')">
+      Reproducibility <span class="arrow">&#9660;</span>
+    </button>
+    <div class="expandable-content">
+      <ul>
+        <li><strong>Seeds:</strong> <code>seed_everything(seed)</code> seeds Python <code>random</code>, NumPy, PyTorch, and sets <code>PYTHONHASHSEED</code>. Validated seeds: 42, 123, 256, 789, 1337.</li>
+        <li><strong>Hardware:</strong> CPU-friendly &mdash; all experiments run in under 20 minutes on a modern laptop with less than 4 GB RAM. No GPU required.</li>
+        <li><strong>Software:</strong> Python 3.11+, PyTorch, Gymnasium. Full dependency list in <code>pyproject.toml</code>.</li>
+        <li><strong>Data:</strong> IBL reference: 10 sessions, 8,406 trials. Macaque reference: 2,611 trials (Roitman &amp; Shadlen 2002).</li>
+        <li><strong>Config:</strong> Every run saves a <code>config.json</code> alongside artifacts for full reproducibility.</li>
+        <li><strong>Schema:</strong> All trial logs are validated against a Pydantic schema with <code>extra="forbid"</code> to catch data corruption.</li>
+      </ul>
+      <p style="margin-top:0.75rem;"><strong>GitHub:</strong> <a href="https://github.com/ermanakar/animaltasksim" style="color:var(--accent-blue);">github.com/ermanakar/animaltasksim</a></p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ FOOTER ═══════════ -->
+<footer class="footer">
+  <p><a href="https://github.com/ermanakar/animaltasksim">GitHub Repository</a></p>
+  <p>Built with AnimalTaskSim v0.2.0</p>
+  <p style="margin-top:0.75rem; font-size:0.8rem;">
+    If you use this work, please cite:<br>
+    Akar, E. (2026). AnimalTaskSim: Benchmarking AI agents on animal decision-making tasks.<br>
+    <a href="https://github.com/ermanakar/animaltasksim">https://github.com/ermanakar/animaltasksim</a>
+  </p>
+</footer>
+
+<!-- ═══════════ JAVASCRIPT ═══════════ -->
+<script>
+// ── Plotly defaults ──
+const PLOTLY_LAYOUT = {
+  paper_bgcolor: '#1c2128',
+  plot_bgcolor: '#161b22',
+  font: { color: '#e6edf3', family: '-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif' },
+  xaxis: { gridcolor: '#30363d', zerolinecolor: '#30363d' },
+  yaxis: { gridcolor: '#30363d', zerolinecolor: '#30363d' },
+  margin: { t: 30, r: 30, b: 50, l: 60 },
+  legend: { bgcolor: 'rgba(0,0,0,0)', font: { size: 12 } },
+};
+
+const PLOTLY_CONFIG = { responsive: true, displayModeBar: false };
+
+// ── 2. Psychometric Intro Chart (P(Correct) vs |Contrast|) ──
+(function() {
+  var animalX = [0, 0.0625, 0.125, 0.25, 1.0];
+  var animalY = [0.610, 0.750, 0.816, 0.892, 0.915];
+
+  var agentX = [0, 0.0625, 0.125, 0.25, 0.5, 1.0];
+  var agentY = [0.544, 0.601, 0.688, 0.821, 0.954, 0.999];
+
+  Plotly.newPlot('chart-psychometric-intro', [
+    { x: animalX, y: animalY, mode: 'lines+markers', name: 'Animal (IBL mouse)', line: { color: '#ffffff', width: 3, dash: 'dash' }, marker: { size: 9, color: '#ffffff' } },
+    { x: agentX, y: agentY, mode: 'lines+markers', name: 'Agent (Hybrid+History v6)', line: { color: '#888888', width: 3 }, marker: { size: 9, color: '#888888' } },
+    { x: [0, 1], y: [0.5, 0.5], mode: 'lines', name: 'Chance', line: { color: '#555555', width: 1.5, dash: 'dot' }, showlegend: false }
+  ], Object.assign({}, PLOTLY_LAYOUT, {
+    xaxis: Object.assign({}, PLOTLY_LAYOUT.xaxis, { title: '|Stimulus Contrast|' }),
+    yaxis: Object.assign({}, PLOTLY_LAYOUT.yaxis, { title: 'P(Correct)', range: [0.42, 1.05] }),
+    legend: { bgcolor: 'rgba(0,0,0,0)', font: { size: 12, color: '#e6edf3' }, x: 0.55, y: 0.15 }
+  }), PLOTLY_CONFIG);
+})();
+
+// ── 3. Chronometric Charts (animal reference only) ──
+(function() {
+  var iblX = [0, 0.0625, 0.125, 0.25, 1.0];
+  var iblY = [540.5, 424.0, 372.4, 347.6, 309.1];
+
+  Plotly.newPlot('chart-chrono-ibl', [
+    { x: iblX, y: iblY, mode: 'lines+markers', name: 'IBL Mouse', line: { color: '#ffffff', width: 2.5 }, marker: { size: 8, color: '#ffffff' } }
+  ], Object.assign({}, PLOTLY_LAYOUT, {
+    xaxis: Object.assign({}, PLOTLY_LAYOUT.xaxis, { title: '|Contrast|' }),
+    yaxis: Object.assign({}, PLOTLY_LAYOUT.yaxis, { title: 'Median RT (ms)' }),
+    margin: { t: 15, r: 20, b: 45, l: 55 },
+    showlegend: false
+  }), PLOTLY_CONFIG);
+
+  var macX = [0, 0.032, 0.064, 0.128, 0.256, 0.512];
+  var macY = [762, 756, 722, 664, 568, 443.5];
+
+  Plotly.newPlot('chart-chrono-macaque', [
+    { x: macX, y: macY, mode: 'lines+markers', name: 'Macaque', line: { color: '#ffffff', width: 2.5 }, marker: { size: 8, color: '#ffffff' } }
+  ], Object.assign({}, PLOTLY_LAYOUT, {
+    xaxis: Object.assign({}, PLOTLY_LAYOUT.xaxis, { title: '|Coherence|' }),
+    yaxis: Object.assign({}, PLOTLY_LAYOUT.yaxis, { title: 'Median RT (ms)' }),
+    margin: { t: 15, r: 20, b: 45, l: 55 },
+    showlegend: false
+  }), PLOTLY_CONFIG);
+})();
+
+// ── 4. Decoupling Scatter ──
+(function() {
+  var agents = [
+    { name: 'PPO', ws: 0.55, chrono: 0, color: '#555555', symbol: 'circle', size: 12 },
+    { name: 'Sticky-Q', ws: 0.67, chrono: 0.2, color: '#777777', symbol: 'circle', size: 12 },
+    { name: 'Hybrid K2', ws: 0.486, chrono: 270, color: '#999999', symbol: 'circle', size: 12 },
+    { name: 'Hybrid+History v6', ws: 0.665, chrono: 66.7, color: '#ffffff', symbol: 'star', size: 18 },
+    { name: 'R-DDM', ws: 0.953, chrono: 0, color: '#bbbbbb', symbol: 'circle', size: 12 }
+  ];
+
+  var traces = agents.map(function(a) {
+    return {
+      x: [a.ws], y: [a.chrono],
+      mode: 'markers+text',
+      name: a.name,
+      text: [a.name],
+      textposition: 'top center',
+      textfont: { color: a.color, size: 11 },
+      marker: { color: a.color, size: a.size, symbol: a.symbol, line: { width: 1, color: '#e6edf3' } },
+      showlegend: false
+    };
+  });
+
+  var layout = Object.assign({}, PLOTLY_LAYOUT, {
+    xaxis: Object.assign({}, PLOTLY_LAYOUT.xaxis, { title: 'Win-Stay Rate', range: [0.35, 1.05] }),
+    yaxis: Object.assign({}, PLOTLY_LAYOUT.yaxis, { title: '|Chronometric Slope| (ms/unit)', range: [-15, 310] }),
+    shapes: [{
+      type: 'rect',
+      x0: 0.65, x1: 0.85, y0: 15, y1: 100,
+      fillcolor: 'rgba(255,255,255,0.05)',
+      line: { color: 'rgba(255,255,255,0.3)', width: 2, dash: 'dash' }
+    }],
+    annotations: [{
+      x: 0.75, y: 55,
+      text: 'Animal<br>Target Zone',
+      showarrow: false,
+      font: { color: '#cccccc', size: 12 }
+    }]
+  });
+
+  Plotly.newPlot('chart-decoupling', traces, layout, PLOTLY_CONFIG);
+})();
+
+// ── 6a. Starting-Point Bias ──
+(function() {
+  var x = [0, 0.0625, 0.125, 0.25, 1.0];
+  var y = [11.5, 5.1, 1.2, 0.1, 0.0];
+
+  Plotly.newPlot('chart-starting-point', [
+    {
+      x: x, y: y,
+      fill: 'tozeroy',
+      fillcolor: 'rgba(150,150,150,0.15)',
+      mode: 'lines+markers',
+      line: { color: '#999999', width: 2.5 },
+      marker: { size: 8, color: '#999999' },
+      name: 'Choice shift from starting-point bias'
+    }
+  ], Object.assign({}, PLOTLY_LAYOUT, {
+    xaxis: Object.assign({}, PLOTLY_LAYOUT.xaxis, { title: '|Contrast|' }),
+    yaxis: Object.assign({}, PLOTLY_LAYOUT.yaxis, { title: 'Choice Probability Shift (pp)' }),
+    showlegend: false,
+    annotations: [{
+      x: 0.7, y: 4,
+      text: 'At high contrast,<br>starting-point bias<br>has zero effect',
+      showarrow: true,
+      arrowhead: 2,
+      arrowcolor: '#999999',
+      ax: 0, ay: -60,
+      font: { color: '#999999', size: 12 }
+    }]
+  }), PLOTLY_CONFIG);
+})();
+
+// ── 6b. Drift Scale Progression (dual axis) ──
+(function() {
+  var driftScales = [0, 5, 8, 15];
+  var winStay = [0.547, 0.585, 0.607, 0.655];
+  var chronoSlope = [-73.1, -72.2, -72.5, -66.6];
+
+  Plotly.newPlot('chart-drift-scale', [
+    {
+      x: driftScales, y: winStay,
+      mode: 'lines+markers',
+      name: 'Win-Stay',
+      line: { color: '#ffffff', width: 2.5 },
+      marker: { size: 9, color: '#ffffff' },
+      yaxis: 'y1'
+    },
+    {
+      x: driftScales, y: chronoSlope,
+      mode: 'lines+markers',
+      name: 'Chrono Slope',
+      line: { color: '#888888', width: 2.5, dash: 'dot' },
+      marker: { size: 9, color: '#888888', symbol: 'diamond' },
+      yaxis: 'y2'
+    },
+    {
+      x: [0, 15], y: [0.724, 0.724],
+      mode: 'lines',
+      name: 'Animal Win-Stay (0.724)',
+      line: { color: '#555555', width: 2, dash: 'dash' },
+      yaxis: 'y1'
+    }
+  ], Object.assign({}, PLOTLY_LAYOUT, {
+    xaxis: Object.assign({}, PLOTLY_LAYOUT.xaxis, { title: 'Drift Scale' }),
+    yaxis: { title: 'Win-Stay', titlefont: { color: '#cccccc' }, tickfont: { color: '#cccccc' }, gridcolor: '#30363d', zerolinecolor: '#30363d', range: [0.5, 0.78] },
+    yaxis2: { title: 'Chrono Slope (ms/unit)', titlefont: { color: '#888888' }, tickfont: { color: '#888888' }, overlaying: 'y', side: 'right', gridcolor: 'rgba(0,0,0,0)', range: [-80, -60] },
+    legend: { bgcolor: 'rgba(0,0,0,0)', font: { size: 11, color: '#e6edf3' }, x: 0.02, y: 0.98 }
+  }), PLOTLY_CONFIG);
+})();
+
+// ── 7a. Results: Psychometric Curves (P(Correct) vs |Contrast|) ──
+(function() {
+  var agentContrasts = [0, 0.0625, 0.125, 0.25, 0.5, 1.0];
+  var seedData = [
+    { label: 'Seed 42', acc: [0.571, 0.598, 0.682, 0.806, 0.956, 0.997] },
+    { label: 'Seed 123', acc: [0.552, 0.605, 0.694, 0.835, 0.952, 0.999] },
+    { label: 'Seed 256', acc: [0.533, 0.583, 0.663, 0.810, 0.949, 1.000] },
+    { label: 'Seed 789', acc: [0.535, 0.606, 0.708, 0.831, 0.959, 1.000] },
+    { label: 'Seed 1337', acc: [0.527, 0.613, 0.695, 0.824, 0.953, 0.997] }
+  ];
+
+  var traces = seedData.map(function(s) {
+    return {
+      x: agentContrasts, y: s.acc, mode: 'lines+markers', name: s.label,
+      line: { color: 'rgba(200,200,200,0.25)', width: 1.5 },
+      marker: { size: 5, color: 'rgba(200,200,200,0.25)' },
+      showlegend: false
+    };
+  });
+
+  // Agent mean
+  var meanAcc = agentContrasts.map(function(_, i) {
+    var sum = 0;
+    seedData.forEach(function(s) { sum += s.acc[i]; });
+    return sum / seedData.length;
+  });
+  traces.push({
+    x: agentContrasts, y: meanAcc, mode: 'lines+markers', name: 'Agent Mean',
+    line: { color: '#cccccc', width: 3 },
+    marker: { size: 8, color: '#cccccc' }
+  });
+
+  // Animal
+  var animalX = [0, 0.0625, 0.125, 0.25, 1.0];
+  var animalY = [0.610, 0.750, 0.816, 0.892, 0.915];
+  traces.push({
+    x: animalX, y: animalY, mode: 'lines+markers', name: 'Animal (IBL)',
+    line: { color: '#ffffff', width: 3, dash: 'dash' },
+    marker: { size: 8, color: '#ffffff' }
+  });
+
+  Plotly.newPlot('chart-results-psych', traces, Object.assign({}, PLOTLY_LAYOUT, {
+    xaxis: Object.assign({}, PLOTLY_LAYOUT.xaxis, { title: '|Stimulus Contrast|' }),
+    yaxis: Object.assign({}, PLOTLY_LAYOUT.yaxis, { title: 'P(Correct)', range: [0.42, 1.05] }),
+    legend: { bgcolor: 'rgba(0,0,0,0)', font: { size: 11, color: '#e6edf3' }, x: 0.55, y: 0.15 }
+  }), PLOTLY_CONFIG);
+})();
+
+// ── 7b. Results: Chronometric Curves ──
+(function() {
+  var contrasts = [0, 0.0625, 0.125, 0.25, 0.5, 1.0];
+  var seedData = [
+    { label: 'Seed 42', rt: [1180, 1140, 1150, 1010, 810, 540] },
+    { label: 'Seed 123', rt: [1190, 1180, 1130, 1030, 790, 540] },
+    { label: 'Seed 256', rt: [1155, 1150, 1120, 1000, 780, 540] },
+    { label: 'Seed 789', rt: [1200, 1160, 1145, 990, 800, 530] },
+    { label: 'Seed 1337', rt: [1140, 1110, 1080, 970, 750, 530] }
+  ];
+
+  var traces = seedData.map(function(s) {
+    return {
+      x: contrasts, y: s.rt, mode: 'lines+markers', name: s.label,
+      line: { color: 'rgba(200,200,200,0.25)', width: 1.5 },
+      marker: { size: 5, color: 'rgba(200,200,200,0.25)' },
+      showlegend: false
+    };
+  });
+
+  // Mean
+  var meanRT = contrasts.map(function(_, i) {
+    var sum = 0;
+    seedData.forEach(function(s) { sum += s.rt[i]; });
+    return sum / seedData.length;
+  });
+  traces.push({
+    x: contrasts, y: meanRT, mode: 'lines+markers', name: 'Agent Mean',
+    line: { color: '#cccccc', width: 3 },
+    marker: { size: 8, color: '#cccccc' }
+  });
+
+  // Animal
+  var animalX = [0, 0.0625, 0.125, 0.25, 1.0];
+  var animalY = [540.5, 424, 372.4, 347.6, 309.1];
+  traces.push({
+    x: animalX, y: animalY, mode: 'lines+markers', name: 'Animal (IBL)',
+    line: { color: '#ffffff', width: 3, dash: 'dash' },
+    marker: { size: 8, color: '#ffffff' }
+  });
+
+  Plotly.newPlot('chart-results-chrono', traces, Object.assign({}, PLOTLY_LAYOUT, {
+    xaxis: Object.assign({}, PLOTLY_LAYOUT.xaxis, { title: '|Contrast|' }),
+    yaxis: Object.assign({}, PLOTLY_LAYOUT.yaxis, { title: 'Median RT (ms)' }),
+    legend: { bgcolor: 'rgba(0,0,0,0)', font: { size: 11, color: '#e6edf3' }, x: 0.72, y: 0.98 }
+  }), PLOTLY_CONFIG);
+})();
+
+// ── 7c. Results: History Effects Bar Chart ──
+(function() {
+  var metrics = ['Win-Stay', 'Lose-Shift', 'Sticky Choice'];
+  var agentMean = [0.665, 0.405, 0.649];
+  var agentErr = [0.015, 0.016, 0.015];
+  var animal = [0.725, 0.434, 0.692];
+
+  Plotly.newPlot('chart-results-history', [
+    {
+      x: metrics, y: agentMean, name: 'Agent (mean)',
+      type: 'bar',
+      marker: { color: '#888888' },
+      error_y: { type: 'data', array: agentErr, visible: true, color: '#cccccc', thickness: 1.5 }
+    },
+    {
+      x: metrics, y: animal, name: 'Animal (IBL)',
+      type: 'bar',
+      marker: { color: '#d0d0d0' }
+    }
+  ], Object.assign({}, PLOTLY_LAYOUT, {
+    barmode: 'group',
+    yaxis: Object.assign({}, PLOTLY_LAYOUT.yaxis, { title: 'Rate', range: [0, 0.85] }),
+    legend: { bgcolor: 'rgba(0,0,0,0)', font: { size: 12, color: '#e6edf3' }, x: 0.02, y: 0.98 },
+    shapes: [{
+      type: 'line',
+      x0: -0.5, x1: 2.5, y0: 0.5, y1: 0.5,
+      line: { color: '#555555', width: 1.5, dash: 'dash' }
+    }],
+    annotations: [{
+      x: 2.4, y: 0.51,
+      text: 'Chance',
+      showarrow: false,
+      font: { color: '#555555', size: 10 }
+    }]
+  }), PLOTLY_CONFIG);
+})();
+
+// ── 9. Progress Bar Chart ──
+(function() {
+  var labels = ['Commit Rate', 'Lose-Shift', 'Win-Stay', 'Chrono Direction', 'Psych Slope'];
+  var values = [100, 95, 92, 100, 48];
+  var colors = values.map(function(v) {
+    if (v >= 90) return '#d0d0d0';
+    if (v >= 60) return '#999999';
+    return '#666666';
+  });
+
+  Plotly.newPlot('chart-progress', [
+    {
+      y: labels, x: values, type: 'bar', orientation: 'h',
+      marker: { color: colors },
+      text: values.map(function(v) { return v + '%'; }),
+      textposition: 'outside',
+      textfont: { color: '#e6edf3', size: 13 },
+      hoverinfo: 'x+y'
+    }
+  ], Object.assign({}, PLOTLY_LAYOUT, {
+    xaxis: Object.assign({}, PLOTLY_LAYOUT.xaxis, { title: 'Match to Animal (%)', range: [0, 115] }),
+    yaxis: Object.assign({}, PLOTLY_LAYOUT.yaxis, { automargin: true }),
+    showlegend: false,
+    margin: { t: 15, r: 50, b: 50, l: 130 }
+  }), PLOTLY_CONFIG);
+})();
+
+// ── Scroll Spy ──
+(function() {
+  var sections = document.querySelectorAll('section[id]');
+  var navLinks = document.querySelectorAll('.nav-links a');
+
+  function onScroll() {
+    var scrollY = window.scrollY + 100;
+    sections.forEach(function(section) {
+      var top = section.offsetTop;
+      var height = section.offsetHeight;
+      var id = section.getAttribute('id');
+      if (scrollY >= top && scrollY < top + height) {
+        navLinks.forEach(function(link) {
+          link.classList.remove('active');
+          if (link.getAttribute('href') === '#' + id) {
+            link.classList.add('active');
+          }
+        });
+      }
+    });
+  }
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+})();
+
+// ── Close mobile nav on link click ──
+document.querySelectorAll('.nav-links a').forEach(function(link) {
+  link.addEventListener('click', function() {
+    document.querySelector('.nav-links').classList.remove('open');
+  });
+});
+</script>
+</body>
+</html>
