@@ -50,7 +50,6 @@ def test_hybrid_training_smoke(tmp_path: Path) -> None:
 
 def test_hybrid_attention_gate(tmp_path: Path) -> None:
     """Test that history drift is perfectly suppressed on high contrast trials."""
-    from envs.ibl_2afc import ACTION_LEFT
     from agents.hybrid_ddm_lstm import HybridTrainingConfig, LossWeights, train_hybrid
     
     config = HybridTrainingConfig(

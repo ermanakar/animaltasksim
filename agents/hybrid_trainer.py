@@ -3,32 +3,27 @@ from __future__ import annotations
 import json
 import random
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any, List
 from dataclasses import asdict
 import numpy as np
-import pandas as pd
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 from agents.losses import (
-    LossWeights, choice_loss, drift_supervision_loss, history_penalty,
+    LossWeights, choice_loss, history_penalty,
     history_supervision_loss, non_decision_supervision_loss,
-    per_trial_history_loss, rt_loss, soft_rt_penalty
+    rt_loss, soft_rt_penalty
 )
 from agents.wfpt_loss import wfpt_loss
 from envs.ibl_2afc import (
-    ACTION_LEFT as IBL_ACTION_LEFT, ACTION_NO_OP, ACTION_RIGHT as IBL_ACTION_RIGHT,
-    AgentMetadata as IBLAgentMetadata, IBL2AFCConfig, IBL2AFCEnv
+    ACTION_NO_OP, AgentMetadata as IBLAgentMetadata, IBL2AFCConfig, IBL2AFCEnv
 )
 from envs.rdm_macaque import (
     ACTION_HOLD, ACTION_LEFT, ACTION_RIGHT, AgentMetadata, RDMConfig, RDMMacaqueEnv
 )
 from envs.utils_timing import PhaseTiming
 from eval.metrics import load_trials
-from animaltasksim.config import ProjectPaths
 from animaltasksim.seeding import seed_everything
 
-from agents.curriculum import CurriculumPhase, CurriculumConfig
 from agents.hybrid_config import HybridDDMPaths, HybridTrainingConfig, SessionBatch
 from agents.hybrid_model import HybridDDMModel
 
