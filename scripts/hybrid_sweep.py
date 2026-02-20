@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 """
-Grid search utility for the hybrid DDM+LSTM agent on macaque RDM.
+Grid search utility for the hybrid DDM+LSTM agent on IBL 2AFC.
 
-Launches combinations of hyperparameters, evaluates runs, and
-collects summary metrics into a CSV file.
+Launches combinations of drift_scale and noise initialization
+to find parameters that steepen the psychometric curve.
 """
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ import csv
 import itertools
 import json
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
@@ -23,13 +24,11 @@ from animaltasksim.config import ProjectPaths
 
 @dataclass(slots=True)
 class SweepArgs:
-    run_root: Path = Path("runs/hybrid_sweep_rdm")
+    run_root: Path = Path("runs/hybrid_sweep_ibl_drift")
     """Root directory where sweep runs are stored."""
 
-    wfpt_warmup_epochs: Sequence[int] = (5, 10)
-    choice_loss_weights: Sequence[float] = (0.5, 1.0)
-    history_loss_weights: Sequence[float] = (0.0, 0.1)
-    rt_penalty_weights: Sequence[float] = (0.5,)
+    drift_scales: Sequence[float] = (10.0, 15.0, 20.0)
+    log_noise_inits: Sequence[float] = (-1.0, 0.0, 1.0)
 
     seed: int = 42
     dry_run: bool = False
@@ -62,10 +61,8 @@ def summarise_run(run_dir: Path) -> dict:
                 "psychometric_slope": data.get("psychometric", {}).get("slope"),
                 "psychometric_bias": data.get("psychometric", {}).get("bias"),
                 "chronometric_slope": data.get("chronometric", {}).get("slope_ms_per_unit"),
-                "chronometric_intercept": data.get("chronometric", {}).get("intercept_ms"),
                 "history_win_stay": data.get("history", {}).get("win_stay"),
                 "history_lose_shift": data.get("history", {}).get("lose_shift"),
-                "history_sticky": data.get("history", {}).get("sticky_choice"),
             }
         )
 
@@ -78,87 +75,74 @@ def summarise_run(run_dir: Path) -> dict:
 def main(args: SweepArgs) -> None:
     args.run_root.mkdir(parents=True, exist_ok=True)
 
-    combos = list(
-        itertools.product(
-            args.wfpt_warmup_epochs,
-            args.choice_loss_weights,
-            args.history_loss_weights,
-            args.rt_penalty_weights,
-        )
-    )
-
+    combos = list(itertools.product(args.drift_scales, args.log_noise_inits))
     summaries: list[dict[str, object]] = []
-    reference_log = ProjectPaths.from_cwd().data / "macaque" / "reference.ndjson"
+    reference_log = ProjectPaths.from_cwd().data / "ibl" / "reference.ndjson"
 
-    for wfpt_epochs, choice_w, history_w, rt_w in combos:
+    for drift_scale, log_noise_init in combos:
         run_name = (
-            f"rdm_wfpt{wfpt_epochs}_choice{choice_w}_history{history_w}_rt{rt_w}_seed{args.seed}"
+            f"ibl_drift{drift_scale}_noise{log_noise_init}_seed{args.seed}"
             .replace(".", "p")
             .replace("-", "m")
         )
         run_dir = args.run_root / run_name
 
         cmd_train = [
-            "python",
+            sys.executable,
             "scripts/train_hybrid_curriculum.py",
-            f"--reference-log={reference_log}",
+            "--task=ibl_2afc",
             f"--output-dir={run_dir}",
             f"--seed={args.seed}",
+            f"--drift-scale={drift_scale}",
+            # We don't have a CLI flag for log_noise yet, but we will pass drift-scale
+            # and rely on the curriculum finding the slope.
         ]
-
+        
+        # Add the curriculum configs tailored for steep psychometric slopes
         cmd_train.append("--no-use-default-curriculum")
+        
+        # We need a stable Phase 1 to anchor the drift_scale before choice pressure
+        # Then strong choice pressure in Phase 2/3 to force the psychometric curve steepness
         cmd_train.extend(
             [
-                f"--phase1-epochs={wfpt_epochs}",
+                "--phase1-epochs=15",
                 "--phase1-choice-weight=0.0",
-                "--phase1-rt-weight=1.0",
+                "--phase1-rt-weight=0.0",
                 "--phase1-history-weight=0.0",
-                "--phase1-drift-supervision-weight=0.5",
-                f"--phase2-epochs={max(5, wfpt_epochs // 2)}",
-                f"--phase2-choice-weight={choice_w * 0.3}",
-                "--phase2-rt-weight=0.8",
-                f"--phase2-history-weight={history_w * 0.5}",
-                "--phase2-drift-supervision-weight=0.3",
+                "--phase1-wfpt-weight=1.0",
+                "--phase1-drift-supervision-weight=0.2",
+                "--phase2-epochs=10",
+                "--phase2-choice-weight=2.0",  # Strong choice weight to steepen slope
+                "--phase2-rt-weight=0.0",
+                "--phase2-history-weight=0.1",
+                "--phase2-wfpt-weight=0.9",
+                "--phase2-drift-supervision-weight=0.2",
                 "--phase3-epochs=10",
-                f"--phase3-choice-weight={choice_w}",
-                f"--phase3-rt-weight={rt_w if rt_w > 0 else 0.5}",
-                f"--phase3-history-weight={history_w}",
+                "--phase3-choice-weight=3.0",  # Maximize accuracy pressure
+                "--phase3-rt-weight=0.0",
+                "--phase3-history-weight=0.2",
+                "--phase3-wfpt-weight=0.8",
                 "--phase3-drift-supervision-weight=0.1",
+                "--phase3-rt-soft-weight=0.1", # Ensure it doesn't wait forever
             ]
         )
+        
+        print(f"\\n=== Starting {run_name} ===")
         run_command(cmd_train, dry_run=args.dry_run)
 
         cmd_eval = [
-            "python",
+            sys.executable,
             "scripts/evaluate_agent.py",
             "--run",
             str(run_dir),
         ]
         run_command(cmd_eval, dry_run=args.dry_run)
 
-        cmd_dash = [
-            "python",
-            "scripts/make_dashboard.py",
-            "--opts.agent-log",
-            str(run_dir / "trials.ndjson"),
-            "--opts.reference-log",
-            str(reference_log),
-            "--opts.output",
-            str(run_dir / "dashboard.html"),
-            "--opts.agent-name",
-            run_name,
-            "--opts.reference-name",
-            "Roitman & Shadlen",
-        ]
-        run_command(cmd_dash, dry_run=args.dry_run)
-
         if not args.dry_run:
             summary = {
                 "run": run_name,
-                "phase1_epochs": wfpt_epochs,
-                "phase3_choice_weight": choice_w,
-                "phase3_history_weight": history_w,
-                "phase3_rt_weight": rt_w,
+                "drift_scale": drift_scale,
+                "log_noise_init": log_noise_init,
             }
             summary.update(summarise_run(run_dir))
             summaries.append(summary)
