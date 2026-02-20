@@ -1,4 +1,4 @@
-"""Multi-seed validation sweep for the IBL drift-rate bias experiment."""
+"""Multi-seed evaluation of the attention-gated hybrid DDM+LSTM agent on IBL 2AFC."""
 
 from __future__ import annotations
 
@@ -7,10 +7,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-
+# We'll run the full 5-seed suite to confirm mode collapse is fixed robustly.
 SEEDS = [42, 123, 256, 789, 1337]
 
-# Exact v6 config (from runs/ibl_drift_v6_max/config.json)
+# Exact v6 config for robust training
 BASE_ARGS = [
     sys.executable,
     "scripts/train_hybrid_curriculum.py",
@@ -20,8 +20,8 @@ BASE_ARGS = [
     "--history-phase-epochs", "20",
     "--history-history-supervision-weight", "0.8",
     "--history-per-trial-history-weight", "1.5",
-    "--history-bias-scale", "1.0",
     "--history-drift-scale", "15.0",
+    "--history-bias-scale", "1.0",
 ]
 
 
@@ -48,7 +48,7 @@ def run_seed(seed: int, output_dir: Path) -> dict[str, object]:
     run_dir = output_dir / f"seed_{seed}"
 
     # Train
-    cmd = [*BASE_ARGS, "--seed", str(seed), "--output-dir", str(run_dir)]
+    cmd = [*BASE_ARGS, "--seed", str(seed), "--output_dir", str(run_dir)]
     print(f"Training: {' '.join(cmd)}")
     result = subprocess.run(cmd, capture_output=False)
     if result.returncode != 0:
@@ -151,16 +151,8 @@ def summarize(results: list[dict[str, object]]) -> None:
 
 def main() -> None:
     """Run the sweep."""
-    output_dir = Path("runs/seed_sweep_ibl_v6")
+    output_dir = Path("runs/seed_sweep_attention")
     output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Check if seed 42 already exists
-    existing_v6 = Path("runs/ibl_drift_v6_max")
-    seed42_dir = output_dir / "seed_42"
-    if existing_v6.exists() and not seed42_dir.exists():
-        print("Linking existing v6 run as seed_42...")
-        import shutil
-        shutil.copytree(existing_v6, seed42_dir)
 
     results = []
     for seed in SEEDS:
