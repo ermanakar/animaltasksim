@@ -8,10 +8,10 @@ class HybridDDMModel(nn.Module):
     """Controller that maps history-aware features to DDM parameters."""
 
     def __init__(
-        self, 
-        feature_dim: int, 
-        hidden_size: int, 
-        device: torch.device, 
+        self,
+        feature_dim: int,
+        hidden_size: int,
+        device: torch.device,
         drift_scale: float = 10.0,
         history_bias_scale: float = 0.5,
         history_drift_scale: float = 0.0,
@@ -45,19 +45,28 @@ class HybridDDMModel(nn.Module):
         nn.init.zeros_(self.history_bias_head.weight)
         nn.init.zeros_(self.history_bias_head.bias)
 
-        # Separate History Network: bypasses LSTM hidden state entirely.
-        # Takes (prev_action, prev_reward) directly → "stay tendency."
-        # Models the PFC/basal ganglia history circuit that is anatomically
-        # separate from the LIP evidence accumulation circuit (the LSTM/DDM).
-        # Zero-initialized output layer → no effect until Phase 7 training.
-        self.history_network = nn.Sequential(
+        # Asymmetric History Networks: separate win/lose pathways model the
+        # dopaminergic asymmetry between reward and punishment processing.
+        # Animals show win-stay >> lose-shift (e.g., IBL mouse: 0.724 vs 0.427).
+        # A single network produces symmetric effects; splitting allows
+        # independent learning of win-stay and lose-shift tendencies.
+        # Both bypass LSTM — models PFC/basal ganglia history circuits.
+        # Zero-initialized output layers → no effect until history training.
+        self.win_history_network = nn.Sequential(
             nn.Linear(2, 8),   # (prev_action, prev_reward) → 8 hidden
             nn.ReLU(),
-            nn.Linear(8, 1),   # 8 → scalar stay_tendency
+            nn.Linear(8, 1),   # 8 → scalar win_stay_tendency
         )
-        nn.init.zeros_(self.history_network[2].weight)
-        nn.init.zeros_(self.history_network[2].bias)
-        
+        self.lose_history_network = nn.Sequential(
+            nn.Linear(2, 8),   # (prev_action, prev_reward) → 8 hidden
+            nn.ReLU(),
+            nn.Linear(8, 1),   # 8 → scalar lose_stay_tendency
+        )
+        nn.init.zeros_(self.win_history_network[2].weight)
+        nn.init.zeros_(self.win_history_network[2].bias)
+        nn.init.zeros_(self.lose_history_network[2].weight)
+        nn.init.zeros_(self.lose_history_network[2].bias)
+
         # CRITICAL CALIBRATION: Initialize drift_head bias for realistic drift_gain scale
         # Target: drift_gain ~ 10-15 to match macaque RT dynamics (RT ~ 500-800ms)
         # Formula: drift_gain = softplus(bias) + 1e-3
@@ -106,10 +115,14 @@ class HybridDDMModel(nn.Module):
         safe_log_noise = torch.clamp(safe_log_noise, -5.0, 5.0)
         noise = torch.exp(safe_log_noise) + 1e-3
 
-        # Separate history network: (prev_action, prev_reward) → stay_tendency.
-        # Bypasses LSTM — models a distinct history processing circuit.
+        # Asymmetric history pathways: route through win or lose network
+        # based on previous trial outcome. Bypasses LSTM entirely.
         history_input = x[:, 3:5]  # indices 3=prev_action, 4=prev_reward
-        stay_tendency = torch.tanh(self.history_network(history_input))
+        prev_reward = x[:, 4:5]
+        win_tendency = torch.tanh(self.win_history_network(history_input))
+        lose_tendency = torch.tanh(self.lose_history_network(history_input))
+        is_win = (prev_reward > 0.5).float()
+        stay_tendency = is_win * win_tendency + (1.0 - is_win) * lose_tendency
 
         outputs = {
             "drift_gain": drift_gain.squeeze(-1),
@@ -117,6 +130,8 @@ class HybridDDMModel(nn.Module):
             "bias": bias.squeeze(-1),
             "history_bias": history_bias.squeeze(-1),
             "stay_tendency": stay_tendency.squeeze(-1),
+            "win_stay_tendency": win_tendency.squeeze(-1),
+            "lose_stay_tendency": lose_tendency.squeeze(-1),
             "non_decision_ms": non_decision.squeeze(-1),
             "noise": noise.squeeze(-1).expand_as(drift_gain.squeeze(-1)),
         }

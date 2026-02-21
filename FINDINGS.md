@@ -926,11 +926,7 @@ All drift-rate experiments preserved: 100% commit rate, negative chronometric sl
 
 ### Scientific Implications
 
-**1. The Decoupling Problem is solved.** For the first time in 60+ experiments, we have an agent that simultaneously produces:
-- A stable, clearly negative chronometric slope (intra-trial dynamics)
-- Consistent, above-chance history effects like win-stay and lose-shift (inter-trial dynamics)
-- A healthy psychometric slope (accuracy scales appropriately with evidence)
-This is achieved via the Attention-Gated History Bias mechanism, which structurally prevents the agent from falling into mode collapse during joint learning.
+**1. The Decoupling Problem is architecturally solved.** For the first time in 60+ experiments, we have an agent that simultaneously produces all three behavioral fingerprints: negative chronometric slope (intra-trial dynamics), above-chance history effects (inter-trial dynamics), and psychometric discrimination (accuracy scales with evidence). This is achieved via the Attention-Gated History Bias mechanism. Quantitative calibration (matching the exact psychometric slope, lapse rates, and history asymmetry) remains ongoing — see Multi-Seed Validation below for the current state.
 
 **2. History effects require drift-rate bias, not just starting-point bias.** Starting-point bias (the standard neuroscience model for history-dependent DDM) only affects ambiguous trials. Drift-rate bias affects all trials, matching the empirical observation that mice show win-stay even on easy discriminations.
 
@@ -1009,6 +1005,204 @@ The success of the Attention-Gated History Bias mechanism has several profound i
 
 This implies the model is now fundamentally more robust and brain-like. To prevent an intelligent agent from falling into degenerate loops (like exploiting a win-stay strategy), it requires an internal attentional gauge that mathematically down-weights its priors when confronted with strong, objective reality.
 
+
+---
+
+## Phase 10: Differentiable DDM Simulator and Psychometric Slope Breakthrough (February 2026)
+
+### The Mathematical Exploit
+
+When attempting to steepen the psychometric slope (from ~3.9 toward the IBL target of 13.2) by increasing choice loss weight in the curriculum, the agent discovered a mathematical loophole in the analytical DDM training equations.
+
+The training loop used the standard expected RT formula:
+
+```
+E[RT] = (A/v) * tanh(v*A/σ²)
+```
+
+Under high choice loss pressure, the LSTM learned to push the decision bound `A → ∞` while simultaneously crushing the drift rate `v → 0`. In this limit, `tanh(v*A/σ²) → 0`, which collapsed the gradient of the RT penalty with respect to the bound. The agent preferred eating a flat 3000ms timeout penalty (from the environment ceiling) over facing the steep gradients of the BCE choice loss. Every trial timed out — 100% degenerate.
+
+### The Fix: Differentiable Euler-Maruyama Simulation
+
+The analytical approximations are fundamentally unsuited for backpropagation in environments with hard max-step cutoffs. The fix replaced the analytical `_ddm_choice_prob()` and `mean_steps` formulas with a **differentiable DDM simulator** that unrolls the actual stochastic evidence accumulation as a PyTorch tensor operation:
+
+```
+ΔE = v·Δt + σ·√Δt·N(0,1)
+```
+
+Key implementation details:
+
+1. **Evidence trajectory**: `evidence = bias + cumsum(drift*dt + noise*sqrt_dt*randn)` over `max_commit_steps` (120 steps = 3000ms)
+2. **Soft boundary crossing**: Sigmoid activation `σ((evidence - bound) / temp)` instead of hard threshold, preserving gradient flow
+3. **Commit density**: `P(commit at step t) = P(cross at t) * ∏_{s<t}(1 - P(cross at s))` — a proper first-passage density via cumulative product
+4. **Expected RT**: `E[RT] = Σ(t * commit_density_t) * step_ms + non_decision_ms`
+5. **Timeout penalty**: `P(timeout) * max_steps * 10` — massive gradient if the agent never crosses the bound
+6. **Choice probability**: Ratio of upper-bound crossings to total crossings, weighted by the commit density
+
+The agent can no longer hide behind the `tanh(0)` asymptote. At every simulated timestep, PyTorch traces the gradient from the RT penalty back through the bound parameter. If the agent inflates the bound, it feels a non-zero gradient at each of the 120 steps pushing it back down.
+
+### Sweep Design: drift_scale × choice_weight
+
+A 3×3 sweep over `drift_scale ∈ {10, 20, 30}` × `choice_weight ∈ {0.5, 1.0, 1.5}` with a 3-phase curriculum:
+
+| Phase | Epochs | Choice | RT | History | Drift Magnitude |
+|-------|--------|--------|-----|---------|-----------------|
+| 1: RT only | 15 | 0.0 | 1.0 | 0.0 | 0.5 |
+| 2: Add choice | 10 | cw×0.5 | 0.8 | 0.1 | 0.5 |
+| 3: Full balance | 10 | cw | 0.5 | 0.2 | 0.5 |
+
+This curriculum removes WFPT loss entirely (which was part of the old 7-phase curriculum) and uses drift magnitude regularization instead, with graduated choice pressure across phases.
+
+### Results
+
+| drift | choice_w | Psych Slope | Chrono Slope | Win-Stay | Lose-Shift | Bias | Quality |
+|-------|----------|-------------|--------------|----------|------------|------|---------|
+| 10 | 0.5 | 5.25 | ~0 | 0.718 | 0.167 | -0.155 | **degenerate** |
+| 10 | 1.0 | **14.17** | -288 | 0.657 | 0.196 | -0.026 | all pass |
+| 10 | 1.5 | **14.40** | -285 | 0.659 | 0.188 | -0.026 | all pass |
+| **20** | **0.5** | **13.78** | **-286** | **0.654** | **0.211** | **-0.023** | **all pass** |
+| 20 | 1.0 | 22.25 | -67 | 0.554 | 0.553 | 0.002 | all pass |
+| 20 | 1.5 | 23.73 | -66 | 0.548 | 0.551 | 0.002 | all pass |
+| 30 | 0.5 | 23.32 | -65 | 0.545 | 0.573 | 0.001 | all pass |
+| 30 | 1.0 | 22.05 | -63 | 0.550 | 0.563 | 0.004 | all pass |
+| 30 | 1.5 | 24.08 | -65 | 0.550 | 0.564 | 0.001 | all pass |
+
+**IBL mouse targets:** psych slope ~13.2 | win-stay 0.724 | lose-shift 0.427 | chrono slope negative | bias ~0
+
+### Three Regimes
+
+The results reveal three distinct behavioral regimes:
+
+**1. Degenerate (drift=10, choice=0.5):** Insufficient choice pressure. Despite the differentiable simulator, the agent still times out at 3000ms on every trial because the choice loss is too weak to create accuracy pressure. The simulator fix is necessary but not sufficient — it must be paired with adequate choice weight.
+
+**2. Sweet spot (drift=10/choice≥1.0 and drift=20/choice=0.5):** Psychometric slopes of 13.8–14.4, chronometric slopes ranging from -65 to -286 ms/unit, win-stay ~0.555–0.655, all quality flags passing. *(See multi-seed validation caveat below.)*
+
+**3. Over-discriminating (drift≥20/choice≥1.0 and all drift=30):** Psychometric slopes overshoot to 22–24 (~2× the target). History effects collapse to chance (win-stay ~0.55). Chrono slopes weaken to ~-65 ms/unit. The agent becomes too accurate and stops relying on history.
+
+### The History-Accuracy Tradeoff (Quantified)
+
+The sweep provides the clearest evidence yet of the tradeoff between perceptual discrimination and history dependence:
+
+| Psych Slope Range | Win-Stay Range | Interpretation |
+|-------------------|----------------|----------------|
+| 5–6 (too shallow) | 0.66–0.72 | Agent guesses often → history dominates |
+| **13–15 (target)** | **0.65–0.66** | **Balanced: evidence + history both active** |
+| 22–24 (too steep) | 0.54–0.55 | Agent over-relies on evidence → history irrelevant |
+
+This mirrors biological data: mice with stronger history biases tend to be slightly less accurate on the current trial, because the drift-rate bias literally interferes with evidence accumulation.
+
+### Scientific Significance
+
+**1. Analytical DDM gradients are unreliable for bounded environments.** The `tanh(κ)` exploit demonstrates that closed-form DDM equations, while mathematically correct for infinite-horizon problems, create degenerate gradient landscapes when the environment imposes hard time limits. Differentiable simulation is the correct approach for training DDM-based agents in bounded environments.
+
+**2. The three-regime structure is a prediction.** The sweep predicts that biological decision-makers should fall in a specific band of the psych_slope vs win-stay space. Animals with very steep psychometric curves (high sensitivity) should show weak history effects, and vice versa. This is testable across individual mice in the IBL dataset.
+
+**3. The architecture is correct; calibration is the remaining challenge.** The differentiable DDM + history MLP + attention gate architecture simultaneously produces all three behavioral fingerprints (psychometric discrimination, negative chronometric slope, above-chance history effects). The remaining work is quantitative — finding the drift_scale that matches the target psychometric slope without introducing ceiling artifacts.
+
+### Multi-Seed Validation (February 2026)
+
+The sweep winner (drift=20, choice=0.5) was validated across 5 seeds (42, 123, 256, 789, 1337). **The single-seed result of psych=13.78 did not replicate.** Investigation revealed it was an artifact of RT ceiling saturation that was subsequently fixed by code improvements to the hybrid trainer.
+
+#### Original single-seed result (pre-refactor)
+
+| Metric | Value | Notes |
+|--------|-------|-------|
+| Psych slope | 13.78 | Driven by 28% lapse rate |
+| Chrono slope | -286 ms/unit | Driven by ceiling step-function (2/6 RT levels at 3000ms) |
+| Win-stay | 0.654 | |
+| Lapse low | 0.280 | 5.6× the animal target |
+
+The RT profile was `3000/3000/2615/1180/580/340` ms across contrast levels — a step function between ceiling-clamped and non-clamped levels, not the smooth gradient seen in animal data.
+
+#### Multi-seed result (post-refactor, same config)
+
+| Metric | Mean ± SD | IBL Target | Verdict |
+|--------|-----------|------------|---------|
+| Psych slope | 22.96 ± 1.94 | 13.2 | 74% overshoot |
+| Chrono slope | -64.1 ± 2.1 ms/unit | negative | Qualitatively correct, smooth RT gradient |
+| Win-stay | 0.565 ± 0.009 | 0.724 | Below target |
+| Lose-shift | 0.551 ± 0.030 | 0.427 | Above target (agent over-shifts) |
+| Lapse | ~0.002 | ~0.05 | Near-zero (agent too accurate) |
+| Bias | -0.004 ± 0.010 | ~0 | Excellent |
+| Commit rate | 100% | ~100% | Match |
+
+The RT profile is now smooth (`910/850/670/480/330/250` ms), range 660ms, with no ceiling saturation. This is a genuinely healthier result despite the psych slope overshoot — the agent's behavior is no longer confounded by environmental ceiling artifacts.
+
+**Key insight**: The apparent 96% psych slope match was a coincidence of high lapse rates and RT ceiling saturation producing a flattened psychometric curve. The true psychometric sensitivity at drift_scale=20 is ~23, which is too steep. The curriculum is highly reproducible (SD=1.94 across seeds) but needs drift_scale reduction.
+
+#### Follow-up: drift calibration sweep
+
+A drift_scale sweep ({10, 12, 14} × 3 seeds) is in progress to find the value that produces psych slope ~13 without ceiling artifacts. Linear extrapolation suggests drift_scale ~11–12 should be in range.
+
+### Drift Calibration Sweep v2 (Old Architecture)
+
+A drift_scale sweep ({10, 12, 14} × 3 seeds) was completed using the original single-history-network architecture (no lapse, no asymmetric pathways).
+
+| Drift | Psych Slope | Chrono Slope | Lapse Lo | Win-Stay | Lose-Shift |
+|-------|------------|-------------|----------|----------|------------|
+| 10 | 21.2 ± 1.8 | -67.1 ± 2.4 | ~0.00 | 0.56 ± 0.01 | 0.57 ± 0.01 |
+| 12 | 21.0 ± 1.3 | -65.9 ± 1.3 | ~0.00 | 0.56 ± 0.01 | 0.56 ± 0.01 |
+| 14 | 20.6 ± 2.1 | -67.4 ± 7.0 | ~0.03 | 0.55 ± 0.00 | 0.55 ± 0.01 |
+| Target | 13.2 | negative | ~0.05 | 0.724 | 0.427 |
+
+**Key finding:** Psych slope is insensitive to drift_scale in the old architecture. Reducing from 20 to 10 only moved slope from 23 to 21. History effects remain symmetric (WS ≈ LS ≈ 0.55-0.57) and lapse remains near zero at drift ≤ 12. These results motivated the architectural changes below.
+
+### Asymmetric History Networks + Stochastic Lapse (February 2026)
+
+Two biologically-motivated mechanisms were added to address the remaining gaps:
+
+1. **Asymmetric history networks**: Replaced the single `history_network` MLP with separate `win_history_network` and `lose_history_network`. Routes through win pathway when `prev_reward > 0.5`, lose pathway otherwise. Models the dopaminergic asymmetry between reward and punishment processing observed in animal brains.
+
+2. **Stochastic attention lapse**: On a fraction of trials the agent disengages and guesses randomly (P=0.5), producing the attentional lapses observed in animals (~5% in IBL mice).
+
+#### Learnable Lapse Experiment (Negative Result)
+
+The initial implementation used a **learnable** lapse parameter (`lapse_logit` as an `nn.Parameter`, trained via gradient descent through `prob_right = (1-sigmoid(logit))*prob + sigmoid(logit)*0.5`). This was the principled choice — let the model discover the appropriate lapse rate from the data.
+
+**Single validation at drift=20** (seed=42) was promising:
+
+| Metric | Before (old arch) | After (learnable lapse) | Animal Target |
+|--------|-------------------|------------------------|---------------|
+| Psych slope | 22.96 | 5.60 | 13.2 |
+| Lapse low | ~0.002 | 0.042 | ~0.05 |
+| Lapse high | ~0.002 | 0.107 | ~0.10 |
+| Win-stay | 0.565 | 0.620 | 0.724 |
+| Lose-shift | 0.551 | 0.414 | 0.427 |
+| Chrono slope | -64.1 | -56.5 | negative |
+
+The asymmetric history produced the correct WS > LS direction, and lose-shift was almost exactly at target.
+
+**However, the sweep revealed optimizer exploitation.** At drift={25, 30, 35} × 3 seeds:
+
+| Drift | Psych Slope | Lapse Lo | Lapse Hi | Win-Stay | Lose-Shift |
+|-------|------------|----------|----------|----------|------------|
+| 25 | 8.17 ± 0.41 | 0.149 ± 0.002 | 0.150 ± 0.005 | 0.549 ± 0.008 | 0.508 ± 0.007 |
+| 30 | 7.56 ± 0.75 | 0.152 ± 0.010 | 0.152 ± 0.004 | 0.552 ± 0.007 | 0.506 ± 0.011 |
+| 35 | 6.03 ± 0.27 | 0.143 ± 0.004 | 0.150 ± 0.001 | 0.539 ± 0.006 | 0.514 ± 0.009 |
+
+The lapse rate tripled from ~5% (drift=20) to ~15% (drift=25+), becoming symmetric (lapse_lo ≈ lapse_hi ≈ 0.15). The optimizer exploited `lapse_logit` as a shortcut: higher lapse reduces choice loss on hard trials because guessing 50/50 on ambiguous stimuli is "less wrong" than a confident wrong answer. This is not what animal lapse represents — animal lapse is attentional disengagement, a hardware property of the brain's vigilance system, not a learned optimization strategy.
+
+The history asymmetry also collapsed at higher drift scales (WS ≈ LS ≈ 0.55), likely because the high lapse rate drowns out the history signal.
+
+**Decision: Fixed lapse rate.** `lapse_logit` was removed from the model. Lapse is now a fixed configuration parameter (`lapse_rate: float = 0.05`) applied as:
+- **Training**: `prob_right = (1 - lapse) * prob_right + lapse * 0.5` (non-learnable constant)
+- **Rollout**: Bernoulli gate — `random() < lapse_rate` → random guess with random RT
+
+This respects the biological reality that attentional lapse is a fixed property of the animal's vigilance system, not an adaptive strategy. It also eliminates a confound — sweep results can now be interpreted cleanly without wondering whether lapse rate co-varied with drift scale.
+
+### Remaining Gaps
+
+- **Psychometric slope**: Need to find drift_scale where psych slope ≈ 13.2 with fixed lapse. The learnable-lapse sweep is not informative for this; a new sweep with fixed lapse is needed.
+- **Win-stay**: 0.620 (at drift=20) vs target 0.724. The asymmetric architecture moves in the right direction but needs further training or tuning.
+- **Lose-shift**: 0.414 (at drift=20) vs target 0.427. Nearly at target with the new architecture.
+
+### Artifacts
+
+- Original sweep directory: `runs/hybrid_sweep_ibl_drift_choice/` (9 configs, single-seed)
+- Multi-seed validation: `runs/sweep_psych_slope_v1/` (5 seeds, drift=20/choice=0.5)
+- Drift calibration sweep (old arch): `runs/sweep_drift_v2/` ({10,12,14} × 3 seeds)
+- Learnable lapse sweep: `runs/sweep_lapse_v1/` ({25,30,35} × 3 seeds, learnable lapse — negative result)
+- Single validation (new arch, drift=20): `runs/ibl_hybrid_curriculum/` (asymmetric history + learnable lapse)
 
 ---
 

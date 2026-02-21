@@ -59,6 +59,7 @@ class TrainCurriculumArgs:
     phase1_rt_weight: float = 1.0
     phase1_history_weight: float = 0.0
     phase1_drift_supervision_weight: float = 0.5
+    phase1_drift_magnitude_weight: float = 0.0
     phase1_min_slope: float = 100.0  # Minimum |slope| in ms/unit
     phase1_max_slope: float | None = None
     phase1_min_r2: float = 0.1
@@ -70,6 +71,7 @@ class TrainCurriculumArgs:
     phase2_rt_weight: float = 0.8
     phase2_history_weight: float = 0.05
     phase2_drift_supervision_weight: float = 0.3
+    phase2_drift_magnitude_weight: float = 0.0
     phase2_min_slope: float = 80.0
     phase2_max_slope: float | None = None
     phase2_min_r2: float = 0.08
@@ -80,6 +82,7 @@ class TrainCurriculumArgs:
     phase3_rt_weight: float = 0.5
     phase3_history_weight: float = 0.1
     phase3_drift_supervision_weight: float = 0.1
+    phase3_drift_magnitude_weight: float = 0.0
 
     # History finetune overrides (used when default curriculum is selected)
     history_phase_epochs: int = 5
@@ -96,6 +99,7 @@ class TrainCurriculumArgs:
     history_drift_scale: float = 0.0  # History bias can add ±scale to drift rate (0=disabled)
     history_freeze_except_history_bias: bool = True  # Freeze all but history_bias_head in Phase 7
     history_bias_lr: float = 3e-3  # Dedicated LR for history_bias_head in Phase 7
+    lapse_rate: float = 0.05  # Fixed attentional lapse probability (not learnable)
 
 
 def main(args: TrainCurriculumArgs) -> None:
@@ -129,6 +133,7 @@ def main(args: TrainCurriculumArgs) -> None:
                 rt=args.phase1_rt_weight,
                 history=args.phase1_history_weight,
                 drift_supervision=args.phase1_drift_supervision_weight,
+                drift_magnitude=args.phase1_drift_magnitude_weight,
             ),
             success_criteria={
                 "min_slope_abs": args.phase1_min_slope,
@@ -145,6 +150,7 @@ def main(args: TrainCurriculumArgs) -> None:
                 rt=args.phase2_rt_weight,
                 history=args.phase2_history_weight,
                 drift_supervision=args.phase2_drift_supervision_weight,
+                drift_magnitude=args.phase2_drift_magnitude_weight,
             ),
             success_criteria={
                 "min_slope_abs": args.phase2_min_slope,
@@ -160,6 +166,7 @@ def main(args: TrainCurriculumArgs) -> None:
                 rt=args.phase3_rt_weight,
                 history=args.phase3_history_weight,
                 drift_supervision=args.phase3_drift_supervision_weight,
+                drift_magnitude=args.phase3_drift_magnitude_weight,
             ),
             success_criteria={},  # Final phase, no hard criteria
         )
@@ -207,6 +214,7 @@ def main(args: TrainCurriculumArgs) -> None:
         curriculum=curriculum,
         history_bias_scale=args.history_bias_scale,
         history_drift_scale=args.history_drift_scale,
+        lapse_rate=args.lapse_rate,
     )
     
     print(f"\n{'='*80}")

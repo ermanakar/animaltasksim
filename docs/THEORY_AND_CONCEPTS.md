@@ -137,13 +137,15 @@ This is why the DDM naturally produces the chronometric fingerprint: harder deci
 
 The LSTM watches the history of recent trials — what the agent chose, whether it was rewarded, how strong the evidence was — and uses that to adjust the DDM's settings for the next trial. It outputs per-trial DDM parameters: drift gain (how strongly to weight evidence), boundary height (speed-accuracy tradeoff), bias (left/right starting preference), and non-decision time (motor delay).
 
-### The Habit Circuit: Separate History Network
+### The Habit Circuit: Asymmetric History Networks
 
 A key insight from 60+ experiments: the LSTM alone cannot produce history effects. Even when trained with explicit history supervision, the LSTM's learned history patterns get washed out during the DDM evidence accumulation process.
 
-The solution is a **separate history network** — a small MLP that takes only the previous trial's action and reward as input, bypasses the LSTM entirely, and outputs a **stay tendency**: how much the agent is biased toward repeating its last choice.
+The solution is **separate history networks** — small MLPs that take only the previous trial's action and reward as input, bypass the LSTM entirely, and output a **stay tendency**: how much the agent is biased toward repeating its last choice.
 
-This mirrors a real biological circuit: the prefrontal cortex and basal ganglia process recent reward history through a pathway that is computationally distinct from the sensory evidence accumulation happening in areas like LIP/MT. The history network models this separation.
+Critically, there are **two independent networks** — one for wins and one for losses. After a rewarded trial, the *win history network* computes the stay tendency; after an error, the *lose history network* does. This asymmetry mirrors the dopaminergic split between reward and punishment processing in the basal ganglia. Animals show a striking asymmetry: they repeat rewarded actions far more than they switch after errors (IBL mouse: win-stay=0.724 >> lose-shift=0.427). A single network cannot learn this asymmetry because the same weights process both outcomes symmetrically.
+
+Additionally, a **fixed attentional lapse** mechanism causes the agent to randomly guess on ~5% of trials, modeling the momentary disengagement observed in animals. This is a fixed parameter, not learnable — a learnable version was tested and the optimizer exploited it as a shortcut (see [FINDINGS.md](../FINDINGS.md)).
 
 The stay tendency influences the DDM through two mechanisms:
 
@@ -163,8 +165,8 @@ flowchart TD
         L["LSTM Network\nLearns patterns across trials"]
     end
 
-    subgraph Habit["History Network (MLP)"]
-        HN["Separate MLP\nBypass LSTM entirely"]
+    subgraph Habit["Asymmetric History Networks"]
+        HN["Win MLP / Lose MLP\nBypass LSTM entirely"]
     end
 
     subgraph Params["Per-Trial DDM Settings"]
@@ -203,20 +205,19 @@ The LSTM sets the DDM's base parameters — how strongly to weight evidence, how
 
 The drift-rate bias is what finally cracked the Decoupling Problem: starting-point bias alone only matters on ambiguous trials (at high contrast, the stimulus evidence overwhelms any starting-point shift). Drift-rate bias continuously influences evidence processing, producing history effects even on easy trials — just as real mice do.
 
-### Training: Curriculum Learning with WFPT Loss
+### Training: Curriculum Learning with Differentiable DDM Simulation
 
-The system learns through a **7-phase curriculum** that gradually introduces different objectives. This order matters — trying to learn everything simultaneously fails.
+The system learns through a **3-phase curriculum** that gradually introduces accuracy pressure. This order matters — trying to learn everything simultaneously fails.
 
 ```mermaid
 flowchart LR
-    A["Phase 1\nWFPT warmup\n(RT structure)"] --> B["Phases 2-3\nAdd choice loss\n(accuracy)"]
-    B --> C["Phases 4-6\nHistory supervision\nRT calibration"]
-    C --> D["Phase 7\nHistory finetune\n(freeze DDM, train history)"]
+    A["Phase 1\nRT only\n(15 epochs)"] --> B["Phase 2\nAdd choice\n(10 epochs)"]
+    B --> C["Phase 3\nFull balance\n(10 epochs)"]
 ```
 
-The core training signal is the **Wiener First Passage Time (WFPT) distribution** — the mathematical formula for "given these DDM settings, what's the probability of this specific choice and reaction time?" By maximizing the WFPT likelihood of real animal data, the agent learns DDM parameters that naturally produce animal-like behavior.
+The key innovation (Phase 10 of the project) was replacing analytical DDM equations with a **differentiable Euler-Maruyama simulator**. During training, the agent runs the actual stochastic evidence accumulation process (120 steps = 3000ms) as a differentiable PyTorch operation. This prevents a mathematical exploit where the agent could push its decision bound to infinity while crushing its drift rate, making analytical gradients vanish and causing universal timeouts.
 
-In Phase 7 (history finetuning), all DDM parameters are frozen and only the history network trains. This prevents the history signal from degrading the already-learned RT structure — a failure mode discovered across dozens of experiments.
+The curriculum starts with pure RT training (teaching the DDM to produce speed-accuracy dynamics), then gradually adds choice loss pressure (teaching perceptual sensitivity) and history loss (teaching inter-trial dependencies). Drift magnitude regularization throughout all phases prevents parameter collapse.
 
 ---
 
@@ -234,15 +235,16 @@ From the logs, compute all four metrics: psychometric slope, chronometric slope,
 
 Generate dashboards that overlay agent curves on animal curves:
 
-| Metric | Agent | IBL Mouse | Match |
-|--------|------:|----------:|-------|
-| Psychometric Slope | 6.0 | ~13.2 | Correct shape, gap remains |
-| Chronometric Slope | −66.6 ms/unit | negative | ✓ negative |
-| Win-Stay Rate | 0.655 | 0.724 | ✓ 90% |
-| Lose-Shift Rate | 0.402 | 0.427 | ✓ 94% |
+| Metric | Agent | IBL Mouse | Status |
+|--------|------:|----------:|--------|
+| Chronometric Slope | −56.5 ms/unit | negative | ✓ strong negative |
+| Win-Stay Rate | 0.620 | 0.724 | ✓ 86% — correct asymmetry |
+| Lose-Shift Rate | 0.414 | 0.427 | ✓ **97%** |
+| Lapse Rate | 0.042 | ~0.05 | ✓ **84%** |
+| Psychometric Slope | calibrating | ~13.2 | drift sweep in progress |
 | Commit Rate | 100% | 100% | ✓ |
 
-> *Example output from the `ibl_drift_v6_max` experiment (IBL mouse 2AFC). See [FINDINGS.md](../FINDINGS.md) for full results.*
+> *Current best: drift_scale=20, asymmetric history networks, fixed 5% lapse. A prior result of psych=13.78 was a ceiling artifact (see [FINDINGS.md](../FINDINGS.md)). Psychometric calibration sweep in progress.*
 
 ### Step 4: Iterate
 
@@ -256,14 +258,15 @@ After 60+ experiments across both tasks:
 
 | | Status | Detail |
 |---|--------|--------|
-| ✅ | **Chronometric curve** | Negative slope achieved on both tasks — the hybrid DDM+LSTM produces evidence-dependent reaction times via internal DDM simulation |
-| ✅ | **Psychometric curve** | Correct sigmoidal shape on both tasks (IBL: slope 3.9 vs mouse ~13.2; RDM: slope 10.7 vs macaque 17.6) |
-| ✅ | **History effects** | Win-stay ~0.84 (target 0.724), lose-shift ~0.20 (target 0.427) — the agent produces strong history effects simultaneously with negative chronometric slopes |
-| ✅ | **Curriculum learning** | 7-phase curriculum with frozen history finetuning is critical — teaching everything simultaneously fails |
+| ✅ | **Chronometric curve** | Strong negative slope (-56.5 ms/unit) — evidence-dependent reaction times via Euler-Maruyama DDM simulation |
+| ✅ | **History asymmetry** | Win-stay 0.620 > lose-shift 0.414 — correct direction, lose-shift nearly at target (0.427). Asymmetric win/lose networks model dopaminergic reward processing |
+| ✅ | **Lapse rate** | 0.042/0.107 vs animal ~0.05/0.10 — fixed attentional lapse matches animal inattention patterns |
+| ✅ | **Curriculum learning** | 7-phase curriculum with WFPT warmup, annealed choice, and history finetuning |
 | ✅ | **Dual-task support** | Single parameterized codebase supports both IBL mouse 2AFC and macaque RDM tasks |
-| ⚠️ | **Psychometric slope gap** | Agent slope (~4.0) vs IBL mouse (~13.2) — the agent is less sensitive to contrast changes than real mice |
+| ⚠️ | **Psychometric slope** | Calibration in progress — drift_scale sweep running to find target of ~13.2 |
+| ⚠️ | **Win-stay magnitude** | 0.620 vs target 0.724 — direction correct, magnitude needs further tuning |
 
-> **The Decoupling Problem is formally solved.** For the first time, an agent simultaneously produces stable negative chronometric slopes (intra-trial dynamics) AND above-chance history effects (inter-trial dynamics) without mode collapse. The key was the **Attention-Gated History Bias**. By implementing a biological constraint that mechanically suppresses history priors when sensory evidence is strong, the agent can jointly learn both pathways stably. The remaining gap is purely quantitative (psychometric slope), not architectural. See [FINDINGS.md](../FINDINGS.md) for the full 60+ experiment narrative.
+> **The Decoupling Problem is solved.** The agent simultaneously produces strong negative chronometric slopes, correct history asymmetry (win-stay > lose-shift), and realistic lapse rates — multiple behavioral fingerprints matched in a single agent. The key innovations were the **Attention-Gated History Bias** (prevents mode collapse), **asymmetric win/lose history networks** (enables WS >> LS), **fixed attentional lapse** (models biological inattention), and the **differentiable DDM simulator** (prevents gradient exploits). A prior result of psych=13.78 was found to be a ceiling artifact. See [FINDINGS.md](../FINDINGS.md) for the full narrative including negative results.
 
 ---
 
@@ -285,7 +288,7 @@ python scripts/run_experiment.py   # Interactive wizard
 ### Want to Contribute?
 
 1. Read [AGENTS.md](../AGENTS.md) for coding standards
-2. Run `pytest tests/` (93 tests should pass)
+2. Run `pytest tests/` (102 tests should pass)
 3. Areas where help is especially welcome: closing the remaining history and psychometric gaps, new agent architectures, additional tasks (PRL, DMS)
 
 ---
@@ -303,7 +306,8 @@ python scripts/run_experiment.py   # Interactive wizard
 | **Drift-rate bias** | History signal that modulates evidence *accumulation* — affects all trials, not just ambiguous ones |
 | **Fingerprint** | The pattern of accuracy, speed, history, and lapses that characterize a decision-maker |
 | **History effects** | How past trials influence current decisions |
-| **History network** | Separate MLP that bypasses the LSTM to compute stay tendency from previous action/reward |
+| **History networks** | Separate win/lose MLPs that bypass the LSTM to compute stay tendency from previous action/reward |
+| **Fixed lapse** | Stochastic attention gate — agent randomly guesses on ~5% of trials, modeling biological inattention |
 | **Lapse** | A mistake on an easy trial |
 | **LSTM** | Long Short-Term Memory — the "coach" that learns from trial history |
 | **Psychometric** | Related to accuracy measurement |

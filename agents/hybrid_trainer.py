@@ -40,10 +40,10 @@ class HybridDDMTrainer:
             raise RuntimeError("No reference sessions found for training.")
         self.feature_dim = self.sessions[0].features.shape[1]
         self.model = HybridDDMModel(
-            self.feature_dim, 
-            self.config.hidden_size, 
+            self.feature_dim,
+            self.config.hidden_size,
             self.device,
-            drift_scale=self.config.drift_scale
+            drift_scale=self.config.drift_scale,
         )
         self.model.to(self.device)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.config.learning_rate)
@@ -469,66 +469,95 @@ class HybridDDMTrainer:
                     stay_shift = stay_tendency_val * self.model.history_bias_scale * bound
                     effective_bias = bias_val + stay_shift * prev_direction
                     
-                    sigma_sq = noise ** 2 + 1e-8
-                    v = effective_drift
+                    # ------------------------------------------------------------------
+                    # Differentiable DDM Simulation (Replaces Analytical Solver)
+                    # ------------------------------------------------------------------
+                    # To solve the Decoupling Problem mathematically, the agent must feel
+                    # the literal gradient of taking too many steps in the DDM. Analytical
+                    # solutions (tanh(kappa)) allow the agent to cheat the gradients by 
+                    # pushing bound->infinity and drift->0. We prevent this by unrolling 
+                    # the Euler-Maruyama simulation directly in PyTorch, creating a 
+                    # computational graph from the reaction time back to the LSTM outputs.
 
-                    def _ddm_choice_prob(
-                        bias_input: torch.Tensor,
-                        bound_input: torch.Tensor,
-                        v_input: torch.Tensor,
-                        sigma_sq_input: torch.Tensor,
-                    ) -> torch.Tensor:
-                        """Compute P(right) from DDM parameters."""
-                        a = 2.0 * bound_input
-                        z_raw = bound_input + bias_input
-                        z = torch.clamp(z_raw, min=1e-4)
-                        z = torch.min(z, a - 1e-4)
-                        abs_v = torch.abs(v_input)
-                        p_zero = z / a
-                        exp_z = torch.exp(torch.clamp(-2.0 * v_input * z / sigma_sq_input, -20.0, 20.0))
-                        exp_a = torch.exp(torch.clamp(-2.0 * v_input * a / sigma_sq_input, -20.0, 20.0))
-                        p_exact = (1.0 - exp_z) / (1.0 - exp_a + 1e-8)
-                        blend = torch.clamp(abs_v / 0.01, 0.0, 1.0)
-                        p = blend * p_exact + (1.0 - blend) * p_zero
-                        p = torch.clamp(p, 1e-6, 1.0 - 1e-6)
-                        return torch.nan_to_num(p, nan=0.5)
+                    dt = self.config.step_ms / 1000.0
+                    sqrt_dt = np.sqrt(dt)
+                    max_steps = self.config.max_commit_steps
+                    
+                    # 1. Generate stochastic noise for the trial
+                    # (Batch size 1, sequence length max_steps)
+                    step_noise = torch.randn(max_steps, device=self.device) * noise * sqrt_dt
+                    
+                    # 2. Add constant drift to each step
+                    step_drift = effective_drift * dt
+                    
+                    # 3. Accumulate evidence starting from bias
+                    evidence_trajectory = effective_bias + torch.cumsum(step_drift + step_noise, dim=0)
+                    
+                    # 4. Find the first step where evidence crosses the upper or lower bound
+                    # Softmax temperature controls how harshly we enforce the boundary crossing
+                    temp = 0.1
+                    
+                    # Probability of crossing upper bound at each step
+                    prob_upper = torch.sigmoid((evidence_trajectory - bound) / temp)
+                    # Probability of crossing lower bound at each step
+                    prob_lower = torch.sigmoid((-bound - evidence_trajectory) / temp)
+                    
+                    # Probability of committing at each step
+                    prob_commit = torch.clamp(prob_upper + prob_lower, 0.0, 1.0)
+                    
+                    # Find exactly when we cross (first step where prob_commit -> 1)
+                    # We compute the cumulative product of NOT committing, which drops to 0 
+                    # after the first cross. 
+                    prob_not_commit = 1.0 - prob_commit
+                    cum_not_commit = torch.cat([
+                        torch.ones(1, device=self.device), 
+                        torch.cumprod(prob_not_commit[:-1], dim=0)
+                    ])
+                    
+                    # Density function of commit time 
+                    commit_density = prob_commit * cum_not_commit
+                    
+                    # Expected number of steps to commit
+                    step_indices = torch.arange(1, max_steps + 1, device=self.device, dtype=torch.float)
+                    expected_steps = torch.sum(step_indices * commit_density)
+                    
+                    # If it never crosses the bound, add a massive penalty to expected_steps
+                    prob_timeout = cum_not_commit[-1] * (1.0 - prob_commit[-1])
+                    expected_steps = expected_steps + prob_timeout * max_steps * 10.0
+                    
+                    predicted_rt = out["non_decision_ms"] + expected_steps * self.config.step_ms
+                    predicted_rt = torch.clamp(
+                        predicted_rt,
+                        min=float(self.config.step_ms * self.config.min_commit_steps)
+                    )
 
-                    # Standard choice probability (for choice loss, WFPT — uses combined bias)
-                    prob_right = _ddm_choice_prob(effective_bias, bound, v, sigma_sq)
+                    # For choice probability, we compute the ratio of upper-bound crossings 
+                    # to all boundary crossings.
+                    p_right_given_commit = torch.sum(prob_upper * cum_not_commit) / torch.clamp(torch.sum(commit_density), min=1e-8)
+                    
+                    # If it times out, the choice is determined by the final evidence state
+                    p_right_given_timeout = torch.sigmoid(evidence_trajectory[-1] / temp)
+                    
+                    prob_right = (1.0 - prob_timeout) * p_right_given_commit + prob_timeout * p_right_given_timeout
+
+                    # Fixed lapse blending: on a fraction of trials the agent
+                    # disengages and guesses randomly (p=0.5). Lapse rate is a fixed
+                    # config parameter, not learnable — see FINDINGS.md for why.
+                    lapse = self.config.lapse_rate
+                    prob_right = (1.0 - lapse) * prob_right + lapse * 0.5
+
+                    prob_right = torch.clamp(prob_right, 1e-6, 1.0 - 1e-6).unsqueeze(0)
+
+                    # Collect per-trial values for downstream history losses.
+                    # These were accidentally dropped during the analytical→simulation
+                    # refactor. Without them, history/per-trial-history losses are
+                    # silently zero (empty buffers).
                     prob_buffer.append(float(prob_right.detach().cpu()))
                     prob_tensor_buffer.append(prob_right)
-
-                    # Collect stay_tendency from separate history network.
-                    # The history_network bypasses the LSTM — it takes
-                    # (prev_action, prev_reward) directly, modeling a separate
-                    # PFC/basal ganglia circuit for history-dependent biases.
-                    stay_tendency_val = out["stay_tendency"]
-                    stay_tendency_buffer.append(stay_tendency_val)
-
-                    # Also collect legacy history_prob for backward compat
+                    stay_tendency_buffer.append(out["stay_tendency"])
                     history_logit = history_bias_val * self.model.history_bias_scale * 4.0
                     history_prob_stay = torch.sigmoid(history_logit)
                     history_prob_tensor_buffer.append(history_prob_stay)
-
-                    abs_drift = torch.abs(effective_drift) + 1e-3
-                    kappa = abs_drift * bound / (noise**2)
-                    mean_steps = torch.where(
-                        abs_drift > 1e-3,
-                        bound / abs_drift * torch.tanh(kappa),
-                        (bound**2) / (noise**2 + 1e-3),
-                    )
-                    predicted_rt = out["non_decision_ms"] + mean_steps * self.config.step_ms
-                    predicted_rt = torch.nan_to_num(
-                        predicted_rt,
-                        nan=float(self.config.step_ms * self.config.min_commit_steps),
-                        posinf=float(self.config.step_ms * self.config.max_commit_steps),
-                        neginf=float(self.config.step_ms * self.config.min_commit_steps),
-                    )
-                    predicted_rt = torch.clamp(
-                        predicted_rt,
-                        min=float(self.config.step_ms * self.config.min_commit_steps),
-                        max=float(self.config.step_ms * self.config.max_commit_steps),
-                    )
 
                     if (
                         weights.rt_soft > 0.0
@@ -964,14 +993,24 @@ class HybridDDMTrainer:
                         drift = drift_gain * stimulus + gated_history_drift
 
                         dt = self.config.step_ms / 1000.0
-                        planned_action, ddm_steps = self._simulate_ddm(
-                            drift=drift,
-                            bound=bound,
-                            noise=noise,
-                            bias=combined_start,
-                            dt=dt,
-                            max_steps=effective_max_commit,
-                        )
+
+                        # Stochastic lapse: on a fraction of trials the agent
+                        # disengages and guesses randomly, producing realistic
+                        # lapse rates (~5% in IBL mice). Fixed rate, not learnable.
+                        if random.random() < self.config.lapse_rate:
+                            planned_action = random.choice([ACTION_LEFT, ACTION_RIGHT])
+                            ddm_steps = random.randint(
+                                self.config.min_commit_steps, effective_max_commit
+                            )
+                        else:
+                            planned_action, ddm_steps = self._simulate_ddm(
+                                drift=drift,
+                                bound=bound,
+                                noise=noise,
+                                bias=combined_start,
+                                dt=dt,
+                                max_steps=effective_max_commit,
+                            )
 
                         ddm_time_ms = ddm_steps * self.config.step_ms
                         total_rt_ms = non_decision_ms + ddm_time_ms
@@ -1181,13 +1220,14 @@ def train_hybrid_curriculum(config: HybridTrainingConfig) -> dict[str, Any]:
             # Save original optimizer and freeze non-history params
             original_optimizer = trainer.optimizer
             for name, param in trainer.model.named_parameters():
-                # Keep history_network and history_bias_head trainable
+                # Keep win/lose history networks and history_bias_head trainable
                 if "history_network" not in name and "history_bias_head" not in name:
                     param.requires_grad_(False)
                     frozen_params.append((name, param))
             # Create dedicated optimizer for history modules only
             hb_lr = phase.history_bias_lr or trainer.config.learning_rate * 10
-            history_params = list(trainer.model.history_network.parameters()) + \
+            history_params = list(trainer.model.win_history_network.parameters()) + \
+                             list(trainer.model.lose_history_network.parameters()) + \
                              list(trainer.model.history_bias_head.parameters())
             trainer.optimizer = torch.optim.Adam(history_params, lr=hb_lr)
 

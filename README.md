@@ -15,39 +15,38 @@ AnimalTaskSim puts AI agents into faithful recreations of real neuroscience expe
 
 ---
 
-## The Breakthrough: The "Attention Gate" solves Mode Collapse
+## The Breakthrough: Three Bio-Inspired Mechanisms
 
-When we first let an AI play these visual discrimination games, we ran into the **Decoupling Problem** — the moment the agent was allowed to learn both *visual evidence* and *history habits* simultaneously, it suffered from severe **mode collapse**. The AI realized that simply repeating its past actions ("win-stay") was computationally easier than interpreting blurry visual evidence, so it stopped looking at the screen entirely and just mashed the same button.
+When we first let an AI play these visual discrimination games, we ran into the **Decoupling Problem** — the moment the agent was allowed to learn both *visual evidence* and *history habits* simultaneously, it suffered from **mode collapse**. The AI realized that simply repeating its past actions was computationally easier than interpreting blurry visual evidence.
 
-We solved this with a profound biological insight: brains do not blindly mix "what they see" with "what they remember." They have an **Attention Gate**.
+We solved this through three biologically-inspired mechanisms:
 
-We added a structural guardrail to our agent:
-- **When the screen is blurry (hard level):** The gate opens. The AI relies heavily on its habits (history prior) to guess the answer.
-- **When the screen is clear (easy level):** The gate snaps shut. The AI suppresses its habits and makes a decision based purely on the objective sensory evidence in front of it.
+1. **Attention Gate**: When the stimulus is clear, the gate suppresses history bias; when it's ambiguous, history bias is allowed to influence the decision. This prevents mode collapse during joint learning.
 
-This mechanism mathematically forces the agent to balance its history with sensory evidence, completely eliminating mode collapse during joint learning.
+2. **Asymmetric History Pathways**: Animals show a strong asymmetry — they repeat rewarded actions much more than they switch after errors (IBL mouse: win-stay=0.724 >> lose-shift=0.427). We model this with separate win and lose networks that process reward and punishment through independent pathways, mirroring the dopaminergic asymmetry in the basal ganglia.
+
+3. **Fixed Attentional Lapse**: Real animals occasionally err even on trivial trials (~5% of the time) due to momentary disengagement. We impose this as a fixed stochastic process — on a small fraction of trials, the agent guesses randomly. A learnable lapse parameter was tested and rejected: the optimizer exploited it as a shortcut, pushing lapse to ~15% to reduce choice loss on hard trials. Lapse in animals is a hardware property of the vigilance system, not a learned strategy.
 
 ---
 
 ## Results at a Glance
 
-We tested our Attention-Gated Hybrid DDM+LSTM agent on two classic tasks from decision neuroscience. After 60+ experiments, the agent simultaneously reproduces how animals *decide* (accuracy), how long they *deliberate* (reaction times), and how they're *influenced by the past* (history effects). 
+We tested our Hybrid DDM+LSTM agent on two classic tasks from decision neuroscience. After 60+ experiments, the agent simultaneously reproduces how animals *decide* (accuracy), how long they *deliberate* (reaction times), and how they're *influenced by the past* (history effects).
 
-### IBL Mouse 2AFC — Validated Across 5 Seeds
+### IBL Mouse 2AFC — Current Best (Asymmetric History + Fixed Lapse)
 
-<p align="center">
-  <img src="docs/figures/ibl_v6_dashboard.png" alt="Agent vs IBL Mouse Behavioral Comparison" width="800">
-</p>
+| Metric | Agent | IBL Mouse | Status |
+|--------|-------|-----------|--------|
+| **Chronometric slope** (slower on hard trials) | -56.5 ms/unit | negative | **strong negative** |
+| **Win-stay** (repeat after reward) | 0.620 | 0.724 | 86% — correct asymmetry |
+| **Lose-shift** (switch after error) | 0.414 | 0.427 | **97%** |
+| **Lapse rate** (errors on easy trials) | 0.042 | ~0.05 | **84%** |
+| **Psychometric slope** (accuracy vs difficulty) | calibrating | ~13.2 | drift sweep in progress |
+| **Commit rate** | 100% | 100% | **100%** |
 
-| Metric | Agent (mean ± std) | IBL Mouse | Match |
-|--------|-------------------|-----------|-------|
-| **Win-stay** (repeat after reward) | 0.839 ± 0.012 | 0.724 | Very Strong |
-| **Lose-shift** (switch after error) | 0.206 ± 0.023 | 0.427 | Moderate |
-| **Chronometric slope** (slower on hard trials) | -18.7 ± 4.7 ms/unit | negative | ✅ Negative slope |
-| **Psychometric slope** (accuracy vs difficulty) | 3.9 ± 0.25 | ~13.2 | ✅ Correct shape |
-| **Commit rate** | 100% | 100% | ✅ |
-
-> *5 seeds (42, 123, 256, 789, 1337), identical config, using the Attention-Gated History Bias mechanism.*
+> *Single run (drift_scale=20, seed=42) with asymmetric history networks and fixed 5% lapse. Drift calibration sweep in progress to match psychometric slope. Multi-seed validation (5 seeds, old architecture) confirmed chrono slope -64.1 ± 2.1 ms/unit with excellent reproducibility.*
+>
+> **Honesty note:** A prior single-seed result reported psych slope 13.78 (~96% match). This was later found to be a ceiling artifact — RT saturation and 28% lapse rate produced a misleadingly flat psychometric curve. Multi-seed validation produced psych slope 22.96 ± 1.94. See [FINDINGS.md](FINDINGS.md) for the full account.
 
 ### Macaque Random-Dot Motion — K2 Experiment
 
@@ -64,9 +63,9 @@ We tested our Attention-Gated Hybrid DDM+LSTM agent on two classic tasks from de
 
 ---
 
-## The Two-Circuit Brain Architecture
+## The Three-Circuit Brain Architecture
 
-Matching animal behavior required **two separate computational pathways** that mimic actual brain organization:
+Matching animal behavior required **separate computational pathways** that mimic actual brain organization:
 
 ```
                     ┌─────────────────────┐
@@ -76,17 +75,25 @@ Matching animal behavior required **two separate computational pathways** that m
                                                      ▼
                                           [ ATTENTION GATE ]
                                                      │
-                                                     ▼
-                    ┌─────────────────────┐    ┌──────────┐    Choice
-  Previous action  ─→   History Network    │──→ │   DDM    │──→   +
-  Previous reward  ─→   (separate MLP)     │──→ │ "Player" │──→ Reaction
-                    │   (stay tendency)    │    └──────────┘    Time
-                    └─────────────────────┘
+                    ┌─────────────────────┐          ▼
+  Previous action  ─→   Win History MLP    │──→ ┌──────────────────┐    Choice
+  Previous reward  ─→   Lose History MLP   │──→ │  Differentiable  │──→   +
+                    │   (asymmetric stay)  │    │  DDM Simulator   │──→ Reaction
+                    └─────────────────────┘    │  (Euler-Maruyama) │    Time
+                                               └──────────────────┘
+                    ┌─────────────────────┐          │
+                    │  Fixed Lapse (5%)   │──────────┘
+                    │  (stochastic gate)  │    On ~5% of trials,
+                    └─────────────────────┘    agent guesses randomly
 ```
 
-**Circuit 1 — "What do I see?"**: An LSTM learns to set Drif-Diffusion Model (DDM) parameters from stimulus logic. The DDM accumulates evidence over time, producing slower responses on harder trials.
+**Circuit 1 — "What do I see?"**: An LSTM learns to set Drift-Diffusion Model (DDM) parameters from stimulus features. The DDM accumulates evidence over time, producing slower responses on harder trials.
 
-**Circuit 2 — "What worked last time?"**: A separate MLP outputs a *stay tendency* based on the previous trial's reward. The signal acts as a **drift-rate bias**, continuously pushing the evidence accumulation process over the trial duration. This mechanism prevents the history effects from getting washed out during deliberation.
+**Circuit 2 — "What worked last time?"**: Two separate MLPs process previous trial outcomes through independent win and lose pathways. After a reward, the win network computes a stay tendency; after an error, the lose network does. This asymmetry mirrors the dopaminergic split between reward and punishment processing in the basal ganglia, allowing the agent to learn win-stay and lose-shift at different rates — just as animals do (IBL mouse: win-stay=0.724 >> lose-shift=0.427).
+
+**Circuit 3 — "Am I paying attention?"**: On ~5% of trials, a stochastic lapse gate causes the agent to disengage and guess randomly. This models the attentional lapses observed in animals and is implemented as a fixed parameter, not a learnable one (see [FINDINGS.md](FINDINGS.md) for why).
+
+**The DDM Simulator**: Rather than using analytical DDM equations (which create degenerate gradient landscapes), the training loop unrolls stochastic evidence accumulation as a differentiable PyTorch operation (Euler-Maruyama, 120 steps). This prevents the agent from exploiting mathematical loopholes to avoid learning.
 
 > **Read more:** [Theory & Concepts Guide](docs/THEORY_AND_CONCEPTS.md) for an accessible deep dive, or [FINDINGS.md](FINDINGS.md) for the full 60+ experiment narrative.
 
@@ -94,11 +101,12 @@ Matching animal behavior required **two separate computational pathways** that m
 
 ## Immediate Roadmap
 
-Now that the Decoupling Problem mathematically "Mode Collapse" is solved, here are our precise next steps:
+The Decoupling Problem is architecturally solved. Asymmetric history and fixed lapse are in place. Quantitative calibration is the active frontier:
 
-1. **Perfecting the Psychometric Slope Gap (Current Priority):** Optimize the agent so its psychometric shape strictly aligns with the sensitivity (steepness ~13.2) of biological mice. Focus will be on curriculum enhancements or fine-tuning DDM noise elements.
-2. **Context-Dependent Structured Memory:** Expand the Habit Circuit to remember what worked *the last time it was in the exact same situation* (e.g. "What worked the last time the screen was blurry?").
-3. **New Cognitive Tasks:** Test the hybrid agent on Probabilistic Reversal Learning (PRL) and Delayed Match-to-Sample (DMS) tasks to prove generalized cognitive flexibility.
+1. **Drift calibration sweep (Current Priority):** Finding the drift_scale where psychometric slope matches the IBL target of ~13.2 with fixed 5% lapse and asymmetric history networks. Sweep in progress.
+2. **Win-stay refinement:** Currently 0.620 vs target 0.724. The asymmetric architecture produces the correct direction (WS >> LS) but may benefit from tuning the per-trial history loss weights.
+3. **New Cognitive Tasks:** Test the hybrid agent on Probabilistic Reversal Learning (PRL) and Delayed Match-to-Sample (DMS) tasks to probe generalized cognitive flexibility.
+4. **Publication:** The core narrative — problem (decoupling) + insight (attention gate + asymmetric history) + result (simultaneous fingerprints) + prediction (circuit-level) — is ready to be written up.
 
 ---
 

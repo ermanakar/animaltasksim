@@ -40,6 +40,7 @@ class HybridTrainingConfig:
     curriculum: CurriculumConfig | None = None  # If set, use curriculum learning
     history_bias_scale: float = 0.5  # History bias can shift starting point by ±scale*bound
     history_drift_scale: float = 0.0  # History bias can add ±scale to drift rate (0=disabled)
+    lapse_rate: float = 0.05  # Fixed attentional lapse probability (not learnable; see FINDINGS.md)
 
     def __post_init__(self) -> None:
         paths = ProjectPaths.from_cwd()
