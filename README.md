@@ -33,20 +33,21 @@ We solved this through three biologically-inspired mechanisms:
 
 We tested our Hybrid DDM+LSTM agent on two classic tasks from decision neuroscience. After 60+ experiments, the agent simultaneously reproduces how animals *decide* (accuracy), how long they *deliberate* (reaction times), and how they're *influenced by the past* (history effects).
 
-### IBL Mouse 2AFC — Current Best (Asymmetric History + Fixed Lapse)
+### IBL Mouse 2AFC — Current Best (3-Phase Curriculum + Asymmetric History + Rollout Lapse)
 
-| Metric | Agent | IBL Mouse | Status |
-|--------|-------|-----------|--------|
-| **Chronometric slope** (slower on hard trials) | -56.5 ms/unit | negative | **strong negative** |
-| **Win-stay** (repeat after reward) | 0.620 | 0.724 | 86% — correct asymmetry |
-| **Lose-shift** (switch after error) | 0.414 | 0.427 | **97%** |
-| **Lapse rate** (errors on easy trials) | 0.042 | ~0.05 | **84%** |
-| **Psychometric slope** (accuracy vs difficulty) | calibrating | ~13.2 | drift sweep in progress |
+| Metric | Agent (3 seeds) | IBL Mouse | Status |
+|--------|----------------|-----------|--------|
+| **Psychometric slope** (accuracy vs difficulty) | 18.34 ± 2.12 | ~13.2 | Drift calibration needed (reduce drift ~14-16) |
+| **Chronometric slope** (slower on hard trials) | -63.5 ± 5.1 ms/unit | negative | **strong negative** |
+| **Win-stay** (repeat after reward) | 0.556 | 0.724 | History finetuning phase needed |
+| **Lose-shift** (switch after error) | 0.553 | 0.427 | History finetuning phase needed |
+| **Lapse rate** (errors on easy trials) | ~0.02 | ~0.05 | Improved from 0.002; tune rollout param |
+| **Bias** | ~0.000 | ~0 | **match** |
 | **Commit rate** | 100% | 100% | **100%** |
 
-> *Single run (drift_scale=20, seed=42) with asymmetric history networks and fixed 5% lapse. Drift calibration sweep in progress to match psychometric slope. Multi-seed validation (5 seeds, old architecture) confirmed chrono slope -64.1 ± 2.1 ms/unit with excellent reproducibility.*
+> *Multi-seed validation (drift_scale=20, seeds 42/123/256) with asymmetric history networks and 5% rollout lapse, trained with the 3-phase curriculum. History networks are architecturally in place but untrained — a targeted finetuning phase is the next step.*
 >
-> **Honesty note:** A prior single-seed result reported psych slope 13.78 (~96% match). This was later found to be a ceiling artifact — RT saturation and 28% lapse rate produced a misleadingly flat psychometric curve. Multi-seed validation produced psych slope 22.96 ± 1.94. See [FINDINGS.md](FINDINGS.md) for the full account.
+> **Honesty notes:** (1) A prior single-seed result reported psych slope 13.78 (~96% match), later found to be a ceiling artifact (28% lapse, RT saturation). (2) A 7-phase WFPT curriculum collapsed psych slope to ~9.5 by pushing the model into a high-noise regime; switching to the simpler 3-phase curriculum restored it to 18.3. See [FINDINGS.md](FINDINGS.md) for the full account.
 
 ### Macaque Random-Dot Motion — K2 Experiment
 
@@ -101,12 +102,13 @@ Matching animal behavior required **separate computational pathways** that mimic
 
 ## Immediate Roadmap
 
-The Decoupling Problem is architecturally solved. Asymmetric history and fixed lapse are in place. Quantitative calibration is the active frontier:
+The Decoupling Problem is architecturally solved. Three bio-inspired circuits (evidence accumulation, asymmetric history, attentional lapse) are in place. A critical curriculum discovery (Feb 2026) showed that training order matters as much as architecture — simpler curricula outperform sophisticated WFPT-based ones. Quantitative calibration is the active frontier:
 
-1. **Drift calibration sweep (Current Priority):** Finding the drift_scale where psychometric slope matches the IBL target of ~13.2 with fixed 5% lapse and asymmetric history networks. Sweep in progress.
-2. **Win-stay refinement:** Currently 0.620 vs target 0.724. The asymmetric architecture produces the correct direction (WS >> LS) but may benefit from tuning the per-trial history loss weights.
-3. **New Cognitive Tasks:** Test the hybrid agent on Probabilistic Reversal Learning (PRL) and Delayed Match-to-Sample (DMS) tasks to probe generalized cognitive flexibility.
-4. **Publication:** The core narrative — problem (decoupling) + insight (attention gate + asymmetric history) + result (simultaneous fingerprints) + prediction (circuit-level) — is ready to be written up.
+1. **Drift calibration (Current Priority):** Reduce drift_scale from 20 to ~14-16 to bring psych slope from 18.3 down to the IBL target of ~13.2. The 3-phase curriculum makes drift a predictable, monotonic knob.
+2. **History finetuning phase:** Add a Phase 4 that freezes DDM parameters and trains only the asymmetric win/lose history networks. Target: WS=0.724 >> LS=0.427 (currently symmetric at ~0.55).
+3. **Lapse tuning:** Increase rollout lapse parameter from 0.05 to ~0.08 to achieve measured lapse of ~0.05 (sigmoid fit absorbs some lapse into slope estimate).
+4. **New Cognitive Tasks:** Test the hybrid agent on Probabilistic Reversal Learning (PRL) and Delayed Match-to-Sample (DMS) tasks.
+5. **Publication:** Problem (decoupling) + insight (attention gate + developmental curriculum) + result (simultaneous fingerprints) + prediction (circuit-level).
 
 ---
 

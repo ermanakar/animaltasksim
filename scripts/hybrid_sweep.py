@@ -19,16 +19,15 @@ from typing import Sequence
 
 import tyro
 
-from animaltasksim.config import ProjectPaths
 
 
 @dataclass(slots=True)
 class SweepArgs:
-    run_root: Path = Path("runs/hybrid_sweep_ibl_drift")
+    run_root: Path = Path("runs/hybrid_sweep_ibl_drift_choice")
     """Root directory where sweep runs are stored."""
 
-    drift_scales: Sequence[float] = (10.0, 15.0, 20.0)
-    log_noise_inits: Sequence[float] = (-1.0, 0.0, 1.0)
+    drift_scales: Sequence[float] = (10.0, 20.0, 30.0)
+    choice_weights: Sequence[float] = (0.5, 1.0, 1.5)
 
     seed: int = 42
     dry_run: bool = False
@@ -63,6 +62,8 @@ def summarise_run(run_dir: Path) -> dict:
                 "chronometric_slope": data.get("chronometric", {}).get("slope_ms_per_unit"),
                 "history_win_stay": data.get("history", {}).get("win_stay"),
                 "history_lose_shift": data.get("history", {}).get("lose_shift"),
+                "chronometric_ok": data.get("quality", {}).get("chronometric_ok"),
+                "degenerate": data.get("quality", {}).get("degenerate"),
             }
         )
 
@@ -75,13 +76,12 @@ def summarise_run(run_dir: Path) -> dict:
 def main(args: SweepArgs) -> None:
     args.run_root.mkdir(parents=True, exist_ok=True)
 
-    combos = list(itertools.product(args.drift_scales, args.log_noise_inits))
+    combos = list(itertools.product(args.drift_scales, args.choice_weights))
     summaries: list[dict[str, object]] = []
-    reference_log = ProjectPaths.from_cwd().data / "ibl" / "reference.ndjson"
 
-    for drift_scale, log_noise_init in combos:
+    for drift_scale, choice_w in combos:
         run_name = (
-            f"ibl_drift{drift_scale}_noise{log_noise_init}_seed{args.seed}"
+            f"ibl_drift{drift_scale}_choice{choice_w}_seed{args.seed}"
             .replace(".", "p")
             .replace("-", "m")
         )
@@ -94,36 +94,29 @@ def main(args: SweepArgs) -> None:
             f"--output-dir={run_dir}",
             f"--seed={args.seed}",
             f"--drift-scale={drift_scale}",
-            # We don't have a CLI flag for log_noise yet, but we will pass drift-scale
-            # and rely on the curriculum finding the slope.
         ]
         
         # Add the curriculum configs tailored for steep psychometric slopes
         cmd_train.append("--no-use-default-curriculum")
+        cmd_train.append("--no-allow-early-stopping")
         
-        # We need a stable Phase 1 to anchor the drift_scale before choice pressure
-        # Then strong choice pressure in Phase 2/3 to force the psychometric curve steepness
         cmd_train.extend(
             [
                 "--phase1-epochs=15",
                 "--phase1-choice-weight=0.0",
-                "--phase1-rt-weight=0.0",
+                "--phase1-rt-weight=1.0",
                 "--phase1-history-weight=0.0",
-                "--phase1-wfpt-weight=1.0",
-                "--phase1-drift-supervision-weight=0.2",
+                "--phase1-drift-magnitude-weight=0.5",
                 "--phase2-epochs=10",
-                "--phase2-choice-weight=2.0",  # Strong choice weight to steepen slope
-                "--phase2-rt-weight=0.0",
+                f"--phase2-choice-weight={choice_w * 0.5}",
+                "--phase2-rt-weight=0.8",
                 "--phase2-history-weight=0.1",
-                "--phase2-wfpt-weight=0.9",
-                "--phase2-drift-supervision-weight=0.2",
+                "--phase2-drift-magnitude-weight=0.5",
                 "--phase3-epochs=10",
-                "--phase3-choice-weight=3.0",  # Maximize accuracy pressure
-                "--phase3-rt-weight=0.0",
+                f"--phase3-choice-weight={choice_w}",
+                "--phase3-rt-weight=0.5",
                 "--phase3-history-weight=0.2",
-                "--phase3-wfpt-weight=0.8",
-                "--phase3-drift-supervision-weight=0.1",
-                "--phase3-rt-soft-weight=0.1", # Ensure it doesn't wait forever
+                "--phase3-drift-magnitude-weight=0.5",
             ]
         )
         
@@ -142,7 +135,7 @@ def main(args: SweepArgs) -> None:
             summary = {
                 "run": run_name,
                 "drift_scale": drift_scale,
-                "log_noise_init": log_noise_init,
+                "choice_weight": choice_w,
             }
             summary.update(summarise_run(run_dir))
             summaries.append(summary)

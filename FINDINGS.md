@@ -1184,17 +1184,86 @@ The lapse rate tripled from ~5% (drift=20) to ~15% (drift=25+), becoming symmetr
 
 The history asymmetry also collapsed at higher drift scales (WS ≈ LS ≈ 0.55), likely because the high lapse rate drowns out the history signal.
 
-**Decision: Fixed lapse rate.** `lapse_logit` was removed from the model. Lapse is now a fixed configuration parameter (`lapse_rate: float = 0.05`) applied as:
-- **Training**: `prob_right = (1 - lapse) * prob_right + lapse * 0.5` (non-learnable constant)
-- **Rollout**: Bernoulli gate — `random() < lapse_rate` → random guess with random RT
+**Decision: Fixed lapse rate.** `lapse_logit` was removed from the model. Lapse is now a fixed configuration parameter (`lapse_rate: float = 0.05`) applied as a Bernoulli gate in rollout only — `random() < lapse_rate` causes a random guess with random RT.
 
 This respects the biological reality that attentional lapse is a fixed property of the animal's vigilance system, not an adaptive strategy. It also eliminates a confound — sweep results can now be interpreted cleanly without wondering whether lapse rate co-varied with drift scale.
 
+#### Training Lapse — Double-Counting (Negative Result)
+
+An intermediate implementation applied fixed lapse in both training (`prob_right = (1-lapse)*prob + lapse*0.5`) and rollout. A sweep at drift={20, 22, 25} × 3 seeds (`sweep_fixed_lapse_v1`) showed:
+
+| Drift | Psych Slope | Chrono Slope | Win-Stay | Lose-Shift | Lapse Lo |
+|-------|-------------|--------------|----------|------------|----------|
+| 20 | 8.51 ± 0.24 | -38.1 ± 1.2 | 0.569 ± 0.005 | 0.512 ± 0.009 | 0.028 |
+| 22 | 8.56 ± 0.17 | -37.2 ± 1.1 | 0.565 ± 0.005 | 0.520 ± 0.006 | 0.027 |
+| 25 | 8.41 ± 0.30 | -35.3 ± 0.9 | 0.563 ± 0.007 | 0.517 ± 0.008 | 0.029 |
+
+Psych slope was stuck at ~8.5 regardless of drift_scale — completely insensitive. The diagnosis: the reference animal data already contains the animal's own lapse. Blending additional lapse into the training probability double-counts it, compressing the dynamic range of choice gradients and flattening the psychometric curve. Training lapse was removed; lapse is applied only in rollout.
+
+#### Rollout-Only Lapse Sweep
+
+With lapse only in rollout, a sweep at drift={20, 22, 25} × 3 seeds (`sweep_rollout_lapse_v1`) showed:
+
+| Drift | Psych Slope | Chrono Slope | Win-Stay | Lose-Shift | Lapse Lo |
+|-------|-------------|--------------|----------|------------|----------|
+| 20 | 9.57 ± 0.37 | -40.7 ± 1.8 | 0.566 ± 0.006 | 0.516 ± 0.012 | 0.026 |
+| 22 | 9.20 ± 0.63 | -39.5 ± 0.8 | 0.566 ± 0.007 | 0.522 ± 0.003 | 0.024 |
+| 25 | 8.96 ± 0.46 | -36.7 ± 0.2 | 0.565 ± 0.009 | 0.526 ± 0.010 | 0.027 |
+
+Still too shallow (9.5 vs target 13.2) and still insensitive to drift. This led to the curriculum confound discovery below.
+
+### The Curriculum Confound — Critical Discovery (February 2026)
+
+All the new architecture sweeps (learnable lapse, fixed lapse, rollout-only lapse) used the **7-phase WFPT curriculum** (`--use-default-curriculum`). The old multi-seed validation (psych=22.96) used the **3-phase curriculum** (`--no-use-default-curriculum`). A controlled experiment isolated the variable.
+
+#### The Experiment
+
+New architecture (asymmetric history + rollout lapse) tested with the old 3-phase curriculum at drift=20, 3 seeds (`sweep_3phase_newarch`):
+
+| Drift | Seed | Psych | Chrono | WS | LS | Lapse Lo |
+|-------|------|-------|--------|------|------|----------|
+| 20 | 42 | 20.57 | -69.3 | 0.555 | 0.560 | 0.020 |
+| 20 | 123 | 16.36 | -60.0 | 0.563 | 0.568 | 0.016 |
+| 20 | 256 | 18.08 | -61.1 | 0.550 | 0.532 | 0.021 |
+| **AVG** | | **18.34 ± 2.12** | **-63.5 ± 5.1** | **0.556** | **0.553** | **0.019** |
+
+#### The Verdict
+
+| Configuration | Psych | Chrono | WS | LS | Lapse |
+|---------------|-------|--------|------|------|-------|
+| Old arch + 3-phase | 22.96 ± 1.94 | -64.1 ± 2.1 | 0.565 | 0.551 | ~0.002 |
+| **New arch + 3-phase** | **18.34 ± 2.12** | **-63.5 ± 5.1** | **0.556** | **0.553** | **~0.019** |
+| New arch + 7-phase | 9.57 ± 0.37 | -40.7 ± 1.8 | 0.566 | 0.516 | ~0.026 |
+| **Animal target** | **13.2** | **negative** | **0.724** | **0.427** | **~0.05** |
+
+**The 7-phase WFPT curriculum was responsible for the psych slope collapse (23 → 9.5), not the architecture change.** Switching the new architecture back to the 3-phase curriculum restored psych slope to 18.3 — still lower than the old architecture's 23 (the ~5-point reduction is from the rollout lapse flattening the psychometric curve), but now responsive to drift_scale and much closer to the 13.2 target.
+
+#### Why WFPT Training Suppressed Psychometric Sensitivity
+
+The 7-phase curriculum starts with a 15-epoch WFPT warmup phase where the *only* training signal is the Wiener First Passage Time likelihood — no choice loss at all. WFPT optimizes for the joint probability of choice and RT through the analytical DDM likelihood, and it depends on all DDM parameters simultaneously (drift, bound, noise, non-decision time).
+
+When WFPT dominates training, the optimizer is free to adjust *any* parameter combination to maximize likelihood. It discovers that increasing noise and lowering bounds produces decent likelihood scores while reducing effective drift sensitivity. The model settles into a **high-noise, low-sensitivity regime** — RT distributions look statistically reasonable but the agent can barely discriminate stimuli (psych slope ~9).
+
+The simpler 3-phase curriculum avoids this by:
+1. Teaching RT structure first via direct MSE loss (no analytical likelihood)
+2. Gradually layering choice accuracy on a stable RT foundation
+3. Using drift magnitude regularization to anchor drift_gain scale
+
+This mirrors how real brains develop — basic sensory circuits mature before higher-order decision circuits, establishing stable signal-to-noise ratios before complex optimization can distort them. WFPT warmup is like asking a developing brain to optimize complex statistical properties before basic edge detection is in place.
+
+#### Implications for Next Steps
+
+- The 3-phase curriculum is the correct training foundation for this architecture.
+- Reducing drift_scale from 20 to ~14-16 should bring psych slope from 18.3 to ~13.2.
+- History asymmetry (WS=0.556 vs 0.724, LS=0.553 vs 0.427) remains symmetric because the 3-phase curriculum does not include history supervision. A targeted Phase 4 with `freeze_except_history_bias=true` should train the asymmetric networks without disrupting the learned DDM parameters.
+- Lapse (0.019 measured at 5% rollout) is improved from ~0.002 but below the 0.05 target; tuning the rollout lapse parameter to ~0.08 may help.
+
 ### Remaining Gaps
 
-- **Psychometric slope**: Need to find drift_scale where psych slope ≈ 13.2 with fixed lapse. The learnable-lapse sweep is not informative for this; a new sweep with fixed lapse is needed.
-- **Win-stay**: 0.620 (at drift=20) vs target 0.724. The asymmetric architecture moves in the right direction but needs further training or tuning.
-- **Lose-shift**: 0.414 (at drift=20) vs target 0.427. Nearly at target with the new architecture.
+- **Psychometric slope**: At 18.3 with drift=20 + 3-phase. Reducing drift to ~14-16 should reach ~13.2.
+- **Win-stay**: 0.556 vs target 0.724. Asymmetric architecture in place but untrained — needs history finetuning phase.
+- **Lose-shift**: 0.553 vs target 0.427. Same — history finetuning needed.
+- **Lapse**: 0.019 measured at 5% rollout lapse. May need rollout parameter increase to ~0.08.
 
 ### Artifacts
 
@@ -1203,6 +1272,9 @@ This respects the biological reality that attentional lapse is a fixed property 
 - Drift calibration sweep (old arch): `runs/sweep_drift_v2/` ({10,12,14} × 3 seeds)
 - Learnable lapse sweep: `runs/sweep_lapse_v1/` ({25,30,35} × 3 seeds, learnable lapse — negative result)
 - Single validation (new arch, drift=20): `runs/ibl_hybrid_curriculum/` (asymmetric history + learnable lapse)
+- Fixed lapse sweep (training+rollout): `runs/sweep_fixed_lapse_v1/` ({20,22,25} × 3 seeds — training lapse double-counting)
+- Rollout-only lapse sweep (7-phase): `runs/sweep_rollout_lapse_v1/` ({20,22,25} × 3 seeds — curriculum confound identified)
+- **Curriculum control experiment**: `runs/sweep_3phase_newarch/` (drift=20 × 3 seeds — proved 7-phase was the problem)
 
 ---
 

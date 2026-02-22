@@ -540,11 +540,11 @@ class HybridDDMTrainer:
                     
                     prob_right = (1.0 - prob_timeout) * p_right_given_commit + prob_timeout * p_right_given_timeout
 
-                    # Fixed lapse blending: on a fraction of trials the agent
-                    # disengages and guesses randomly (p=0.5). Lapse rate is a fixed
-                    # config parameter, not learnable — see FINDINGS.md for why.
-                    lapse = self.config.lapse_rate
-                    prob_right = (1.0 - lapse) * prob_right + lapse * 0.5
+                    # Lapse is applied only in rollout, NOT in training. The reference
+                    # animal data already contains the animal's own lapse; blending
+                    # lapse into training prob_right double-counts it, compresses choice
+                    # gradients, and flattens the psychometric curve (sweep_fixed_lapse_v1
+                    # showed psych slope stuck at ~8.5 regardless of drift_scale).
 
                     prob_right = torch.clamp(prob_right, 1e-6, 1.0 - 1e-6).unsqueeze(0)
 

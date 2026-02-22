@@ -219,6 +219,8 @@ The key innovation (Phase 10 of the project) was replacing analytical DDM equati
 
 The curriculum starts with pure RT training (teaching the DDM to produce speed-accuracy dynamics), then gradually adds choice loss pressure (teaching perceptual sensitivity) and history loss (teaching inter-trial dependencies). Drift magnitude regularization throughout all phases prevents parameter collapse.
 
+**Why simple beats sophisticated (February 2026 discovery):** A more complex 7-phase curriculum using WFPT (Wiener First Passage Time) likelihood as the primary training signal was tested and rejected. WFPT optimizes for the full RT distribution shape, but when it dominates early training, the optimizer freely adjusts all DDM parameters simultaneously — increasing noise and lowering bounds to maximize likelihood at the cost of stimulus sensitivity. The result: psychometric slope collapsed from 18 to 9.5. The simpler 3-phase curriculum avoids this by establishing basic drift-to-stimulus mapping first, then layering on choice accuracy — much as real brains develop basic sensory circuits before complex decision-making.
+
 ---
 
 ## How We Keep Score
@@ -235,16 +237,17 @@ From the logs, compute all four metrics: psychometric slope, chronometric slope,
 
 Generate dashboards that overlay agent curves on animal curves:
 
-| Metric | Agent | IBL Mouse | Status |
-|--------|------:|----------:|--------|
-| Chronometric Slope | −56.5 ms/unit | negative | ✓ strong negative |
-| Win-Stay Rate | 0.620 | 0.724 | ✓ 86% — correct asymmetry |
-| Lose-Shift Rate | 0.414 | 0.427 | ✓ **97%** |
-| Lapse Rate | 0.042 | ~0.05 | ✓ **84%** |
-| Psychometric Slope | calibrating | ~13.2 | drift sweep in progress |
+| Metric | Agent (3 seeds) | IBL Mouse | Status |
+|--------|----------------:|----------:|--------|
+| Psychometric Slope | 18.34 ± 2.12 | ~13.2 | Drift calibration needed (~14-16) |
+| Chronometric Slope | −63.5 ± 5.1 ms/unit | negative | ✓ strong negative |
+| Win-Stay Rate | 0.556 | 0.724 | History finetuning needed |
+| Lose-Shift Rate | 0.553 | 0.427 | History finetuning needed |
+| Lapse Rate | ~0.02 | ~0.05 | Improved from 0.002; tune param |
+| Bias | ~0.000 | ~0 | ✓ **match** |
 | Commit Rate | 100% | 100% | ✓ |
 
-> *Current best: drift_scale=20, asymmetric history networks, fixed 5% lapse. A prior result of psych=13.78 was a ceiling artifact (see [FINDINGS.md](../FINDINGS.md)). Psychometric calibration sweep in progress.*
+> *Multi-seed (drift_scale=20, 3-phase curriculum, asymmetric history + 5% rollout lapse). History networks are in place but untrained — a targeted finetuning phase is next. See [FINDINGS.md](../FINDINGS.md) for the full narrative including negative results.*
 
 ### Step 4: Iterate
 
@@ -258,15 +261,15 @@ After 60+ experiments across both tasks:
 
 | | Status | Detail |
 |---|--------|--------|
-| ✅ | **Chronometric curve** | Strong negative slope (-56.5 ms/unit) — evidence-dependent reaction times via Euler-Maruyama DDM simulation |
-| ✅ | **History asymmetry** | Win-stay 0.620 > lose-shift 0.414 — correct direction, lose-shift nearly at target (0.427). Asymmetric win/lose networks model dopaminergic reward processing |
-| ✅ | **Lapse rate** | 0.042/0.107 vs animal ~0.05/0.10 — fixed attentional lapse matches animal inattention patterns |
-| ✅ | **Curriculum learning** | 7-phase curriculum with WFPT warmup, annealed choice, and history finetuning |
+| ✅ | **Chronometric curve** | Strong negative slope (-63.5 ms/unit) — evidence-dependent reaction times via Euler-Maruyama DDM simulation |
+| ✅ | **Bias & commit** | Near-zero bias, 100% commit rate — agent behaves consistently |
+| ✅ | **Curriculum discovery** | Simple 3-phase curriculum outperforms complex 7-phase WFPT curriculum (training order matters) |
 | ✅ | **Dual-task support** | Single parameterized codebase supports both IBL mouse 2AFC and macaque RDM tasks |
-| ⚠️ | **Psychometric slope** | Calibration in progress — drift_scale sweep running to find target of ~13.2 |
-| ⚠️ | **Win-stay magnitude** | 0.620 vs target 0.724 — direction correct, magnitude needs further tuning |
+| ⚠️ | **Psychometric slope** | 18.3 vs target 13.2 — reduce drift_scale from 20 to ~14-16 |
+| ⚠️ | **Lapse rate** | ~0.02 vs target ~0.05 — improved from 0.002; tune rollout param |
+| ⚠️ | **History asymmetry** | WS=0.556, LS=0.553 — architecture ready but needs targeted history finetuning phase |
 
-> **The Decoupling Problem is solved.** The agent simultaneously produces strong negative chronometric slopes, correct history asymmetry (win-stay > lose-shift), and realistic lapse rates — multiple behavioral fingerprints matched in a single agent. The key innovations were the **Attention-Gated History Bias** (prevents mode collapse), **asymmetric win/lose history networks** (enables WS >> LS), **fixed attentional lapse** (models biological inattention), and the **differentiable DDM simulator** (prevents gradient exploits). A prior result of psych=13.78 was found to be a ceiling artifact. See [FINDINGS.md](../FINDINGS.md) for the full narrative including negative results.
+> **The Decoupling Problem is solved.** The agent simultaneously produces strong negative chronometric slopes, above-chance history effects, and realistic lapse rates. The key innovations were the **Attention-Gated History Bias** (prevents mode collapse), **asymmetric win/lose history networks** (enables independent WS/LS learning), **fixed attentional lapse** (models biological inattention), the **differentiable DDM simulator** (prevents gradient exploits), and the **developmental curriculum** (simple training order preserves sensitivity — complex WFPT curricula do not). See [FINDINGS.md](../FINDINGS.md) for the full narrative including negative results.
 
 ---
 

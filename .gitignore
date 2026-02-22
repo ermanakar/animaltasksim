@@ -26,6 +26,9 @@ Thumbs.db
 *.swo
 CLAUDE.md
 
+# Claude Code skills
+.claude/skills/
+
 # Project-specific
 runs/
 out/
@@ -33,6 +36,9 @@ logs/
 *.ndjson
 *.pt
 *.pth
+
+# Generated HTML (rebuild from source)
+docs/index.html
 
 # Archived documentation (kept in docs/archive/)
 CALIBRATION_REPORT.md
