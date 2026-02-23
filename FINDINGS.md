@@ -1254,16 +1254,62 @@ This mirrors how real brains develop — basic sensory circuits mature before hi
 #### Implications for Next Steps
 
 - The 3-phase curriculum is the correct training foundation for this architecture.
-- Reducing drift_scale from 20 to ~14-16 should bring psych slope from 18.3 to ~13.2.
+- ~~Reducing drift_scale from 20 to ~14-16 should bring psych slope from 18.3 to ~13.2.~~ See drift calibration below — `drift_scale` turned out to be a dead knob.
 - History asymmetry (WS=0.556 vs 0.724, LS=0.553 vs 0.427) remains symmetric because the 3-phase curriculum does not include history supervision. A targeted Phase 4 with `freeze_except_history_bias=true` should train the asymmetric networks without disrupting the learned DDM parameters.
 - Lapse (0.019 measured at 5% rollout) is improved from ~0.002 but below the 0.05 target; tuning the rollout lapse parameter to ~0.08 may help.
 
+### Drift Calibration — Dead Knob Discovery (February 2026)
+
+#### drift_calibration_v1: `drift_scale` has no effect
+
+A sweep of `drift_scale`={12, 14, 16, 18} × 3 seeds (42, 123, 456) with the 3-phase curriculum produced:
+
+| drift_scale | Psych Slope | Chrono Slope | Win-Stay | Lose-Shift |
+|-------------|-------------|--------------|----------|------------|
+| 12 | 21.75 ± 0.70 | -72.66 ± 4.02 | 0.556 | 0.572 |
+| 14 | 22.42 ± 1.50 | -70.41 ± 1.93 | 0.557 | 0.563 |
+| 16 | 21.30 ± 1.50 | -70.94 ± 3.27 | 0.558 | 0.556 |
+| 18 | 21.24 ± 1.85 | -70.18 ± 4.43 | 0.556 | 0.557 |
+
+**Psych slope is identical (~21.5) regardless of drift_scale.** This was unexpected — the parameter was assumed to control psychometric sensitivity.
+
+**Root cause:** `drift_scale` only controls the *initialization* of the drift_head weights (lines 83-84 of `hybrid_model.py`). But the `drift_magnitude` loss in the trainer pulls `drift_gain` back to a **hardcoded target of 12.0** during training (`torch.mean((drift_gains - 12.0) ** 2)` with weight 0.5 in all three phases). The optimizer overrides the initialization every time. `drift_scale` is a dead knob.
+
+#### drift_calibration_v2: `drift_magnitude_target` is the actual lever
+
+The fix: make the regularization target configurable via `drift_magnitude_target` in `HybridTrainingConfig`. A sweep of `drift_magnitude_target`={6, 7, 8, 9} × 3 seeds:
+
+| drift_magnitude_target | Psych Slope | Chrono Slope | Win-Stay | Lose-Shift |
+|------------------------|-------------|--------------|----------|------------|
+| **6.0** | **12.76 ± 1.04** | **-64.1 ± 2.4** | **0.556 ± 0.005** | **0.543 ± 0.004** |
+| 7.0 | 15.19 ± 0.82 | -67.3 ± 3.2 | 0.557 ± 0.003 | 0.560 ± 0.021 |
+| 8.0 | 15.96 ± 1.41 | -66.7 ± 3.6 | 0.563 ± 0.003 | 0.549 ± 0.009 |
+| 9.0 | 17.08 ± 1.22 | -69.3 ± 2.6 | 0.557 ± 0.009 | 0.556 ± 0.005 |
+| 12.0 (old default) | ~21.5 ± 1.5 | ~-70 ± 4.0 | ~0.556 | ~0.555 |
+| **IBL target** | **13.2** | **negative** | **0.724** | **0.427** |
+
+Clear monotonic relationship. **Target=6.0 gives psych slope 12.76 ± 1.04**, which brackets the IBL target of 13.2 (seed 123 hit 13.13).
+
+#### Joint Production Test: Passed
+
+The critical scientific question: does reducing drift sensitivity break the other fingerprints? **No.** At `drift_magnitude_target=6.0`:
+- Chrono slope: -64.1 ± 2.4 ms/unit (unchanged from target=12)
+- Win-stay: 0.556 (unchanged)
+- Lose-shift: 0.543 (unchanged)
+- Commit rate: 100%, bias: ~0.000
+
+The architecture does not decouple when psychometric sensitivity is calibrated.
+
+#### Scientific Framing
+
+`drift_magnitude_target` is analogous to standard DDM fitting in neuroscience — drift rate is a property of sensory cortical hardware, not a learned strategy. The honest claim: we fit one parameter (evidence sensitivity) to match the animal's psychometric curve, and the remaining three behavioral fingerprints (chronometric slope, history effects, lapse) must emerge from architectural choices without additional fitting.
+
 ### Remaining Gaps
 
-- **Psychometric slope**: At 18.3 with drift=20 + 3-phase. Reducing drift to ~14-16 should reach ~13.2.
+- **Psychometric slope**: ~~At 18.3 with drift=20 + 3-phase. Reducing drift to ~14-16 should reach ~13.2.~~ **Calibrated.** `drift_magnitude_target=6.0` → psych 12.76 ± 1.04.
 - **Win-stay**: 0.556 vs target 0.724. Asymmetric architecture in place but untrained — needs history finetuning phase.
-- **Lose-shift**: 0.553 vs target 0.427. Same — history finetuning needed.
-- **Lapse**: 0.019 measured at 5% rollout lapse. May need rollout parameter increase to ~0.08.
+- **Lose-shift**: 0.543 vs target 0.427. Same — history finetuning needed.
+- **Lapse**: ~0.025 measured at 5% rollout lapse. May need rollout parameter increase to ~0.08.
 
 ### Artifacts
 
@@ -1275,6 +1321,8 @@ This mirrors how real brains develop — basic sensory circuits mature before hi
 - Fixed lapse sweep (training+rollout): `runs/sweep_fixed_lapse_v1/` ({20,22,25} × 3 seeds — training lapse double-counting)
 - Rollout-only lapse sweep (7-phase): `runs/sweep_rollout_lapse_v1/` ({20,22,25} × 3 seeds — curriculum confound identified)
 - **Curriculum control experiment**: `runs/sweep_3phase_newarch/` (drift=20 × 3 seeds — proved 7-phase was the problem)
+- **Drift calibration v1 (dead knob)**: `runs/drift_calibration_v1/` (drift_scale={12,14,16,18} × 3 seeds — proved drift_scale is inert)
+- **Drift calibration v2 (target sweep)**: `runs/drift_calibration_v2/` (drift_magnitude_target={6,7,8,9} × 3 seeds — calibrated psych slope)
 
 ---
 

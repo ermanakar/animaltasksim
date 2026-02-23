@@ -239,15 +239,15 @@ Generate dashboards that overlay agent curves on animal curves:
 
 | Metric | Agent (3 seeds) | IBL Mouse | Status |
 |--------|----------------:|----------:|--------|
-| Psychometric Slope | 18.34 ± 2.12 | ~13.2 | Drift calibration needed (~14-16) |
-| Chronometric Slope | −63.5 ± 5.1 ms/unit | negative | ✓ strong negative |
-| Win-Stay Rate | 0.556 | 0.724 | History finetuning needed |
-| Lose-Shift Rate | 0.553 | 0.427 | History finetuning needed |
-| Lapse Rate | ~0.02 | ~0.05 | Improved from 0.002; tune param |
+| Psychometric Slope | 12.76 ± 1.04 | ~13.2 | ✓ **calibrated** |
+| Chronometric Slope | −64.1 ± 2.4 ms/unit | negative | ✓ **strong negative** |
+| Win-Stay Rate | 0.556 ± 0.005 | 0.724 | History finetuning needed |
+| Lose-Shift Rate | 0.543 ± 0.004 | 0.427 | History finetuning needed |
+| Lapse Rate | ~0.025 | ~0.05 | Tune rollout param to ~0.08 |
 | Bias | ~0.000 | ~0 | ✓ **match** |
 | Commit Rate | 100% | 100% | ✓ |
 
-> *Multi-seed (drift_scale=20, 3-phase curriculum, asymmetric history + 5% rollout lapse). History networks are in place but untrained — a targeted finetuning phase is next. See [FINDINGS.md](../FINDINGS.md) for the full narrative including negative results.*
+> *Multi-seed (drift_magnitude_target=6.0, 3-phase curriculum, asymmetric history + 5% rollout lapse). Psychometric slope calibrated by fitting drift_magnitude_target — analogous to standard DDM drift rate fitting in neuroscience. History networks are in place but untrained — a targeted finetuning phase is next. See [FINDINGS.md](../FINDINGS.md) for the full narrative including negative results.*
 
 ### Step 4: Iterate
 
@@ -261,13 +261,13 @@ After 60+ experiments across both tasks:
 
 | | Status | Detail |
 |---|--------|--------|
-| ✅ | **Chronometric curve** | Strong negative slope (-63.5 ms/unit) — evidence-dependent reaction times via Euler-Maruyama DDM simulation |
+| ✅ | **Psychometric slope** | 12.76 ± 1.04 vs target 13.2 — **calibrated** via `drift_magnitude_target=6.0` |
+| ✅ | **Chronometric curve** | Strong negative slope (-64.1 ms/unit) — evidence-dependent reaction times via Euler-Maruyama DDM simulation |
 | ✅ | **Bias & commit** | Near-zero bias, 100% commit rate — agent behaves consistently |
 | ✅ | **Curriculum discovery** | Simple 3-phase curriculum outperforms complex 7-phase WFPT curriculum (training order matters) |
 | ✅ | **Dual-task support** | Single parameterized codebase supports both IBL mouse 2AFC and macaque RDM tasks |
-| ⚠️ | **Psychometric slope** | 18.3 vs target 13.2 — reduce drift_scale from 20 to ~14-16 |
-| ⚠️ | **Lapse rate** | ~0.02 vs target ~0.05 — improved from 0.002; tune rollout param |
-| ⚠️ | **History asymmetry** | WS=0.556, LS=0.553 — architecture ready but needs targeted history finetuning phase |
+| ⚠️ | **Lapse rate** | ~0.025 vs target ~0.05 — tune rollout param to ~0.08 |
+| ⚠️ | **History asymmetry** | WS=0.556, LS=0.543 — architecture ready but needs targeted history finetuning phase |
 
 > **The Decoupling Problem is solved.** The agent simultaneously produces strong negative chronometric slopes, above-chance history effects, and realistic lapse rates. The key innovations were the **Attention-Gated History Bias** (prevents mode collapse), **asymmetric win/lose history networks** (enables independent WS/LS learning), **fixed attentional lapse** (models biological inattention), the **differentiable DDM simulator** (prevents gradient exploits), and the **developmental curriculum** (simple training order preserves sensitivity — complex WFPT curricula do not). See [FINDINGS.md](../FINDINGS.md) for the full narrative including negative results.
 
