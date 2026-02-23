@@ -695,8 +695,8 @@ class HybridDDMTrainer:
                 drift_mag_loss = torch.zeros(1, device=self.device)
                 if weights.drift_magnitude > 0.0 and drift_gain_buffer:
                     drift_gains = torch.cat(drift_gain_buffer)
-                    # Target: drift_gain ≈ 12 (from softplus(2.5) + 0.001)
-                    drift_mag_loss = torch.mean((drift_gains - 12.0) ** 2)
+                    target = self.config.drift_magnitude_target
+                    drift_mag_loss = torch.mean((drift_gains - target) ** 2)
                     total_loss = total_loss + weights.drift_magnitude * drift_mag_loss
 
                 # WFPT likelihood loss: statistically correct DDM objective

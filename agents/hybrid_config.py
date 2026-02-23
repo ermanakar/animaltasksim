@@ -37,6 +37,7 @@ class HybridTrainingConfig:
     min_commit_steps: int = 5
     max_commit_steps: int = 300  # Must accommodate DDM boundary crossings at low coherence
     drift_scale: float = 10.0  # Scale drift_head initialization to enable stronger evidence effects
+    drift_magnitude_target: float = 12.0  # Target drift_gain for drift_magnitude regularization
     curriculum: CurriculumConfig | None = None  # If set, use curriculum learning
     history_bias_scale: float = 0.5  # History bias can shift starting point by ±scale*bound
     history_drift_scale: float = 0.0  # History bias can add ±scale to drift rate (0=disabled)

@@ -47,7 +47,8 @@ class TrainCurriculumArgs:
     min_commit_steps: int = 5
     max_commit_steps: int = 300
     drift_scale: float = 14.0
-    
+    drift_magnitude_target: float = 12.0  # Target drift_gain for regularization (controls psych slope)
+
     # Curriculum configuration
     use_default_curriculum: bool = True
     allow_early_stopping: bool = True
@@ -211,6 +212,7 @@ def main(args: TrainCurriculumArgs) -> None:
         min_commit_steps=args.min_commit_steps,
         max_commit_steps=args.max_commit_steps,
         drift_scale=args.drift_scale,
+        drift_magnitude_target=args.drift_magnitude_target,
         curriculum=curriculum,
         history_bias_scale=args.history_bias_scale,
         history_drift_scale=args.history_drift_scale,
