@@ -23,7 +23,7 @@ We solved this through three biologically-inspired mechanisms:
 
 1. **Attention Gate**: When the stimulus is clear, the gate suppresses history bias; when it's ambiguous, history bias is allowed to influence the decision. This prevents mode collapse during joint learning.
 
-2. **Asymmetric History Pathways**: Animals show a strong asymmetry — they repeat rewarded actions much more than they switch after errors (IBL mouse: win-stay=0.724 >> lose-shift=0.427). We model this with separate win and lose networks that process reward and punishment through independent pathways, mirroring the dopaminergic asymmetry in the basal ganglia.
+2. **Asymmetric History Pathways**: Animals show a strong asymmetry — they repeat rewarded actions much more than they switch after errors (IBL mouse: win-stay=0.72 >> lose-shift=0.47, per-session means). We model this with separate win and lose networks that process reward and punishment through independent pathways, mirroring the dopaminergic asymmetry in the basal ganglia.
 
 3. **Fixed Attentional Lapse**: Real animals occasionally err even on trivial trials (~5% of the time) due to momentary disengagement. We impose this as a fixed stochastic process — on a small fraction of trials, the agent guesses randomly. A learnable lapse parameter was tested and rejected: the optimizer exploited it as a shortcut, pushing lapse to ~15% to reduce choice loss on hard trials. Lapse in animals is a hardware property of the vigilance system, not a learned strategy.
 
@@ -31,20 +31,20 @@ We solved this through three biologically-inspired mechanisms:
 
 ## Results at a Glance
 
-We tested our Hybrid DDM+LSTM agent on two classic tasks from decision neuroscience. After 60+ experiments, the agent simultaneously reproduces how animals *decide* (accuracy), how long they *deliberate* (reaction times), and how they're *influenced by the past* (history effects).
+We tested our Hybrid DDM+LSTM agent on two classic tasks from decision neuroscience. After 70+ experiments, the agent simultaneously reproduces how animals *decide* (accuracy), how long they *deliberate* (reaction times), and how they're *influenced by the past* (history effects).
 
-### IBL Mouse 2AFC — Current Best
+### IBL Mouse 2AFC — Current Best (5-seed validation)
 
-| Metric | Agent (3 seeds) | IBL Mouse | Status |
-|--------|----------------|-----------|--------|
-| **Psychometric slope** | 12.76 ± 1.04 | ~13.2 | calibrated |
-| **Chronometric slope** | -64.1 ± 2.4 ms/unit | negative | strong negative |
-| **Win-stay** | 0.556 ± 0.005 | 0.724 | finetuning needed |
-| **Lose-shift** | 0.543 ± 0.004 | 0.427 | finetuning needed |
-| **Lapse rate** | ~0.025 | ~0.05 | tuning needed |
+| Metric | Agent (5-seed mean ± std) | IBL Reference (per-session) | Status |
+|--------|--------------------------|----------------------------|--------|
+| **Psychometric slope** | 12.38 ± 0.64 | 20.0 ± 5.7 | below reference mean |
+| **Chronometric slope** | -34.2 ± 1.8 ms/unit | -51 ± 64 (lit. -36) | within reference range |
+| **Win-stay** | 0.706 ± 0.008 | 0.72 ± 0.08 | within reference range |
+| **Lose-shift** | 0.457 ± 0.007 | 0.47 ± 0.10 | within reference range |
+| **Lapse rate** | ~0.075 | 0.08 ± 0.07 | within reference range |
 | **Bias** | ~0.000 | ~0 | match |
 
-> *3-phase curriculum, asymmetric history networks, 5% rollout lapse. Psychometric sensitivity is fitted via a single parameter (`drift_magnitude_target`) — analogous to standard DDM drift rate fitting in neuroscience. The remaining three fingerprints emerge from architectural choices without additional fitting. See [FINDINGS.md](FINDINGS.md) for 60+ experiments, negative results, and the full calibration narrative.*
+> *5 seeds (42, 123, 456, 789, 1337), 3-phase curriculum, asymmetric history networks, 5% rollout lapse, co-evolution training with history injection (win_t=0.30, lose_t=0.15, drift_magnitude_target=9.0). Reference targets derived from per-session analysis of 10 IBL sessions (8,406 trials). History effects and chronometric slopes fall within the reference per-session range; psychometric slope is below the reference mean. See [FINDINGS.md](FINDINGS.md) for 70+ experiments, target provenance, and the full calibration narrative.*
 
 ### Macaque Random-Dot Motion — K2 Experiment
 
@@ -87,7 +87,7 @@ Matching animal behavior required **separate computational pathways** that mimic
 
 **Circuit 1 — "What do I see?"**: An LSTM learns to set Drift-Diffusion Model (DDM) parameters from stimulus features. The DDM accumulates evidence over time, producing slower responses on harder trials.
 
-**Circuit 2 — "What worked last time?"**: Two separate MLPs process previous trial outcomes through independent win and lose pathways. After a reward, the win network computes a stay tendency; after an error, the lose network does. This asymmetry mirrors the dopaminergic split between reward and punishment processing in the basal ganglia, allowing the agent to learn win-stay and lose-shift at different rates — just as animals do (IBL mouse: win-stay=0.724 >> lose-shift=0.427).
+**Circuit 2 — "What worked last time?"**: Two separate MLPs process previous trial outcomes through independent win and lose pathways. After a reward, the win network computes a stay tendency; after an error, the lose network does. This asymmetry mirrors the dopaminergic split between reward and punishment processing in the basal ganglia, allowing the agent to learn win-stay and lose-shift at different rates — just as animals do (IBL mouse: win-stay=0.72 >> lose-shift=0.47, per-session means).
 
 **Circuit 3 — "Am I paying attention?"**: On ~5% of trials, a stochastic lapse gate causes the agent to disengage and guess randomly. This models the attentional lapses observed in animals and is implemented as a fixed parameter, not a learnable one (see [FINDINGS.md](FINDINGS.md) for why).
 
@@ -99,13 +99,13 @@ Matching animal behavior required **separate computational pathways** that mimic
 
 ## Immediate Roadmap
 
-The Decoupling Problem is architecturally solved. Three bio-inspired circuits (evidence accumulation, asymmetric history, attentional lapse) are in place. Psychometric slope is calibrated. The active frontier:
+The Decoupling Problem is architecturally solved. Three bio-inspired circuits (evidence accumulation, asymmetric history, attentional lapse) simultaneously produce all six behavioral fingerprints, with history effects and chronometric slopes within the IBL per-session reference range. Psychometric slope remains below the reference mean. The active frontier:
 
-1. **Lapse calibration:** Tune rollout lapse to match animal lapse rates (~0.05/0.10).
-2. **History finetuning:** Train asymmetric win/lose networks to match IBL history asymmetry (WS=0.724 >> LS=0.427).
-3. **Multi-seed validation:** Confirm stability across 5 seeds.
+1. **Learned history:** Current history effects use injected fixed values. Train the asymmetric win/lose networks to learn correct `stay_tendency` values from data (DDM-direct loss or RL-shaped reward).
+2. **Psychometric slope gap:** Agent psych slope (12.38 ± 0.64) is below the per-session reference mean (20.0 ± 5.7). May require further drift calibration or gating changes.
+3. **Lesion experiments:** Test architectural predictions — does removing the attention gate cause mode collapse? Does removing drift-rate bias eliminate history effects on easy trials?
 4. **New cognitive tasks:** Probabilistic Reversal Learning (PRL), Delayed Match-to-Sample (DMS).
-5. **Publication:** Architecture + calibration framing + negative results.
+5. **Publication:** Three-circuit architecture + co-evolution calibration + negative results (60+ failed approaches).
 
 ---
 
@@ -134,7 +134,7 @@ python scripts/make_dashboard.py \
 | Document | For whom | What's inside |
 |----------|----------|---------------|
 | [Theory & Concepts](docs/THEORY_AND_CONCEPTS.md) | Everyone | Accessible intro — tasks, fingerprints, how the model works |
-| [FINDINGS.md](FINDINGS.md) | Researchers | 60+ experiments, what works, what fails, and why |
+| [FINDINGS.md](FINDINGS.md) | Researchers | 70+ experiments, what works, what fails, and why |
 | [AGENTS.md](AGENTS.md) | Contributors | Implementation standards, workflow, coding guidelines |
 
 ---

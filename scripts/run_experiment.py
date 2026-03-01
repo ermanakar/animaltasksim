@@ -78,12 +78,12 @@ TASK_INFO = {
 
 REFERENCE_TARGETS: dict[str, dict[str, str]] = {
     "ibl_2afc": {
-        "psych_slope": "13.2 (IBL mouse)",
-        "bias": "~0.07 (slight rightward)",
-        "chrono_slope": "-36 ms/unit (mouse)",
+        "psych_slope": "20.0 ± 5.7 (per-session mean, 10 IBL sessions)",
+        "bias": "~0.01 (near-zero)",
+        "chrono_slope": "-51 ± 64 ms/unit (per-session; lit. -36)",
         "rt_intercept": "300 ms (mouse)",
-        "win_stay": "0.73 (IBL mouse)",
-        "lose_shift": "0.34 (IBL mouse)",
+        "win_stay": "0.72 ± 0.08 (per-session mean)",
+        "lose_shift": "0.47 ± 0.10 (per-session mean)",
         "sticky_choice": "0.69 (IBL mouse)",
     },
     "rdm_macaque": {

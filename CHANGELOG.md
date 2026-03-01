@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.2.1] - 2026-03-01
+
+### Fixed
+
+- **Mixed-provenance behavioral targets**: Prior IBL targets were assembled from three independent sources (psych slope from single-session, history from multi-session, chrono from literature). All targets now derived from per-session analysis of `data/ibl/reference.ndjson` (10 sessions, 8,406 trials). See FINDINGS.md "Target Provenance Correction."
+- **IBL contrast set**: Removed 0.5 contrast from `envs/ibl_2afc.py` default contrast set. The IBL biased-blocks protocol does not use 0.5 contrast — confirmed absent from all 10 reference sessions.
+- **Cherry-picked reporting**: All agent results now reported as 5-seed mean ± std instead of single best seed. Previous "0.3% gap" claim used seed 42 (psych=13.16); 5-seed mean is 12.38 ± 0.64.
+
+### Added
+
+- **Per-session reference analysis script** (`scripts/compute_reference_targets.py`): Computes per-session psychometric, chronometric, and history metrics from reference data. Outputs `data/ibl/reference_targets.json` as single source of truth for behavioral targets.
+
+### Changed
+
+- **Regenerated `data/ibl/metrics.json`**: Now computed from multi-session reference (was incorrectly from single-session).
+- **Chrono target comment**: `eval/metrics.py` chrono_target documented with provenance (per-session median -44, retained at -36 for continuity).
+- **All documentation updated**: CLAUDE.md, FINDINGS.md, README.md, THEORY_AND_CONCEPTS.md, MEMORY.md, and skill context files updated with corrected targets and multi-seed statistics.
+
+---
+
 ## [0.2.0] - 2026-02-19
 
 ### Added

@@ -75,12 +75,14 @@ class IBL2AFCConfig:
     """Configuration bundle for the IBL 2AFC environment."""
 
     trials_per_episode: int = 400
+    # Standard IBL biased-blocks protocol contrasts.  The 0.5 level is not
+    # used in the IBL biased protocol and is absent from all 10 sessions in
+    # data/ibl/reference.ndjson.
     contrast_set: tuple[float, ...] = (
         0.0,
         0.0625,
         0.125,
         0.25,
-        0.5,
         1.0,
     )
     block_sequence: tuple[BlockConfig, ...] = (

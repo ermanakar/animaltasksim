@@ -139,11 +139,11 @@ The LSTM watches the history of recent trials — what the agent chose, whether 
 
 ### The Habit Circuit: Asymmetric History Networks
 
-A key insight from 60+ experiments: the LSTM alone cannot produce history effects. Even when trained with explicit history supervision, the LSTM's learned history patterns get washed out during the DDM evidence accumulation process.
+A key insight from 70+ experiments: the LSTM alone cannot produce history effects. Even when trained with explicit history supervision, the LSTM's learned history patterns get washed out during the DDM evidence accumulation process.
 
 The solution is **separate history networks** — small MLPs that take only the previous trial's action and reward as input, bypass the LSTM entirely, and output a **stay tendency**: how much the agent is biased toward repeating its last choice.
 
-Critically, there are **two independent networks** — one for wins and one for losses. After a rewarded trial, the *win history network* computes the stay tendency; after an error, the *lose history network* does. This asymmetry mirrors the dopaminergic split between reward and punishment processing in the basal ganglia. Animals show a striking asymmetry: they repeat rewarded actions far more than they switch after errors (IBL mouse: win-stay=0.724 >> lose-shift=0.427). A single network cannot learn this asymmetry because the same weights process both outcomes symmetrically.
+Critically, there are **two independent networks** — one for wins and one for losses. After a rewarded trial, the *win history network* computes the stay tendency; after an error, the *lose history network* does. This asymmetry mirrors the dopaminergic split between reward and punishment processing in the basal ganglia. Animals show a striking asymmetry: they repeat rewarded actions far more than they switch after errors (IBL mouse: win-stay=0.72 >> lose-shift=0.47, per-session means). A single network cannot learn this asymmetry because the same weights process both outcomes symmetrically.
 
 Additionally, a **fixed attentional lapse** mechanism causes the agent to randomly guess on ~5% of trials, modeling the momentary disengagement observed in animals. This is a fixed parameter, not learnable — a learnable version was tested and the optimizer exploited it as a shortcut (see [FINDINGS.md](../FINDINGS.md)).
 
@@ -217,7 +217,7 @@ flowchart LR
 
 The key innovation (Phase 10 of the project) was replacing analytical DDM equations with a **differentiable Euler-Maruyama simulator**. During training, the agent runs the actual stochastic evidence accumulation process (120 steps = 3000ms) as a differentiable PyTorch operation. This prevents a mathematical exploit where the agent could push its decision bound to infinity while crushing its drift rate, making analytical gradients vanish and causing universal timeouts.
 
-The curriculum starts with pure RT training (teaching the DDM to produce speed-accuracy dynamics), then gradually adds choice loss pressure (teaching perceptual sensitivity) and history loss (teaching inter-trial dependencies). Drift magnitude regularization throughout all phases prevents parameter collapse.
+The curriculum starts with pure RT training (teaching the DDM to produce speed-accuracy dynamics), then gradually adds choice loss pressure (teaching perceptual sensitivity) and history loss (teaching inter-trial dependencies). Drift magnitude regularization throughout all phases prevents parameter collapse. A key discovery (February 2026): **co-evolution training** — where history injection is active during training — allows evidence circuits to co-evolve alongside history effects. The drift_magnitude_target must be recalibrated when history is present (from 6.0 to 9.0) because the LSTM learns stronger drift_gain to compensate for history bias.
 
 **Why simple beats sophisticated (February 2026 discovery):** A more complex 7-phase curriculum using WFPT (Wiener First Passage Time) likelihood as the primary training signal was tested and rejected. WFPT optimizes for the full RT distribution shape, but when it dominates early training, the optimizer freely adjusts all DDM parameters simultaneously — increasing noise and lowering bounds to maximize likelihood at the cost of stimulus sensitivity. The result: psychometric slope collapsed from 18 to 9.5. The simpler 3-phase curriculum avoids this by establishing basic drift-to-stimulus mapping first, then layering on choice accuracy — much as real brains develop basic sensory circuits before complex decision-making.
 
@@ -237,17 +237,17 @@ From the logs, compute all four metrics: psychometric slope, chronometric slope,
 
 Generate dashboards that overlay agent curves on animal curves:
 
-| Metric | Agent (3 seeds) | IBL Mouse | Status |
-|--------|----------------:|----------:|--------|
-| Psychometric Slope | 12.76 ± 1.04 | ~13.2 | ✓ **calibrated** |
-| Chronometric Slope | −64.1 ± 2.4 ms/unit | negative | ✓ **strong negative** |
-| Win-Stay Rate | 0.556 ± 0.005 | 0.724 | History finetuning needed |
-| Lose-Shift Rate | 0.543 ± 0.004 | 0.427 | History finetuning needed |
-| Lapse Rate | ~0.025 | ~0.05 | Tune rollout param to ~0.08 |
-| Bias | ~0.000 | ~0 | ✓ **match** |
-| Commit Rate | 100% | 100% | ✓ |
+| Metric | Agent (5-seed mean ± std) | IBL Reference (per-session) | Status |
+|--------|--------------------------|----------------------------|--------|
+| Psychometric Slope | 12.38 ± 0.64 | 20.0 ± 5.7 | below reference mean |
+| Chronometric Slope | −34.2 ± 1.8 ms/unit | −51 ± 64 (lit. −36) | within reference range |
+| Win-Stay Rate | 0.706 ± 0.008 | 0.72 ± 0.08 | within reference range |
+| Lose-Shift Rate | 0.457 ± 0.007 | 0.47 ± 0.10 | within reference range |
+| Lapse Rate | ~0.075 | 0.08 ± 0.07 | within reference range |
+| Bias | ~0.000 | ~0 | match |
+| Commit Rate | 100% | 100% | match |
 
-> *Multi-seed (drift_magnitude_target=6.0, 3-phase curriculum, asymmetric history + 5% rollout lapse). Psychometric slope calibrated by fitting drift_magnitude_target — analogous to standard DDM drift rate fitting in neuroscience. History networks are in place but untrained — a targeted finetuning phase is next. See [FINDINGS.md](../FINDINGS.md) for the full narrative including negative results.*
+> *5-seed validation, co-evolution training with history injection (win_t=0.30, lose_t=0.15, drift_magnitude_target=9.0), 3-phase curriculum, asymmetric history networks, 5% rollout lapse. Reference targets derived from per-session analysis of 10 IBL sessions (8,406 trials). See [FINDINGS.md](../FINDINGS.md) for target provenance, 70+ experiments, and negative results.*
 
 ### Step 4: Iterate
 
@@ -257,19 +257,22 @@ Adjust the model, retrain, re-evaluate. The goal is to close the gap across all 
 
 ## Where Things Stand (Honest Assessment)
 
-After 60+ experiments across both tasks:
+After 70+ experiments across both tasks:
 
 | | Status | Detail |
 |---|--------|--------|
-| ✅ | **Psychometric slope** | 12.76 ± 1.04 vs target 13.2 — **calibrated** via `drift_magnitude_target=6.0` |
-| ✅ | **Chronometric curve** | Strong negative slope (-64.1 ms/unit) — evidence-dependent reaction times via Euler-Maruyama DDM simulation |
+| ✅ | **Psychometric slope** | 12.38 ± 0.64 (5-seed) vs reference 20.0 ± 5.7 — below reference mean, gap remains |
+| ✅ | **Chronometric curve** | -34.2 ± 1.8 ms/unit vs reference -51 ± 64 (lit. -36) — within reference range |
+| ✅ | **Win-stay** | 0.706 ± 0.008 vs reference 0.72 ± 0.08 — within reference range |
+| ✅ | **Lose-shift** | 0.457 ± 0.007 vs reference 0.47 ± 0.10 — within reference range |
 | ✅ | **Bias & commit** | Near-zero bias, 100% commit rate — agent behaves consistently |
 | ✅ | **Curriculum discovery** | Simple 3-phase curriculum outperforms complex 7-phase WFPT curriculum (training order matters) |
 | ✅ | **Dual-task support** | Single parameterized codebase supports both IBL mouse 2AFC and macaque RDM tasks |
-| ⚠️ | **Lapse rate** | ~0.025 vs target ~0.05 — tune rollout param to ~0.08 |
-| ⚠️ | **History asymmetry** | WS=0.556, LS=0.543 — architecture ready but needs targeted history finetuning phase |
+| ⚠️ | **Lapse rate** | ~0.075 vs reference 0.08 ± 0.07 — within reference range |
+| ⚠️ | **History learning** | History effects use injected fixed values, not learned by networks — learning approach needed |
+| ⚠️ | **Psych slope gap** | Agent psych slope (12.38) is below the per-session reference mean (20.0). Old target (13.2) was from a different, single-session dataset |
 
-> **The Decoupling Problem is solved.** The agent simultaneously produces strong negative chronometric slopes, above-chance history effects, and realistic lapse rates. The key innovations were the **Attention-Gated History Bias** (prevents mode collapse), **asymmetric win/lose history networks** (enables independent WS/LS learning), **fixed attentional lapse** (models biological inattention), the **differentiable DDM simulator** (prevents gradient exploits), and the **developmental curriculum** (simple training order preserves sensitivity — complex WFPT curricula do not). See [FINDINGS.md](../FINDINGS.md) for the full narrative including negative results.
+> **The Decoupling Problem is architecturally solved.** The agent simultaneously produces history effects and chronometric slopes within the IBL per-session reference range, with realistic lapse rates and the correct WS > LS asymmetry. Psychometric slope remains below the reference mean. The key innovations were the **Attention-Gated History Bias** (prevents mode collapse), **asymmetric win/lose history networks** (enables independent WS/LS learning), **fixed attentional lapse** (models biological inattention), the **differentiable DDM simulator** (prevents gradient exploits), the **developmental curriculum** (simple training order preserves sensitivity), and **co-evolution training** (evidence circuits must learn alongside history effects). Remaining gaps: teaching history networks to learn injection values from data, closing the psychometric slope gap. Note: prior targets were mixed-provenance (psych from single-session, history from multi-session, chrono from literature); corrected March 2026. See [FINDINGS.md](../FINDINGS.md) for target provenance and the full narrative.
 
 ---
 
@@ -292,7 +295,7 @@ python scripts/run_experiment.py   # Interactive wizard
 
 1. Read [AGENTS.md](../AGENTS.md) for coding standards
 2. Run `pytest tests/` (102 tests should pass)
-3. Areas where help is especially welcome: closing the remaining history and psychometric gaps, new agent architectures, additional tasks (PRL, DMS)
+3. Areas where help is especially welcome: teaching history networks to learn injection values from data, lesion experiments, new agent architectures, additional tasks (PRL, DMS)
 
 ---
 
@@ -329,6 +332,6 @@ python scripts/run_experiment.py   # Interactive wizard
 - Urai et al. (2019). *Nature Communications* — History effects in decision-making
 
 **Project Documentation:**
-- [FINDINGS.md](../FINDINGS.md) — Full experimental results (60+ experiments)
+- [FINDINGS.md](../FINDINGS.md) — Full experimental results (70+ experiments)
 - [AGENTS.md](../AGENTS.md) — Developer guide and coding standards
 - [README.md](../README.md) — Installation and quickstart

@@ -307,7 +307,7 @@ def _is_finite(value: object) -> bool:
     return False
 
 
-def _quality_flags(metrics: dict[str, object], task: str, is_choice_only: bool = False) -> dict[str, bool]:
+def _quality_flags(metrics: dict[str, object], task: str, is_choice_only: bool = False) -> dict[str, object]:
     psychometric = metrics.get("psychometric", {}) or {}
     history = metrics.get("history", {}) or {}
     chronometric = metrics.get("chronometric", {}) or {}
@@ -347,6 +347,19 @@ def _quality_flags(metrics: dict[str, object], task: str, is_choice_only: bool =
     else:
         chrono_ok = _is_finite(effective_slope)
 
+    # Chrono overshoot: how far the agent's slope is from the target
+    chrono_target: float | None = None
+    chrono_overshoot: float | None = None
+    if task == "ibl_2afc":
+        # Per-session median from reference.ndjson is -44 ms/unit (high
+        # variance: range -2 to -202, std ~64).  The -36 value is an
+        # approximate IBL literature target retained for continuity.
+        chrono_target = -36.0
+    elif task == "rdm":
+        chrono_target = -50.0  # Macaque RDM approximate target (ms/unit)
+    if chrono_target is not None and _is_finite(effective_slope):
+        chrono_overshoot = float(effective_slope) / chrono_target
+
     degenerate = False
     if not bias_ok:
         degenerate = True
@@ -356,7 +369,7 @@ def _quality_flags(metrics: dict[str, object], task: str, is_choice_only: bool =
         degenerate = True
     if not chrono_ok:
         degenerate = True
-    return {
+    flags: dict[str, object] = {
         "bias_ok": bias_ok,
         "history_ok": history_ok,
         "rt_ok": rt_ok,
@@ -364,6 +377,11 @@ def _quality_flags(metrics: dict[str, object], task: str, is_choice_only: bool =
         "rt_ceiling_warning": ceiling_warning,
         "degenerate": degenerate,
     }
+    if chrono_target is not None:
+        flags["chrono_target_ms_per_unit"] = chrono_target
+    if chrono_overshoot is not None:
+        flags["chrono_overshoot"] = chrono_overshoot
+    return flags
 
 
 def compute_all_metrics(df: pd.DataFrame, task: str, is_choice_only: bool = False) -> dict[str, object]:

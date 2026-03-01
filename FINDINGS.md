@@ -16,6 +16,39 @@ Fresh evidence comes from `runs/ibl_stickyq_latency/` (Sticky-Q with a 200 ms 
 
 ---
 
+## Methodological Note: Target Provenance Correction (March 2026)
+
+> **Important: behavioral targets were previously derived from mixed sources.**
+
+Prior to March 2026, the documented IBL behavioral targets were assembled from three independent sources:
+
+- **Psychometric slope (13.2):** Derived from a single IBL session (885 trials, `reference_single_session.ndjson`) that is NOT part of the 10-session aggregate.
+- **History effects (WS=0.724, LS=0.427):** Derived from the 10-session aggregate (8,406 trials, `reference.ndjson`).
+- **Chronometric slope (-36 ms/unit):** Approximate IBL literature value; neither reference file produces it (single-session: -3.6, aggregate: -15.6).
+
+This mixed provenance created an idealized "Frankenstein mouse" that no single reference dataset actually shows. Additionally, the IBL environment included a 0.5 contrast level that does not exist in the IBL biased-blocks protocol (confirmed: all 10 reference sessions use only {0, 0.0625, 0.125, 0.25, 1.0}).
+
+**Corrected targets** are now derived from per-session analysis of `reference.ndjson` (10 sessions, 8,406 trials). One degenerate session (psych=200, fit at upper bound) is excluded from psychometric statistics:
+
+| Metric | Per-session mean ± std | Per-session median | Aggregate (pooled) |
+|--------|----------------------|-------------------|-------------------|
+| Psych slope | 20.0 ± 5.7 (n=9) | 20.3 | 21.1 |
+| Chrono slope | -51.0 ± 63.7 (n=9) | -44.3 | -15.6 |
+| Win-stay | 0.72 ± 0.08 (n=10) | 0.70 | 0.725 |
+| Lose-shift | 0.47 ± 0.10 (n=10) | 0.50 | 0.434 |
+| Lapse low | 0.08 ± 0.07 (n=10) | 0.07 | 0.08 |
+| Lapse high | 0.10 ± 0.14 (n=10) | 0.07 | 0.12 |
+
+**Note on chronometric slope:** Per-session chrono slopes have enormous variance (range: -2 to -202 ms/unit). This reflects high sensitivity to individual session noise with ~500-1000 trials per session. The literature value of -36 ms/unit is retained in `eval/metrics.py` for continuity but should be interpreted cautiously.
+
+**Note on agent results:** Previous documentation reported the best single-seed result (seed 42: psych=13.16). The 5-seed validation (seeds 42, 123, 456, 789, 1337) gives: psych=12.38 ± 0.64, chrono=-34.2 ± 1.8, WS=0.706 ± 0.008, LS=0.457 ± 0.007. All subsequent reporting uses 5-seed mean ± std.
+
+Historical experiment tables (Phases 1–16) retain their original target comparisons to preserve the experimental narrative. Phase 17 final results are updated below.
+
+See `scripts/compute_reference_targets.py` and `data/ibl/reference_targets.json` for full per-session analysis.
+
+---
+
 ## Methodological Note: RT Ceiling Saturation (February 2026)
 
 > **Important caveat for interpreting chronometric slopes.**
@@ -676,7 +709,7 @@ With infrastructure bugs fixed, we re-ran the Decoupling experiment under correc
 
 ### Interpretation
 
-**Psychometric and chronometric are now excellent — simultaneously.**
+**Psychometric and chronometric are now qualitatively correct — simultaneously.**
 
 This is a significant improvement relative to all prior runs:
 
@@ -694,7 +727,7 @@ This is a significant improvement relative to all prior runs:
 
 With all infrastructure bugs fixed, the picture is now clear:
 
-1. **Intra-trial dynamics are SOLVED.** The Hybrid DDM+LSTM with curriculum learning produces excellent psychometric and chronometric curves simultaneously when the agent-environment timing is correct.
+1. **Intra-trial dynamics are SOLVED.** The Hybrid DDM+LSTM with curriculum learning produces qualitatively correct psychometric and chronometric curves simultaneously when the agent-environment timing is correct (though chrono slope overshoots the IBL target of -36 ms/unit).
 
 2. **Inter-trial dynamics are NOT SOLVED.** No history loss variant (batch-mean, per-trial, or combined) produces above-chance win-stay or lose-shift in the rollout. The LSTM hidden state does not carry forward reward/choice information in a way that biases subsequent DDM parameters.
 
@@ -1119,7 +1152,7 @@ The RT profile was `3000/3000/2615/1180/580/340` ms across contrast levels — a
 | Metric | Mean ± SD | IBL Target | Verdict |
 |--------|-----------|------------|---------|
 | Psych slope | 22.96 ± 1.94 | 13.2 | 74% overshoot |
-| Chrono slope | -64.1 ± 2.1 ms/unit | negative | Qualitatively correct, smooth RT gradient |
+| Chrono slope | -64.1 ± 2.1 ms/unit | -36 ms/unit | 1.78x overshoot (too steep) |
 | Win-stay | 0.565 ± 0.009 | 0.724 | Below target |
 | Lose-shift | 0.551 ± 0.030 | 0.427 | Above target (agent over-shifts) |
 | Lapse | ~0.002 | ~0.05 | Near-zero (agent too accurate) |
@@ -1168,7 +1201,7 @@ The initial implementation used a **learnable** lapse parameter (`lapse_logit` a
 | Lapse high | ~0.002 | 0.107 | ~0.10 |
 | Win-stay | 0.565 | 0.620 | 0.724 |
 | Lose-shift | 0.551 | 0.414 | 0.427 |
-| Chrono slope | -64.1 | -56.5 | negative |
+| Chrono slope | -64.1 | -56.5 | -36 ms/unit |
 
 The asymmetric history produced the correct WS > LS direction, and lose-shift was almost exactly at target.
 
@@ -1286,14 +1319,14 @@ The fix: make the regularization target configurable via `drift_magnitude_target
 | 8.0 | 15.96 ± 1.41 | -66.7 ± 3.6 | 0.563 ± 0.003 | 0.549 ± 0.009 |
 | 9.0 | 17.08 ± 1.22 | -69.3 ± 2.6 | 0.557 ± 0.009 | 0.556 ± 0.005 |
 | 12.0 (old default) | ~21.5 ± 1.5 | ~-70 ± 4.0 | ~0.556 | ~0.555 |
-| **IBL target** | **13.2** | **negative** | **0.724** | **0.427** |
+| **IBL target** | **13.2** | **-36 ms/unit** | **0.724** | **0.427** |
 
 Clear monotonic relationship. **Target=6.0 gives psych slope 12.76 ± 1.04**, which brackets the IBL target of 13.2 (seed 123 hit 13.13).
 
 #### Joint Production Test: Passed
 
 The critical scientific question: does reducing drift sensitivity break the other fingerprints? **No.** At `drift_magnitude_target=6.0`:
-- Chrono slope: -64.1 ± 2.4 ms/unit (unchanged from target=12)
+- Chrono slope: -64.1 ± 2.4 ms/unit (target -36; 1.78x overshoot — unchanged from target=12)
 - Win-stay: 0.556 (unchanged)
 - Lose-shift: 0.543 (unchanged)
 - Commit rate: 100%, bias: ~0.000
@@ -1304,15 +1337,140 @@ The architecture does not decouple when psychometric sensitivity is calibrated.
 
 `drift_magnitude_target` is analogous to standard DDM fitting in neuroscience — drift rate is a property of sensory cortical hardware, not a learned strategy. The honest claim: we fit one parameter (evidence sensitivity) to match the animal's psychometric curve, and the remaining three behavioral fingerprints (chronometric slope, history effects, lapse) must emerge from architectural choices without additional fitting.
 
-### Remaining Gaps
+### Phase 15: History Finetuning — Per-Trial Sigmoid Proxy Loss Is Dead (Feb 2026)
 
-- **Psychometric slope**: ~~At 18.3 with drift=20 + 3-phase. Reducing drift to ~14-16 should reach ~13.2.~~ **Calibrated.** `drift_magnitude_target=6.0` → psych 12.76 ± 1.04.
-- **Win-stay**: 0.556 vs target 0.724. Asymmetric architecture in place but untrained — needs history finetuning phase.
-- **Lose-shift**: 0.543 vs target 0.427. Same — history finetuning needed.
+#### Problem Statement
+
+Win-stay=0.556 (target 0.724) and lose-shift=0.543 (target 0.427) remained stuck at near-chance despite the asymmetric history architecture being in place. A Phase 4 history finetuning approach was implemented: freeze all parameters except history networks + scale parameters, train with per_trial_history loss.
+
+#### Infrastructure Bugs Found & Fixed (4 bugs)
+
+1. **Config→model passthrough missing.** `HybridDDMModel` was constructed without `history_bias_scale` and `history_drift_scale` from config — always used constructor defaults (0.5 and 0.0). Config values of 2.0 and 0.3 were silently ignored.
+
+2. **Rollout used config, not model.** Rollout read `self.config.history_bias_scale` (fixed float) instead of `self.model.history_bias_scale` (trained nn.Parameter). Phase 4 training updated the model parameter, but rollout never saw it.
+
+3. **Loss scale mismatch.** Training loss used `sigmoid(stay_tendency * scale * 4.0)` but rollout used `stay_tendency * scale * bound` (≈1.0). A hardcoded `4.0` vs the actual `bound` — 4x scale difference.
+
+4. **Sigmoid saturation.** With `history_bias_scale=0.5` and `bound≈1.0`, sigmoid range was [0.378, 0.622] — mathematically unable to reach WS target 0.724. Worse, the optimizer shrank `history_bias_scale` from 0.5 to 0.216 during training, collapsing the range to [0.446, 0.554].
+
+5. **Freeze exclusion incomplete.** `history_bias_scale` and `history_drift_scale` (nn.Parameters used in per-trial loss) were being frozen with everything else.
+
+All five were fixed. Verified end-to-end: config(2.0, 0.3) → model constructor → training loss (uses `bound`) → rollout (uses model params) → floor clamp prevents collapse.
+
+#### Controlled Experiments (4 runs, all seed=42)
+
+| Run | choice_weight | per_trial_weight | history_bias_scale | history_drift_scale | WS | LS | Psych |
+|-----|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| Pre-fix (baseline) | 0.5 | 0.5 | 0.5 (not passed) | 0.0 (not passed) | 0.556 | 0.513 | 13.75 |
+| Post-fix v1 (scales aligned) | 0.5 | 1.0 | 0.5 (not passed) | 0.3 (not passed) | 0.549 | 0.553 | 12.85 |
+| v3 (config passthrough fixed) | 0.5 | 1.0 | 2.0 | 0.3 | 0.522 | 0.572 | 13.66 |
+| v4 (no choice loss) | 0.0 | 1.0 | 2.0 | 0.3 | 0.516 | 0.565 | 12.94 |
+| **IBL target** | — | — | — | — | **0.724** | **0.427** | **13.2** |
+
+#### Key Finding: Per-Trial Sigmoid Proxy Loss Cannot Drive DDM Behavior
+
+Even after fixing all infrastructure bugs and removing the choice loss entirely (v4), win-stay did not move toward target. It actually **decreased** from baseline 0.556 to 0.516.
+
+**Root cause:** The per_trial_history loss trains `stay_tendency` through a **sigmoid proxy** (`P(stay) = sigmoid(tendency * scale * bound)`), but actual behavioral win-stay/lose-shift emerge from the **DDM simulation** — a stochastic process with drift, noise, bounds, and attention gating. These are fundamentally different functions. A well-converged sigmoid loss does not produce corresponding DDM behavior because:
+
+1. The sigmoid maps tendency → probability directly, but the DDM maps tendency → starting-point shift + drift bias → noisy evidence accumulation → boundary crossing probability. These are completely different transfer functions.
+2. The optimizer learned to produce negative stay_tendency (shift bias) despite the loss pushing toward positive values — the loss gradient through the sigmoid was weaker than other implicit gradients.
+3. Even with `choice_weight=0.0`, the training forward pass runs the DDM with history effects, creating indirect gradient paths that can counteract the sigmoid loss.
+
+**Scientific interpretation:** This is analogous to the `history_supervision` dead code finding — another loss that appeared to work in theory but failed in practice. The `history_supervision` loss failed because it operated on detached tensors (no gradient). The `per_trial_history` loss fails because its proxy function (sigmoid) does not model the actual mechanism (DDM simulation). Both produce converging loss values with zero behavioral effect.
+
+#### What Did NOT Break
+
+Psychometric slope remained stable across all 4 runs (12.85–13.75, target 13.2). Chronometric slope was stable at ~-64 ms/unit. Commit rate 100%, bias ~0. The Phase 4 freeze mechanism works correctly — it protects the trained DDM while allowing history network training.
+
+#### Implications for Next Steps
+
+The per_trial_history sigmoid proxy loss should be considered **dead** for driving behavioral history effects through the DDM. Future approaches should either:
+
+1. **Backprop through the DDM directly** — compute behavioral P(stay) from the DDM simulation itself, not a sigmoid approximation. This requires the existing differentiable Euler-Maruyama simulator to be part of the history loss computation.
+2. **Reinforcement learning with shaped reward** — add a reward bonus for win-stay/lose-shift behavior during rollout, letting the agent discover history effects through its own experience.
+3. **Direct parameter fitting** — treat history_bias_scale and history_drift_scale as hyperparameters (not trained), sweep them to find values that produce the target WS/LS. This is less elegant but follows the same pattern as drift_magnitude_target calibration.
+
+### Remaining Gaps (as of Phase 15)
+
+- **Psychometric slope**: **Calibrated.** `drift_magnitude_target=6.0` → psych 12.76 ± 1.04.
+- **Chronometric slope**: -64 ms/unit vs target -36. 1.78x overshoot. Independent knob not yet identified.
+- **Win-stay**: 0.556 vs target 0.724. Per-trial sigmoid proxy loss proven ineffective (Phase 15). Need DDM-direct loss or parameter sweep.
+- **Lose-shift**: 0.543 vs target 0.427. Same.
 - **Lapse**: ~0.025 measured at 5% rollout lapse. May need rollout parameter increase to ~0.08.
+
+---
+
+## Phase 16: Rollout prev_reward Bug Discovery & Fix (February 2026)
+
+### The Bug
+
+A critical infrastructure bug was discovered in `HybridDDMTrainer.rollout()`: **`prev_reward` was always 0.0 in every rollout ever run.** The outcome phase check used `info["phase_step"] == 0`, which matched at the response→outcome phase *transition* step where the reward hadn't been delivered yet. The actual trial reward (1.0 for correct, -0.1 for incorrect) was returned one step later at `phase_step == 1`.
+
+**Root cause:** The IBL env's `step()` function computes reward BEFORE advancing `phase_step` but returns `info` AFTER advancement. So `info["phase_step"]` is always one step ahead of the reward in the same step's return value:
+
+```
+Step N:   env computes reward=0.0 (transition), advances phase_step 0→1, returns info{phase_step=1}
+Step N+1: env computes reward=-0.1 (actual trial reward), advances phase_step 1→2, returns info{phase_step=2}
+```
+
+The old check `== 0` never matched a step that carried a real reward. The fix: `== 0` → `== 1`.
+
+**Impact:** This single bug invalidated ALL rollout-based history analysis. Because `prev_reward` was always 0.0 (≤ 0.5), all trials were routed through the `lose_history_network`. The `win_history_network` was trained during supervised learning (which uses reference data with correct `prev_reward`) but its output was **never used in any rollout**. This explains:
+
+1. Why WS was stuck at ~0.556 regardless of any intervention (scale sweep, injection, loss changes)
+2. Why the history scale sweep (Phase 16a) showed all 16 combos producing identical WS/LS
+3. Why the injection diagnostic showed `win_tendency` had zero effect before the fix
+4. Why all Phase 15 per-trial history loss experiments failed — the loss was training networks whose outputs were never used in rollout
+
+### Phase 16a: History Scale Sweep (negative result, pre-fix)
+
+Swept `history_bias_scale` × `history_drift_scale` as frozen (non-trainable) hyperparameters: hb={1.0, 2.0, 4.0, 8.0} × hd={0.0, 0.3, 1.0, 2.0}, 16 combos, 3-phase curriculum, seed 42.
+
+**Result:** All 16 combos produced WS ~0.55-0.59, LS ~0.52-0.57. Scales had no effect. Inspection of trained model weights confirmed history network output layers had max_abs ~0.004-0.03. Higher scales produced SMALLER output weights (optimizer counteracted). This was later explained by the prev_reward bug — since all rollout trials used lose pathway, win/lose asymmetry could never emerge.
+
+### Phase 16b: Injection Diagnostic (pre-fix, confirmed bug)
+
+Loaded pretrained model (drift_calibration_v2/target6p0_seed42), injected fixed `stay_tendency` values bypassing history networks. Grid: win_tendency={0.0, 0.1, 0.2, 0.3, 0.5, 0.8} × lose_tendency={-0.1, 0.0, 0.1, 0.2, 0.3}, 30 combos.
+
+**Result (pre-fix):** `win_tendency` had ZERO effect — all 30 combos showed WS/LS identical within each `lose_tendency` column. Only `lose_tendency` moved metrics, because `prev_reward = 0.0` meant all trials routed through `inject_lose_tendency`.
+
+### Phase 16c: Injection Diagnostic (post-fix, validated)
+
+Same diagnostic rerun after the `phase_step` fix.
+
+**Result (post-fix):** `win_tendency` now has clear, monotonic effect. Key results:
+
+| win_t | lose_t | WS | LS | Psych | Chrono |
+|-------|--------|------|------|-------|--------|
+| 0.0 | 0.0 | 0.539 | 0.539 | 12.14 | -62.6 |
+| 0.5 | 0.0 | **0.727** | 0.516 | **13.5** | **-34.6** |
+| 0.5 | 0.1 | 0.764 | **0.449** | **13.6** | -29.1 |
+| 0.8 | 0.0 | 0.736 | 0.505 | **14.1** | -31.9 |
+| Target | | 0.724 | 0.427 | 13.2 | -36 |
+
+**Key findings:**
+
+1. **The DDM mechanism CAN express correct WS/LS.** At win=0.5, lose=0.0: WS=0.727 matches the IBL target of 0.724 almost exactly.
+2. **Interpolation suggests optimal values: win_t ≈ 0.5, lose_t ≈ 0.05.** Between lose=0.0 (LS=0.516) and lose=0.1 (LS=0.449), approximately lose_t=0.05 should yield LS≈0.427.
+3. **History bias IMPROVES psych slope.** At win=0.5: psych jumps from 12.14 to 13.5 (closer to target 13.2). Win-staying reinforces correct stimulus-response mapping. Only high lose_t (≥0.2) degrades psych.
+4. **Chrono slope self-calibrates.** At win=0.5, lose=0.0: chrono = -34.6 ms/unit, much closer to the -36 target than the baseline -64. History effects naturally compress RT variation.
+5. **All four metrics can be simultaneously matched** — this was previously thought to be architecturally impossible. The Decoupling Problem is not just architecturally solved but numerically achievable.
+
+### Remaining Gaps (updated)
+
+- **Psychometric slope**: **Calibrated.** Now *improves* with correct history (13.5 at win=0.5 vs 12.76 baseline).
+- **Chronometric slope**: **Self-calibrating.** -34.6 at win=0.5/lose=0.0 vs target -36 (was -64 without history).
+- **Win-stay**: **Expressible.** 0.727 at win=0.5 vs target 0.724. History networks need to learn stay_tendency ≈ 0.5 after wins.
+- **Lose-shift**: **Expressible.** ~0.427 estimated at lose≈0.05. History networks need to learn stay_tendency ≈ 0.05 after losses.
+- **Lapse**: ~0.025 measured at 5% rollout lapse. May need rollout parameter increase to ~0.08.
+- **Next step**: Retrain with the prev_reward fix in place. The history networks should now learn from correctly-routed rollout behavior.
 
 ### Artifacts
 
+- History scale sweep: `runs/history_scale_sweep/` (16 combos — negative result, pre-fix)
+- Injection diagnostic (pre-fix): previous runs in `runs/history_injection_diagnostic/`
+- Injection diagnostic (post-fix): `runs/history_injection_diagnostic/` (30 combos — validated fix)
 - Original sweep directory: `runs/hybrid_sweep_ibl_drift_choice/` (9 configs, single-seed)
 - Multi-seed validation: `runs/sweep_psych_slope_v1/` (5 seeds, drift=20/choice=0.5)
 - Drift calibration sweep (old arch): `runs/sweep_drift_v2/` ({10,12,14} × 3 seeds)
@@ -1323,6 +1481,182 @@ The architecture does not decouple when psychometric sensitivity is calibrated.
 - **Curriculum control experiment**: `runs/sweep_3phase_newarch/` (drift=20 × 3 seeds — proved 7-phase was the problem)
 - **Drift calibration v1 (dead knob)**: `runs/drift_calibration_v1/` (drift_scale={12,14,16,18} × 3 seeds — proved drift_scale is inert)
 - **Drift calibration v2 (target sweep)**: `runs/drift_calibration_v2/` (drift_magnitude_target={6,7,8,9} × 3 seeds — calibrated psych slope)
+- **History finetuning Phase 4**: `runs/history_finetune_fixed_v{1,2,3,4}/` (per-trial sigmoid proxy loss — negative result, 4 controlled experiments)
+
+---
+
+## Phase 17: Co-Evolution Training — Simultaneous Calibration of All Fingerprints (February 2026)
+
+### Motivation
+
+Phases 15–16 established two critical findings: (1) the `prev_reward` bug meant no rollout had ever correctly routed trials through the win history network, and (2) post-fix injection diagnostics proved the DDM mechanism CAN express correct WS/LS when given the right `stay_tendency` values. However, training from scratch with the fix (post-fix v1, 3 seeds) showed only modest improvement — WS moved from 0.556 to 0.578. The history networks still produced near-zero `stay_tendency` values because they had never received meaningful gradient signal during training.
+
+The solution: **co-evolution training** — train from scratch with fixed injection values active, so the LSTM and DDM parameter heads co-evolve alongside history effects rather than learning evidence circuits in isolation.
+
+### Phase 17a: Post-Fix Validation (3 seeds)
+
+After the prev_reward fix, a 3-seed validation was run with the standard config (drift_magnitude_target=6.0, 3-phase curriculum, no injection):
+
+| Metric | Pre-fix (3 seeds) | Post-fix (3 seeds) | IBL Target | Change |
+| --- | --- | --- | --- | --- |
+| Psych slope | 12.76 ± 1.04 | 11.90 (mean) | 13.2 | Slightly worse |
+| Chrono slope | -64.1 ± 2.4 | -57.6 (mean) | -36 | Improved 10% |
+| Win-stay | 0.556 ± 0.005 | 0.578 (mean) | 0.724 | +0.022 (small) |
+| Lose-shift | 0.543 ± 0.004 | 0.529 (mean) | 0.427 | -0.014 (small) |
+
+**Interpretation:** The fix was necessary but not sufficient. Training is supervised on reference data (which has correct `prev_reward`), so the fix only affects rollout routing, not what the networks learn from training gradients. The networks still produce near-zero `stay_tendency` values.
+
+### Phase 17b: Injection Fine Sweep — Fundamental Trade-Off Discovery
+
+A fine-grained injection sweep around the coarse sweet spot confirmed a **fundamental trade-off between win-stay and psychometric slope**:
+
+| win_t | lose_t | WS | LS | Psych | Chrono |
+|-------|--------|------|------|-------|--------|
+| 0.15 | 0.00 | 0.625 | 0.536 | 13.07 | -58.9 |
+| 0.20 | 0.00 | 0.663 | 0.517 | 12.18 | -54.2 |
+| 0.25 | 0.00 | 0.691 | 0.509 | 11.32 | -48.3 |
+| **0.30** | **0.00** | **0.724** | **0.500** | **10.30** | **-42.5** |
+| 0.35 | 0.00 | 0.753 | 0.492 | 9.42 | -36.9 |
+
+At win_t=0.30: WS=0.724 (exact IBL target!) but psych drops to 10.3 (from 13.2). The mechanism is clear: starting-point bias shifts the DDM accumulator, degrading evidence sensitivity at ALL contrast levels. The attention gate `(1 - |stimulus|)` only fully closes at |stimulus|=1.0; medium contrasts still receive significant history bias, flattening the psychometric curve.
+
+**Scale ratio sweep:** Tested whether shifting from starting-point bias to drift-rate bias would preserve psych slope. Result: drift-rate bias degraded psych just as much as starting-point bias. Both mechanisms operate through the same pathway. Additionally, `effective_history_bias_scale` has a `torch.clamp(min=1.0)` floor, making `hb_scale` values below 1.0 all equivalent.
+
+**Key insight:** The pretrained evidence circuits were optimized WITHOUT history. They cannot compensate for history injection post-hoc. The evidence circuits need to **co-evolve** alongside history effects.
+
+### Phase 17c: Co-Evolution v1 — Proof of Concept
+
+Trained from scratch with injection active (win=0.3, lose=0.08), drift_magnitude_target=6.0, 3 seeds:
+
+| Metric | Pre-fix baseline | Co-evo v1 (3 seeds) | IBL Target |
+| --- | --- | --- | --- |
+| Psych slope | 12.76 ± 1.04 | 10.11 ± 0.52 | 13.2 |
+| Chrono slope | -64.1 ± 2.4 | **-33.1 ± 3.8** | -36 |
+| Win-stay | 0.556 ± 0.005 | **0.714 ± 0.005** | 0.724 |
+| Lose-shift | 0.543 ± 0.004 | 0.488 ± 0.018 | 0.427 |
+| Lapse | ~0.025 | **0.056** | ~0.05 |
+
+**Breakthrough results:**
+1. **Chrono slope**: -33.1, within 8% of the -36 target. Previously -64 (78% overshoot). Co-evolution solved the chrono calibration problem as a side effect.
+2. **Win-stay**: 0.714, within 1.4% of target 0.724. Previously stuck at 0.556.
+3. **Lapse**: 0.056, nearly matching the ~0.05 target. Previously ~0.025.
+4. **Psych slope dropped to 10.11** — the evidence circuits need to compensate for history injection by using stronger drift, which requires a higher `drift_magnitude_target`.
+
+### Phase 17d: Co-Evolution v2 — Drift Magnitude Recalibration
+
+Swept drift_magnitude_target={7, 8, 9, 10} with fixed injection (win=0.3, lose=0.12):
+
+| Target | Psych | Chrono | WS | LS | Lapse |
+|--------|-------|--------|------|------|-------|
+| 7 | 10.37 | -32.5 | 0.710 | 0.480 | 0.060 |
+| 8 | 11.58 | -33.9 | 0.705 | 0.477 | 0.056 |
+| **9** | **12.85** | **-36.5** | **0.703** | **0.480** | **0.062** |
+| 10 | 13.44 | -32.7 | 0.709 | 0.477 | 0.085 |
+
+**Target=9 is the sweet spot.** Psych=12.85 (target 13.2), chrono=-36.5 (target -36, essentially exact). Evidence circuits learn stronger drift_gain to compensate for history bias, restoring psychometric sensitivity while maintaining history effects.
+
+### Phase 17e: Co-Evolution v3 & v4 — Fine-Tuning win_t × lose_t
+
+With drift_magnitude_target=9 locked, swept win_t × lose_t to simultaneously optimize WS and LS:
+
+**v3 sweep** (win={0.30, 0.32, 0.35} × lose={0.12, 0.15, 0.18}):
+
+| win_t | lose_t | WS | LS | Psych | Chrono | Lapse |
+|-------|--------|------|------|-------|--------|-------|
+| 0.30 | 0.12 | 0.704 | 0.466 | 13.08 | -31.0 | 0.074 |
+| **0.30** | **0.15** | **0.704** | **0.449** | **13.16** | **-34.6** | **0.075** |
+| 0.30 | 0.18 | 0.700 | 0.433 | 13.00 | -32.3 | 0.066 |
+| 0.32 | 0.15 | 0.719 | 0.457 | 12.44 | -34.6 | 0.075 |
+| **0.32** | **0.17** | **0.724** | **0.441** | **11.44** | **-30.9** | **0.069** |
+| 0.35 | 0.18 | 0.740 | 0.436 | 10.28 | -31.7 | 0.070 |
+
+**v4 sweep** (win={0.30, 0.31, 0.32} × lose={0.15, 0.16, 0.17, 0.18}, 12 combos) confirmed the same trade-off pattern. Results show a **persistent WS vs psych slope trade-off**: exact WS=0.724 requires win_t≥0.32, which degrades psych below 12.
+
+### Final Calibrated Results
+
+Two candidates emerge from the co-evolution sweeps, representing different trade-off positions. Results below are from single-seed (seed 42) runs; see 5-seed validation for variance bounds.
+
+**Candidate A: Psych-optimized** (win=0.30, lose=0.15, target=9)
+
+| Metric | Agent (seed 42) | Agent (5-seed mean ± std) | IBL Reference (per-session mean ± std) |
+|--------|----------------|--------------------------|---------------------------------------|
+| Psych slope | 13.16 | **12.38 ± 0.64** | 20.0 ± 5.7 |
+| Chrono slope | -34.6 ms/unit | **-34.2 ± 1.8 ms/unit** | -51 ± 64 (lit. -36) |
+| Win-stay | 0.704 | **0.706 ± 0.008** | 0.72 ± 0.08 |
+| Lose-shift | 0.449 | **0.457 ± 0.007** | 0.47 ± 0.10 |
+| Lapse | 0.075 | — | 0.08 ± 0.07 |
+| Bias | ~0.000 | — | ~0 |
+| Commit rate | 100% | — | ~100% |
+
+**Candidate B: WS-optimized** (win=0.32, lose=0.17, target=9, single seed)
+
+| Metric | Agent | IBL Reference (per-session mean ± std) |
+|--------|-------|---------------------------------------|
+| Psych slope | **11.44** | 20.0 ± 5.7 |
+| Chrono slope | **-30.9 ms/unit** | -51 ± 64 (lit. -36) |
+| Win-stay | **0.724** | 0.72 ± 0.08 |
+| Lose-shift | **0.441** | 0.47 ± 0.10 |
+| Lapse | **0.069** | 0.08 ± 0.07 |
+
+**Note on the psychometric gap:** The per-session reference mean (20.0) is substantially steeper than the old single-session target (13.2). The agent's psych slope of 12.38 is below the animal per-session range. However, the high inter-session variance (± 5.7) and the aggregate value (21.1) make this a less precise target than history effects. See the Target Provenance Note at the top for details.
+
+### 5-Seed Validation of Candidate A
+
+| Seed | Psych slope | Chrono slope | Win-stay | Lose-shift |
+|------|------------|-------------|----------|------------|
+| 42 | 13.16 | -34.6 | 0.704 | 0.449 |
+| 123 | 11.79 | -34.9 | 0.705 | 0.451 |
+| 456 | 11.96 | -36.1 | 0.709 | 0.462 |
+| 789 | 11.99 | -32.0 | 0.713 | 0.459 |
+| 1337 | 12.99 | -33.5 | 0.697 | 0.465 |
+| **Mean ± std** | **12.38 ± 0.64** | **-34.2 ± 1.8** | **0.706 ± 0.008** | **0.457 ± 0.007** |
+
+History effects and chronometric slopes are stable across seeds. Psychometric slope shows more variability (CV ~5%), with seed 42 as the highest outlier.
+
+### Progress Summary
+
+| Metric | Phase 15 (Feb start) | Phase 17 (5-seed mean) | IBL Reference (per-session mean) | Improvement |
+|--------|---------------------|----------------------|--------------------------------|-------------|
+| Psych slope | 12.76 ± 1.04 | **12.38 ± 0.64** | 20.0 ± 5.7 | Within 1.4 std of reference mean |
+| Chrono slope | -64.1 ± 2.4 | **-34.2 ± 1.8** | -51 ± 64 (lit. -36) | Corrected from overshoot |
+| Win-stay | 0.556 ± 0.005 | **0.706 ± 0.008** | 0.72 ± 0.08 | Within reference range |
+| Lose-shift | 0.543 ± 0.004 | **0.457 ± 0.007** | 0.47 ± 0.10 | Within reference range |
+| Lapse | ~0.025 | **0.075** | 0.08 ± 0.07 | Within reference range |
+
+### Scientific Interpretation
+
+#### What We Proved
+
+1. **Co-evolution is necessary.** Evidence circuits trained without history cannot accommodate history injection post-hoc. When drift_magnitude_target=6 was calibrated without history, adding history injection degraded psych from 12.76 to 10.1. Co-evolution at target=9 recovers psych to 12.38 (5-seed mean) because the LSTM learns stronger drift_gain to compensate. This mirrors biological development — sensory and history circuits must mature together.
+
+2. **The architecture produces all six fingerprints simultaneously.** The 5-seed mean achieves psych=12.38, chrono=-34.2, WS=0.706, LS=0.457, lapse=0.075, bias=0.000 — with history effects and chrono slope falling within the reference per-session range. No previous agent, across 60+ experiments, achieved this level of simultaneous behavioral realism.
+
+3. **A fundamental WS/psych trade-off exists.** Starting-point bias (via history_bias_scale) degrades evidence sensitivity because the attention gate only fully closes at |stimulus|=1.0. Higher win_tendency → more WS but flatter psychometric curve. This trade-off is an architectural ceiling that would require changes to the gating mechanism to overcome.
+
+4. **Drift magnitude target must be re-calibrated with history.** The optimal target shifts from 6.0 (no history) to 9.0 (with history injection). The evidence circuit compensates for history interference by increasing drift sensitivity — the neural network equivalent of "trying harder" when there's a prior pulling you.
+
+5. **Chrono slope self-calibrates with history.** The -64→-34.2 improvement was not independently tuned — it emerged as a natural consequence of history effects compressing RT variation. History-biased trials are faster (the starting-point shift shortens the accumulation path in the biased direction), pulling down RT at all difficulty levels and naturally reducing the chrono slope.
+
+#### What Remains
+
+1. **History effects are injected, not learned.** The `inject_win_tendency=0.30` and `inject_lose_tendency=0.15` values are hand-set hyperparameters that bypass the history networks entirely. The networks themselves still produce near-zero outputs. Teaching the networks to learn these values from data requires either: (a) backpropagation through the DDM simulation (making the stochastic rollout differentiable with respect to history parameters), or (b) a reinforcement learning signal that rewards win-stay/lose-shift behavior.
+
+2. **The WS/psych trade-off is an architectural ceiling.** The attention gate `(1 - |stimulus|)` allows history bias to leak into medium-contrast trials. A sharper gate (e.g., `(1 - |stimulus|)^k` with k > 1) or a learned confidence threshold could potentially decouple WS from psych slope.
+
+3. **Psychometric slope remains below the per-session reference mean.** The corrected target (per-session mean 20.0 ± 5.7) reveals the agent's psych slope (12.38) is shallower than typical individual mouse sessions. The old single-session target of 13.2 understated this gap. This may reflect the WS/psych trade-off or require further drift calibration.
+
+4. **Reference target uncertainty is high for chronometric slope.** Per-session chrono slopes range from -2 to -202 ms/unit (std=64). The agent's chrono slope (-34.2 ± 1.8) is stable but its match to any specific target is ambiguous given the reference variance.
+
+### Artifacts
+
+- Post-fix validation (3 seeds): `runs/post_fix_v1/`
+- Injection fine sweep v1: `runs/history_injection_diagnostic/fine_sweep/`
+- Injection fine sweep v2: `runs/history_injection_diagnostic/fine_v2/`
+- Scale ratio sweep: `runs/scale_ratio_sweep/`
+- Co-evolution v1 (3 seeds): `runs/coevolution_v1/`
+- Co-evolution v2 (drift target sweep): `runs/coevolution_v2/`
+- Co-evolution v3 (win×lose at target=9): `runs/coevolution_v3/`
+- Co-evolution v4 (final fine-tuning): `runs/coevolution_v4/`
 
 ---
 
@@ -1330,5 +1664,5 @@ The architecture does not decouple when psychometric sensitivity is calibrated.
 AnimalTaskSim: A Benchmark for Evaluating Behavioral Replication in AI Agents
 https://github.com/ermanakar/animaltasksim
 October 2025 – February 2026
-Registry: 60+ experiments spanning Sticky-Q, PPO, Bayes Observer, Hybrid DDM+LSTM, and R-DDM agents
+Registry: 70+ experiments spanning Sticky-Q, PPO, Bayes Observer, Hybrid DDM+LSTM, and R-DDM agents
 ```
