@@ -48,9 +48,9 @@ AGENT_INFO = {
     },
     "hybrid_ddm_lstm": {
         "name": "Hybrid DDM+LSTM",
-        "description": "State-of-the-art: Drift-diffusion model + recurrent policy. Realistic RT dynamics and behavioral fingerprints. Requires curriculum learning.",
-        "tasks": ["rdm_macaque"],
-        "training_time": "~5-15 minutes",
+        "description": "Three-circuit architecture: differentiable DDM + asymmetric history networks + attentional lapse. Co-evolution training produces all five behavioral fingerprints.",
+        "tasks": ["ibl_2afc", "rdm_macaque"],
+        "training_time": "~10-20 minutes",
     },
     "r_ddm": {
         "name": "R-DDM (Recurrent Drift-Diffusion)",
@@ -151,7 +151,7 @@ def select_task() -> str:
     choice = Prompt.ask(
         "Select task",
         choices=["1", "2"],
-        default="2"
+        default="1"
     )
     
     task = list(TASK_INFO.keys())[int(choice) - 1]
@@ -239,8 +239,8 @@ def configure_training(task: str, agent: str) -> dict:
     else:
         # Default values based on agent
         if agent == "hybrid_ddm_lstm":
-            default_episodes = 10
-            default_trials = 200
+            default_episodes = 20
+            default_trials = 400
         elif agent == "ppo":
             default_episodes = 5
             default_trials = 200
@@ -355,14 +355,27 @@ def run_training(config: dict) -> bool:
     # Build command based on agent
     py = sys.executable
     if agent == "hybrid_ddm_lstm":
-        # Use curriculum training for hybrid agent
+        # Use curriculum training for hybrid agent with co-evolution args
         cmd = [
             py, "scripts/train_hybrid_curriculum.py",
+            "--task", task,
             "--reference-log", TASK_INFO[task]["reference_data"],
             "--output-dir", config["output_dir"],
             "--seed", str(config["seed"]),
             "--episodes", str(config["episodes"]),
             "--trials-per-episode", str(config["trials_per_episode"]),
+            "--no-use-default-curriculum",
+            "--no-allow-early-stopping",
+            "--drift-scale", "10.0",
+            "--drift-magnitude-target", "9.0",
+            "--lapse-rate", "0.05",
+            "--inject-win-tendency", "0.30",
+            "--inject-lose-tendency", "0.15",
+            "--history-bias-scale", "2.0",
+            "--history-drift-scale", "0.3",
+            "--phase1-epochs", "15",
+            "--phase2-epochs", "10",
+            "--phase3-epochs", "10",
         ]
     elif agent == "r_ddm":
         cmd = [
