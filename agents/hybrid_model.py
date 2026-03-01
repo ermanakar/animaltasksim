@@ -13,8 +13,8 @@ class HybridDDMModel(nn.Module):
         hidden_size: int,
         device: torch.device,
         drift_scale: float = 10.0,
-        history_bias_scale: float = 0.5,
-        history_drift_scale: float = 0.0,
+        history_bias_scale: float = 2.0,
+        history_drift_scale: float = 0.3,
     ) -> None:
         super().__init__()
         self.hidden_size = hidden_size
@@ -75,6 +75,11 @@ class HybridDDMModel(nn.Module):
         self.log_noise = nn.Parameter(torch.tensor(0.0, dtype=torch.float32))
         self.history_bias_scale = nn.Parameter(torch.tensor(float(history_bias_scale), dtype=torch.float32))
         self.history_drift_scale = nn.Parameter(torch.tensor(float(history_drift_scale), dtype=torch.float32))
+        # Minimum floor for history scales — prevents optimizer from shrinking
+        # them to near-zero, which collapses the sigmoid range and kills
+        # history effects (e.g., scale=0.5 → sigmoid max 0.622, can't reach
+        # WS target 0.724). Floor of 1.0 gives sigmoid range [0.27, 0.73].
+        self._min_history_bias_scale = 1.0
         self._min_bound = 0.5
         self._min_non_decision = 150.0  # ms
         
@@ -82,6 +87,11 @@ class HybridDDMModel(nn.Module):
         with torch.no_grad():
             self.drift_head.weight.data *= drift_scale
             self.drift_head.bias.data *= drift_scale
+
+    @property
+    def effective_history_bias_scale(self) -> torch.Tensor:
+        """History bias scale with floor clamp to prevent sigmoid collapse."""
+        return torch.clamp(self.history_bias_scale, min=self._min_history_bias_scale)
 
     def init_state(self, batch_size: int = 1) -> tuple[torch.Tensor, torch.Tensor]:
         h = torch.zeros(batch_size, self.hidden_size, device=self.device)

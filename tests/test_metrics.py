@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 
 from eval.metrics import (
+    compute_all_metrics,
     compute_chronometric,
     compute_history_metrics,
     compute_psychometric,
@@ -216,3 +217,52 @@ def test_ceiling_corrected_slope():
     assert metrics.corrected_slope < 0
     # Corrected slope should differ from raw slope since ceiling levels are excluded
     assert metrics.corrected_slope != metrics.slope_ms_per_unit
+
+
+def _make_ibl_chrono_df(slope_ms_per_unit: float = -64.0) -> pd.DataFrame:
+    """Create IBL-like data with a controlled chronometric slope."""
+    rows = []
+    idx = 0
+    # IBL contrasts: {0, 0.0625, 0.125, 0.25, 1.0}
+    contrasts = [0.0, 0.0625, 0.125, 0.25, 1.0]
+    base_rt = 800.0  # RT at difficulty=0
+    for contrast in contrasts:
+        difficulty = abs(contrast) * 100.0  # percent
+        # slope_ms_per_unit is per 10% contrast, so per 1% it's slope/10
+        rt = base_rt + (slope_ms_per_unit / 10.0) * difficulty
+        rt = max(rt, 200.0)
+        for _ in range(30):
+            rows.append({
+                "task": "ibl_2afc",
+                "session_id": "s1",
+                "trial_index": idx,
+                "stimulus_contrast": contrast,
+                "action": "right" if contrast >= 0 else "left",
+                "reward": 1.0,
+                "rt_ms": rt,
+                "prev_action": "right" if idx > 0 else None,
+                "prev_reward": 1.0 if idx > 0 else None,
+                "prev_correct": 1.0 if idx > 0 else None,
+            })
+            idx += 1
+    return pd.DataFrame(rows)
+
+
+def test_chrono_overshoot_ibl():
+    """chrono_overshoot is computed as agent_slope / target_slope for IBL task."""
+    df = _make_ibl_chrono_df(slope_ms_per_unit=-64.0)
+    metrics = compute_all_metrics(df, task="ibl_2afc")
+    quality = metrics["quality"]
+    assert quality["chrono_target_ms_per_unit"] == -36.0
+    # -64 / -36 ≈ 1.78 — overshoot > 1 means steeper than target
+    assert quality["chrono_overshoot"] == pytest.approx(64.0 / 36.0, rel=0.3)
+    assert quality["chrono_overshoot"] > 1.0
+
+
+def test_chrono_overshoot_absent_for_unknown_task():
+    """chrono_overshoot is not present for unknown tasks."""
+    df = _make_ibl_chrono_df()
+    metrics = compute_all_metrics(df, task="custom_task")
+    quality = metrics.get("quality", {})
+    assert "chrono_overshoot" not in quality
+    assert "chrono_target_ms_per_unit" not in quality

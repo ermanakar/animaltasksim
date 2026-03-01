@@ -39,9 +39,12 @@ class HybridTrainingConfig:
     drift_scale: float = 10.0  # Scale drift_head initialization to enable stronger evidence effects
     drift_magnitude_target: float = 12.0  # Target drift_gain for drift_magnitude regularization
     curriculum: CurriculumConfig | None = None  # If set, use curriculum learning
-    history_bias_scale: float = 0.5  # History bias can shift starting point by ±scale*bound
-    history_drift_scale: float = 0.0  # History bias can add ±scale to drift rate (0=disabled)
+    history_bias_scale: float = 2.0  # History bias can shift starting point by ±scale*bound (was 0.5; too small for sigmoid to reach WS=0.724)
+    history_drift_scale: float = 0.3  # History bias can add ±scale to drift rate (was 0.0; needed for high-contrast trials)
     lapse_rate: float = 0.05  # Fixed attentional lapse probability (not learnable; see FINDINGS.md)
+    freeze_history_scales: bool = False  # Freeze history_bias_scale/history_drift_scale as non-trainable hyperparams
+    inject_win_tendency: float | None = None  # Override stay_tendency after wins (bypass history network)
+    inject_lose_tendency: float | None = None  # Override stay_tendency after losses (bypass history network)
 
     def __post_init__(self) -> None:
         paths = ProjectPaths.from_cwd()

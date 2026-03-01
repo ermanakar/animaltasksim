@@ -96,11 +96,22 @@ class TrainCurriculumArgs:
     history_history_supervision_weight: float = 0.4
     history_per_trial_history_weight: float = 0.5
     history_max_commit_steps: int = 300
-    history_bias_scale: float = 0.5  # History bias can shift starting point by ±scale*bound
-    history_drift_scale: float = 0.0  # History bias can add ±scale to drift rate (0=disabled)
+    history_bias_scale: float = 2.0  # History bias can shift starting point by ±scale*bound
+    history_drift_scale: float = 0.3  # History bias can add ±scale to drift rate
     history_freeze_except_history_bias: bool = True  # Freeze all but history_bias_head in Phase 7
     history_bias_lr: float = 3e-3  # Dedicated LR for history_bias_head in Phase 7
     lapse_rate: float = 0.05  # Fixed attentional lapse probability (not learnable)
+    freeze_history_scales: bool = False  # Freeze history scale params as non-trainable hyperparams
+    inject_win_tendency: float | None = None  # Override stay_tendency after wins in rollout (diagnostic/calibration)
+    inject_lose_tendency: float | None = None  # Override stay_tendency after losses in rollout (diagnostic/calibration)
+
+    # Phase 4: History finetuning (opt-in, appended after 3-phase curriculum)
+    phase4_history_finetune: bool = False  # Enable Phase 4 history finetuning
+    phase4_epochs: int = 10
+    phase4_per_trial_history_weight: float = 0.5
+    phase4_choice_weight: float = 1.0
+    phase4_drift_magnitude_weight: float = 0.5
+    phase4_history_bias_lr: float = 3e-3
 
 
 def main(args: TrainCurriculumArgs) -> None:
@@ -171,8 +182,26 @@ def main(args: TrainCurriculumArgs) -> None:
             ),
             success_criteria={},  # Final phase, no hard criteria
         )
+        phases = [phase1, phase2, phase3]
+
+        # Phase 4: history finetuning (opt-in)
+        if args.phase4_history_finetune:
+            phase4 = CurriculumPhase(
+                name="phase4_history_finetune",
+                epochs=args.phase4_epochs,
+                loss_weights=LossWeights(
+                    choice=args.phase4_choice_weight,
+                    per_trial_history=args.phase4_per_trial_history_weight,
+                    drift_magnitude=args.phase4_drift_magnitude_weight,
+                ),
+                success_criteria={},
+                freeze_except_history_bias=True,
+                history_bias_lr=args.phase4_history_bias_lr,
+            )
+            phases.append(phase4)
+
         curriculum = CurriculumConfig(
-            phases=[phase1, phase2, phase3],
+            phases=phases,
             allow_early_stopping=args.allow_early_stopping,
             checkpoint_each_phase=args.checkpoint_each_phase,
         )
@@ -217,6 +246,9 @@ def main(args: TrainCurriculumArgs) -> None:
         history_bias_scale=args.history_bias_scale,
         history_drift_scale=args.history_drift_scale,
         lapse_rate=args.lapse_rate,
+        freeze_history_scales=args.freeze_history_scales,
+        inject_win_tendency=args.inject_win_tendency,
+        inject_lose_tendency=args.inject_lose_tendency,
     )
     
     print(f"\n{'='*80}")

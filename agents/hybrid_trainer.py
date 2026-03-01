@@ -44,8 +44,13 @@ class HybridDDMTrainer:
             self.config.hidden_size,
             self.device,
             drift_scale=self.config.drift_scale,
+            history_bias_scale=self.config.history_bias_scale,
+            history_drift_scale=self.config.history_drift_scale,
         )
         self.model.to(self.device)
+        if self.config.freeze_history_scales:
+            self.model.history_bias_scale.requires_grad_(False)
+            self.model.history_drift_scale.requires_grad_(False)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.config.learning_rate)
 
     # ------------------------------------------------------------------
@@ -466,7 +471,7 @@ class HybridDDMTrainer:
                     
                     effective_drift = drift + gated_history_drift
                     
-                    stay_shift = stay_tendency_val * self.model.history_bias_scale * bound
+                    stay_shift = stay_tendency_val * self.model.effective_history_bias_scale * bound
                     effective_bias = bias_val + stay_shift * prev_direction
                     
                     # ------------------------------------------------------------------
@@ -555,7 +560,7 @@ class HybridDDMTrainer:
                     prob_buffer.append(float(prob_right.detach().cpu()))
                     prob_tensor_buffer.append(prob_right)
                     stay_tendency_buffer.append(out["stay_tendency"])
-                    history_logit = history_bias_val * self.model.history_bias_scale * 4.0
+                    history_logit = history_bias_val * self.model.effective_history_bias_scale * bound
                     history_prob_stay = torch.sigmoid(history_logit)
                     history_prob_tensor_buffer.append(history_prob_stay)
 
@@ -645,8 +650,12 @@ class HybridDDMTrainer:
                 pt_hist_loss = torch.zeros(1, device=self.device)
                 if weights.per_trial_history > 0.0 and stay_tendency_buffer:
                     stay_tendency_tensor = torch.cat(stay_tendency_buffer).squeeze()
-                    # Convert stay_tendency to P(stay) via sigmoid using learned scale
-                    stay_prob = torch.sigmoid(stay_tendency_tensor * self.model.history_bias_scale * 4.0)
+                    # Convert stay_tendency to P(stay) via sigmoid.
+                    # Scale must match rollout: stay_shift = tendency * bias_scale * bound.
+                    # Previously used a hardcoded 4.0 which created a scale mismatch —
+                    # the loss would converge while rollout effects remained tiny.
+                    avg_bound = torch.cat(bound_buffer).mean().detach() if bound_buffer else torch.tensor(1.0, device=self.device)
+                    stay_prob = torch.sigmoid(stay_tendency_tensor * self.model.effective_history_bias_scale * avg_bound)
                     # Extract prev_action and prev_reward from features
                     prev_act = torch.from_numpy(session.features[:, 3]).to(self.device)
                     prev_rew = torch.from_numpy(session.features[:, 4]).to(self.device)
@@ -976,15 +985,25 @@ class HybridDDMTrainer:
                         noise = out["noise"].item()
                         bias = out["bias"].item()
                         stay_tendency = out["stay_tendency"].item()
+                        # Override with injected values if configured (diagnostic mode)
+                        if self.config.inject_win_tendency is not None:
+                            if prev_reward > 0.5:
+                                stay_tendency = self.config.inject_win_tendency
+                            else:
+                                stay_tendency = self.config.inject_lose_tendency or 0.0
                         non_decision_ms = out["non_decision_ms"].item()
 
                         # Combine DDM bias with history-dependent stay bias
                         prev_direction = 1.0 if prev_action_val == 1 else (-1.0 if prev_action_val == -1 else 0.0)
+                        # Use trained model parameters (not config defaults) so
+                        # Phase 4 finetuning actually affects rollout behavior.
+                        hb_scale = self.model.effective_history_bias_scale.item()
+                        hd_scale = self.model.history_drift_scale.item()
                         # Starting-point bias: affects ambiguous trials
-                        stay_shift = stay_tendency * self.config.history_bias_scale * bound
+                        stay_shift = stay_tendency * hb_scale * bound
                         combined_start = bias + stay_shift * prev_direction
                         # Drift-rate bias: affects ALL trials including high-coherence
-                        history_drift = stay_tendency * self.config.history_drift_scale * prev_direction
+                        history_drift = stay_tendency * hd_scale * prev_direction
                         
                         # Attention gate: suppress history drift when stimulus contrast is high
                         confidence = min(abs(stimulus), 1.0)
@@ -1035,7 +1054,7 @@ class HybridDDMTrainer:
                     action = wait_action
                 observation, reward, terminated, truncated, info = env.step(action)
                 cumulative_reward += float(reward)
-                if info["phase"] == "outcome" and info.get("phase_step", 0) == 0:
+                if info["phase"] == "outcome" and info.get("phase_step", 0) == 1:
                     actual_rt_ms = float((env._rt_steps or 0) * step_ms)  # noqa: SLF001
                     if actual_rt_ms > 0:
                         rt_tracker.append(actual_rt_ms)
@@ -1220,15 +1239,22 @@ def train_hybrid_curriculum(config: HybridTrainingConfig) -> dict[str, Any]:
             # Save original optimizer and freeze non-history params
             original_optimizer = trainer.optimizer
             for name, param in trainer.model.named_parameters():
-                # Keep win/lose history networks and history_bias_head trainable
-                if "history_network" not in name and "history_bias_head" not in name:
+                # Keep win/lose history networks, history_bias_head,
+                # and scale parameters used in per-trial history loss trainable
+                if (
+                    "history_network" not in name
+                    and "history_bias_head" not in name
+                    and "history_bias_scale" not in name
+                    and "history_drift_scale" not in name
+                ):
                     param.requires_grad_(False)
                     frozen_params.append((name, param))
             # Create dedicated optimizer for history modules only
             hb_lr = phase.history_bias_lr or trainer.config.learning_rate * 10
             history_params = list(trainer.model.win_history_network.parameters()) + \
                              list(trainer.model.lose_history_network.parameters()) + \
-                             list(trainer.model.history_bias_head.parameters())
+                             list(trainer.model.history_bias_head.parameters()) + \
+                             [trainer.model.history_bias_scale, trainer.model.history_drift_scale]
             trainer.optimizer = torch.optim.Adam(history_params, lr=hb_lr)
 
         # Train with phase-specific loss weights
