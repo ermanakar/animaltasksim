@@ -43,6 +43,7 @@ This result required 70+ experiments across five agent architectures. The path t
 
 Most computational models of decision-making either maximize reward (producing unrealistic step-function psychometric curves) or fit parameters to aggregate statistics (losing trial-by-trial dynamics). Neither approach answers the question this project addresses:
 
+> [!NOTE]
 > **What computational structures are necessary to produce the specific decision patterns observed in biological brains?**
 
 If a model reproduces an animal's behavioral fingerprint through its architecture rather than parameter fitting, that architecture becomes a testable theory of how the underlying neural circuits work. The model's components make predictions — about what happens when you lesion specific pathways, about how circuits interact during development, about which behaviors are computationally coupled — that can be verified against real neural recordings.
@@ -55,40 +56,40 @@ AnimalTaskSim provides the experimental framework for this approach: faithful re
 
 The model decomposes perceptual decision-making into three independent circuits that mirror known brain organization:
 
-```
-  Stimulus features                Previous trial outcome
-        │                                    │
-        ▼                                    ▼
-┌───────────────────┐            ┌─────────────────────────┐
-│ Circuit 1:        │            │ Circuit 2:              │
-│ Evidence          │            │ History                 │
-│                   │            │                         │
-│ LSTM (12→64)      │            │ Win MLP   (2→8→1)       │
-│   ↓               │            │ Lose MLP  (2→8→1)       │
-│ DDM param heads   │            │ Routed by prev_reward   │
-│ (drift, bound,    │            │                         │
-│  bias, noise,     │            │ Output: stay_tendency   │
-│  non-decision)    │            └────────────┬────────────┘
-└────────┬──────────┘                         │
-         │                          ┌─────────┴─────────┐
-         │                          │  Attention gate   │
-         │                          │  gate = 1 - |stim|│
-         │                          └─────────┬─────────┘
-         │                                    │
-         └──────────────┬─────────────────────┘
-                        ▼
-         ┌──────────────────────────────┐
-         │  Differentiable DDM          │
-         │  Euler-Maruyama, 120 steps   │
-         │  Soft boundary (sigmoid)     │
-         └──────────────┬───────────────┘
-                        ▼
-         ┌──────────────────────────────┐
-         │  Circuit 3: Lapse (5%)       │
-         │  Bernoulli → random choice   │
-         └──────────────────────────────┘
-                        ▼
-                   Choice + RT
+```mermaid
+flowchart TB
+    subgraph inputs [" "]
+        S["Stimulus features"]
+        P["Previous trial outcome"]
+    end
+
+    subgraph C1 ["Circuit 1: Evidence Accumulation"]
+        LSTM["LSTM (12 → 64)"]
+        HEADS["DDM parameter heads<br/><i>drift, bound, bias, noise, ndt</i>"]
+    end
+
+    subgraph C2 ["Circuit 2: History Processing"]
+        WIN["Win MLP (2→8→1)"]
+        LOSE["Lose MLP (2→8→1)"]
+        GATE["Attention gate<br/><i>gate = 1 − |stimulus|</i>"]
+    end
+
+    S --> LSTM --> HEADS
+    P -->|"prev_reward > 0.5"| WIN
+    P -->|"prev_reward ≤ 0.5"| LOSE
+    WIN & LOSE --> GATE
+
+    HEADS --> DDM["Differentiable DDM<br/>Euler-Maruyama · 120 steps"]
+    GATE -->|"drift bias"| DDM
+
+    DDM --> LAPSE["Circuit 3: Lapse (5%)<br/><i>Bernoulli → random choice</i>"]
+    LAPSE --> OUT(["Choice + RT"])
+
+    style C1 fill:#dbe9f6,stroke:#2166ac
+    style C2 fill:#fdebd0,stroke:#e6850e
+    style LAPSE fill:#f5b7b1,stroke:#c0392b
+    style DDM fill:#f0f0f0,stroke:#333
+    style OUT fill:#fff,stroke:#333
 ```
 
 **Circuit 1 — Evidence accumulation.** An LSTM processes stimulus features and outputs DDM parameters (drift rate, decision bound, starting-point bias, noise, non-decision time). The DDM simulator then accumulates stochastic evidence over 120 Euler-Maruyama steps, producing both a choice and a reaction time. This is what generates the chronometric curve: harder stimuli require more evidence accumulation steps, producing longer reaction times.
@@ -113,9 +114,10 @@ This parallels a prediction from developmental neuroscience: sensory processing 
 
 ### Protocol fidelity as a first-order concern
 
-The IBL biased-blocks protocol uses five contrast levels: {0, 0.0625, 0.125, 0.25, 1.0}. Our environment incorrectly included a sixth level (0.5) that does not exist in the experimental protocol. Removing this single stimulus level — with no changes to the model — improved psychometric slope by 44% (12.38 → 17.84) and win-stay rate by 4% (0.706 → 0.734). The spurious contrast diluted the psychometric fit and masked the model's true discriminability.
-
-This is a cautionary result for computational neuroscience: a simulation environment that does not exactly match the experimental protocol can systematically bias all downstream metrics.
+> [!IMPORTANT]
+> The IBL biased-blocks protocol uses five contrast levels: {0, 0.0625, 0.125, 0.25, 1.0}. Our environment incorrectly included a sixth level (0.5) that does not exist in the experimental protocol. Removing this single stimulus level — with no changes to the model — improved psychometric slope by 44% (12.38 → 17.84) and win-stay rate by 4% (0.706 → 0.734). The spurious contrast diluted the psychometric fit and masked the model's true discriminability.
+>
+> This is a cautionary result for computational neuroscience: a simulation environment that does not exactly match the experimental protocol can systematically bias all downstream metrics.
 
 ### Twelve failure modes documented
 
@@ -136,13 +138,14 @@ The complete experimental narrative is in [FINDINGS.md](FINDINGS.md).
 
 ## Limitations
 
-1. **History effects are injected, not learned.** The win-stay and lose-shift tendencies (`inject_win_tendency=0.30`, `inject_lose_tendency=0.15`) are hand-set hyperparameters that bypass the history networks. The networks themselves produce near-zero outputs. The architecture can *express* animal-like history effects, but it cannot yet *discover* them from data.
+> [!WARNING]
+> **History effects are injected, not learned.** The win-stay and lose-shift tendencies (`inject_win_tendency=0.30`, `inject_lose_tendency=0.15`) are hand-set hyperparameters that bypass the history networks. The networks themselves produce near-zero outputs. The architecture can *express* animal-like history effects, but it cannot yet *discover* them from data.
 
-2. **Single task validation.** Results are validated on IBL mouse 2AFC only. The macaque RDM task produces correct intra-trial dynamics (chronometric slope) but lacks the history effects that are the primary focus of this work (consistent with the overtrained animal in the Roitman & Shadlen dataset). PRL and DMS tasks are not yet implemented.
+1. **Single task validation.** Results are validated on IBL mouse 2AFC only. The macaque RDM task produces correct intra-trial dynamics (chronometric slope) but lacks the history effects that are the primary focus of this work (consistent with the overtrained animal in the Roitman & Shadlen dataset). PRL and DMS tasks are not yet implemented.
 
-3. **Lapse variance across seeds.** Lapse rates range from 0.043 to 0.156 across the five validation seeds (mean 0.086 ± 0.049), suggesting the lapse mechanism interacts with training dynamics in ways not fully understood.
+2. **Lapse variance across seeds.** Lapse rates range from 0.043 to 0.156 across the five validation seeds (mean 0.086 ± 0.049), suggesting the lapse mechanism interacts with training dynamics in ways not fully understood.
 
-4. **Reference target uncertainty.** Per-session chronometric slopes in the IBL data have enormous variance (range: -2 to -202 ms/unit, std ± 64). Any single-number target for this metric should be interpreted cautiously.
+3. **Reference target uncertainty.** Per-session chronometric slopes in the IBL data have enormous variance (range: -2 to -202 ms/unit, std ± 64). Any single-number target for this metric should be interpreted cautiously.
 
 ---
 
@@ -175,7 +178,25 @@ python scripts/make_dashboard.py \
     --opts.output runs/<run_dir>/dashboard.html
 ```
 
-Training runs on CPU in under 20 minutes with less than 4 GB RAM.
+> [!TIP]
+> Training runs on CPU in under 20 minutes with less than 4 GB RAM.
+
+### Experiment Lifecycle
+
+Every experiment follows four stages, each producing artifacts consumed by the next:
+
+```mermaid
+flowchart LR
+    T["Train"]:::stage -->|"trials.ndjson\nmodel.pt"| E["Evaluate"]:::stage
+    E -->|"metrics.json"| V["Visualize"]:::stage
+    V -->|"dashboard.html"| R["Register"]:::stage
+    R -->|"registry.json"| DB[("Run Archive")]:::store
+
+    classDef stage fill:#2166ac,color:#fff,stroke:#1a1a2e
+    classDef store fill:#f0f0f0,stroke:#333
+```
+
+The interactive wizard (`python scripts/run_experiment.py`) chains all four stages automatically.
 
 ---
 
@@ -192,6 +213,22 @@ eval/              Psychometric, chronometric, and history metrics; schema valid
 scripts/           CLI entrypoints (all use tyro.cli with dataclass configs)
 data/              Reference animal data (IBL: 8,406 trials; macaque: 2,611 trials)
 tests/             104 tests (environments, agents, metrics, schema, WFPT)
+```
+
+**Data flow:** The environment owns all trial logging — agents never write `.ndjson` directly.
+
+```mermaid
+flowchart LR
+    A["Agent"] -->|action| ENV["Env"]
+    ENV -->|obs, reward| A
+    ENV -->|validate + write| LOG["NDJSONTrialLogger"]
+    LOG --> NJ["trials.ndjson"]
+    NJ --> EVAL["evaluate_agent.py"]
+    EVAL --> MET["metrics.json"]
+    MET --> DASH["dashboard.html"]
+
+    style ENV fill:#dbe9f6,stroke:#2166ac
+    style LOG fill:#fdebd0,stroke:#e6850e
 ```
 
 ---
