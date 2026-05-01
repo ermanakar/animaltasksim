@@ -1647,6 +1647,82 @@ History effects and chronometric slopes are stable across seeds. Psychometric sl
 
 4. **Reference target uncertainty is high for chronometric slope.** Per-session chrono slopes range from -2 to -202 ms/unit (std=64). The agent's chrono slope (-34.2 ± 1.8) is stable but its match to any specific target is ambiguous given the reference variance.
 
+## Plastic History Experiments — March 2026
+
+### Question
+
+Can the hybrid agent learn history effects from a more biologically plausible local rule, rather than relying on injected win/lose tendencies?
+
+The explored hypothesis was: replace static or teacher-forced history bias with a fast plastic subsystem updated online by reward prediction error and eligibility traces, closer to a dopamine-modulated action-selection circuit.
+
+### Variants tested
+
+1. **Annealed teacher forcing + distillation + plastic history** (`plastic_history_seed_*`)
+   - kept the previous injected-history scaffolding
+   - added online plastic fast weights and a critic-like reward-prediction signal
+   - result: unstable across seeds and worse than the injection-assisted baseline on history metrics
+
+2. **Pure plastic history** (`plastic_history_pure_seed_*`)
+   - removed injected win/lose tendencies and distillation
+   - relied on online local plasticity + existing curriculum
+   - 5-seed result:
+
+| Metric | Pure plastic (5-seed mean ± std) | IBL Reference (per-session mean ± std) |
+|--------|----------------------------------|----------------------------------------|
+| Psych slope | **16.91 ± 1.60** | 20.0 ± 5.7 |
+| Chrono slope | **-59.08 ± 1.47** | -51 ± 64 |
+| Win-stay | **0.572 ± 0.017** | 0.72 ± 0.08 |
+| Lose-shift | **0.521 ± 0.020** | 0.47 ± 0.10 |
+
+   - interpretation: stable and scientifically promising, but still materially below the injected-history baseline on win-stay
+
+3. **Pure plastic v2** (`plastic_history_pure_v2_seed_42`)
+   - longer and stronger phase-4 history finetune
+   - result: stable but not better; win-stay fell to **0.545**
+
+4. **Pure plastic v3** (`plastic_history_pure_v3_seed_42`)
+   - increased the plastic pathway gain directly
+   - result: the plastic subsystem became behaviorally active (`mean_plastic_stay_tendency` rose from ~0.004 to ~0.10-0.21), but win-stay still failed to improve
+   - key lesson: the bottleneck was not merely "too little plasticity"
+
+5. **Pure plastic v4** (`plastic_history_pure_v4_seed_42`)
+   - separate positive and negative plasticity coefficients plus a counterfactual switch update after losses
+   - result: the plastic pathway became strongly active (`mean_plastic_stay_tendency` ~0.22-0.29 late in training), but behavior remained weak: **WS=0.540**, **LS=0.502**
+   - key lesson: stronger local plasticity still produced mostly a generic history bias rather than the desired win-stay / lose-shift asymmetry
+
+6. **Pure plastic v5** (`plastic_history_pure_v5_seed_42`)
+   - reinterpreted the loss-side pathway as explicit **lose-shift** pressure instead of "negative stay"
+   - result: behavior was effectively identical to v4
+   - key lesson: the story became more biologically coherent, but the optimization problem did not change enough to improve the fingerprint
+
+### Summary of what we learned
+
+1. **Teacher guidance is not the same as learned history.** It can stabilize training, but it obscures causality and did not survive removal.
+2. **Local plasticity is necessary but not sufficient.** Making a reward-prediction-error history system stronger increases internal history signals without automatically producing the right behavioral asymmetry.
+3. **The current family of history-head approaches is too narrow.** They mostly learn recent-choice bias, not the richer animal behavior of persisting, switching, or exploring depending on uncertainty and task state.
+4. **Biological plausibility helped diagnose the failure.** Reward and punishment should not be represented as a single signed stay scalar. Even after separating positive/negative updates, the model still lacked an explicit controller for persistence versus exploration.
+
+### New conclusion
+
+The next architecture should not be another refinement of the current history-bias head.
+
+The more plausible mammalian story is:
+
+- **evidence circuit**: what does the stimulus say now?
+- **value / critic circuit**: was the outcome better or worse than expected?
+- **persistence controller**: should I try again despite failure because the evidence was weak or the world is noisy?
+- **exploration / novelty controller**: should I sample an alternative because the environment may have changed or the current policy is stale?
+- **arbitration mechanism**: combine evidence, value, persistence, and exploration into the final action pressure
+
+This reframes the scientific question from "can the model learn the right history bias scalar?" to "can the model learn the control system that produces animal-like persistence, switching, and exploration under uncertainty?"
+
+### Implications for Next Steps
+
+1. **Stop spending 5-seed budgets on more history-head variants** unless the optimization objective itself changes.
+2. **Keep the current co-evolution result as the best validated behavioral match.** It remains the benchmark to beat.
+3. **Prototype a new evidence + value + persistence + exploration controller** as a new agent family rather than a patch on the existing history injection pathway.
+4. **Evaluate new metrics beyond WS/LS alone,** including retry-after-failure on ambiguous trials, exploratory switching after repeated predictable outcomes, and persistence as a function of confidence.
+
 ### Artifacts
 
 - Post-fix validation (3 seeds): `runs/post_fix_v1/`
@@ -1657,6 +1733,9 @@ History effects and chronometric slopes are stable across seeds. Psychometric sl
 - Co-evolution v2 (drift target sweep): `runs/coevolution_v2/`
 - Co-evolution v3 (win×lose at target=9): `runs/coevolution_v3/`
 - Co-evolution v4 (final fine-tuning): `runs/coevolution_v4/`
+- Plastic-history assisted 5-seed: `runs/plastic_history_seed_*/`
+- Plastic-history pure 5-seed: `runs/plastic_history_pure_seed_*/`
+- Plastic-history pure v2/v3/v4/v5 single-seed probes: `runs/plastic_history_pure_v2_seed_42/`, `runs/plastic_history_pure_v3_seed_42/`, `runs/plastic_history_pure_v4_seed_42/`, `runs/plastic_history_pure_v5_seed_42/`
 
 ---
 

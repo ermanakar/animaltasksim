@@ -111,11 +111,7 @@ def main():
     ap.add_argument("--out", type=Path, default=Path("data/ibl/reference_single_session.ndjson"))
     args = ap.parse_args()
 
-    # Public access: documented in ONE quick-start (intbrainlab / international)
-    one = ONE(base_url='https://openalyx.internationalbrainlab.org',
-              silent=True,
-              username='intbrainlab',
-              password='international')
+    one = ONE(base_url='https://openalyx.internationalbrainlab.org', silent=True)
     if args.eid:
         eid = args.eid
     else:

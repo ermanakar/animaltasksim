@@ -43,6 +43,24 @@ class HistoryMetrics:
     prev_correct_beta: float
 
 
+@dataclass(slots=True)
+class AdaptiveControlProbeMetrics:
+    retry_after_failure_weak: float
+    retry_after_failure_strong: float
+    switch_after_failure_weak: float
+    switch_after_failure_strong: float
+    weak_failure_count: int
+    strong_failure_count: int
+
+
+@dataclass(slots=True)
+class ExplorationProbeMetrics:
+    switch_after_streak_weak: float
+    switch_after_streak_strong: float
+    weak_streak_count: int
+    strong_streak_count: int
+
+
 def load_trials(path: str | Path) -> pd.DataFrame:
     """Load a validated `.ndjson` log into a DataFrame."""
 
@@ -282,6 +300,131 @@ def compute_history_metrics(df: pd.DataFrame) -> HistoryMetrics:
     return HistoryMetrics(win_stay, lose_shift, sticky, float(prev_choice_beta), float(prev_correct_beta))
 
 
+def compute_adaptive_control_probe_metrics(df: pd.DataFrame) -> AdaptiveControlProbeMetrics:
+    """Measure retry versus switch after failure split by evidence strength."""
+    if df.empty:
+        return AdaptiveControlProbeMetrics(np.nan, np.nan, np.nan, np.nan, 0, 0)
+
+    task = str(df["task"].iloc[0]) if "task" in df.columns and not df.empty else ""
+    if task == "ibl_2afc":
+        stimulus_key = "stimulus_contrast"
+    elif task == "rdm":
+        stimulus_key = "stimulus_coherence"
+    elif "stimulus_contrast" in df.columns:
+        stimulus_key = "stimulus_contrast"
+    elif "stimulus_coherence" in df.columns:
+        stimulus_key = "stimulus_coherence"
+    else:
+        return AdaptiveControlProbeMetrics(np.nan, np.nan, np.nan, np.nan, 0, 0)
+
+    data = df.copy()
+    data = data[data["action"].isin(["left", "right"])].copy()
+    data = data[data["prev_action"].isin(["left", "right"])].copy()
+    if data.empty:
+        return AdaptiveControlProbeMetrics(np.nan, np.nan, np.nan, np.nan, 0, 0)
+
+    prev_correct = pd.to_numeric(data["prev_correct"], errors="coerce")
+    data = data[prev_correct.notnull()].copy()
+    if data.empty:
+        return AdaptiveControlProbeMetrics(np.nan, np.nan, np.nan, np.nan, 0, 0)
+    data["prev_correct"] = prev_correct.loc[data.index].astype(float)
+    data["same_as_prev"] = (data["action"] == data["prev_action"]).astype(float)
+    data["difficulty_abs"] = pd.to_numeric(data[stimulus_key], errors="coerce").abs()
+    data = data[data["difficulty_abs"].notnull()].copy()
+    failures = data[data["prev_correct"] <= 0.5].copy()
+    if failures.empty:
+        return AdaptiveControlProbeMetrics(np.nan, np.nan, np.nan, np.nan, 0, 0)
+
+    difficulty_levels = np.sort(failures["difficulty_abs"].unique().astype(float))
+    split_threshold = float(np.median(difficulty_levels))
+    weak_failures = failures[failures["difficulty_abs"] <= split_threshold].copy()
+    strong_failures = failures[failures["difficulty_abs"] > split_threshold].copy()
+
+    def _ratio(values: pd.Series, transform: Callable[[pd.Series], pd.Series] | None = None) -> float:
+        if values.empty:
+            return float("nan")
+        data_series = transform(values) if transform is not None else values
+        return float(np.nanmean(data_series))
+
+    return AdaptiveControlProbeMetrics(
+        retry_after_failure_weak=_ratio(weak_failures["same_as_prev"]),
+        retry_after_failure_strong=_ratio(strong_failures["same_as_prev"]),
+        switch_after_failure_weak=_ratio(weak_failures["same_as_prev"], lambda x: 1.0 - x),
+        switch_after_failure_strong=_ratio(strong_failures["same_as_prev"], lambda x: 1.0 - x),
+        weak_failure_count=int(len(weak_failures)),
+        strong_failure_count=int(len(strong_failures)),
+    )
+
+
+def compute_exploration_probe_metrics(df: pd.DataFrame, streak_length: int = 3) -> ExplorationProbeMetrics:
+    """Measure switching after repeated rewarded action streaks split by evidence strength."""
+    if df.empty:
+        return ExplorationProbeMetrics(np.nan, np.nan, 0, 0)
+
+    task = str(df["task"].iloc[0]) if "task" in df.columns and not df.empty else ""
+    if task == "ibl_2afc":
+        stimulus_key = "stimulus_contrast"
+    elif task == "rdm":
+        stimulus_key = "stimulus_coherence"
+    elif "stimulus_contrast" in df.columns:
+        stimulus_key = "stimulus_contrast"
+    elif "stimulus_coherence" in df.columns:
+        stimulus_key = "stimulus_coherence"
+    else:
+        return ExplorationProbeMetrics(np.nan, np.nan, 0, 0)
+
+    data = df.copy()
+    data = data[data["action"].isin(["left", "right"])].copy()
+    if data.empty:
+        return ExplorationProbeMetrics(np.nan, np.nan, 0, 0)
+
+    run_lengths: list[int] = []
+    current_streak = 0
+    current_action: str | None = None
+    for _, row in data.iterrows():
+        action = row.get("action")
+        correct = bool(row.get("correct", False))
+        run_lengths.append(current_streak)
+        if action in {"left", "right"} and correct:
+            if current_action == action and current_streak > 0:
+                current_streak += 1
+            else:
+                current_streak = 1
+            current_action = action
+        else:
+            current_streak = 0
+            current_action = None
+
+    data["previous_correct_streak"] = run_lengths
+    data = data[data["previous_correct_streak"] >= streak_length].copy()
+    if data.empty:
+        return ExplorationProbeMetrics(np.nan, np.nan, 0, 0)
+
+    data["same_as_prev"] = (data["action"] == data["prev_action"]).astype(float)
+    data["difficulty_abs"] = pd.to_numeric(data[stimulus_key], errors="coerce").abs()
+    data = data[data["difficulty_abs"].notnull()].copy()
+    if data.empty:
+        return ExplorationProbeMetrics(np.nan, np.nan, 0, 0)
+
+    difficulty_levels = np.sort(data["difficulty_abs"].unique().astype(float))
+    split_threshold = float(np.median(difficulty_levels))
+    weak_streak = data[data["difficulty_abs"] <= split_threshold].copy()
+    strong_streak = data[data["difficulty_abs"] > split_threshold].copy()
+
+    def _ratio(values: pd.Series, transform: Callable[[pd.Series], pd.Series] | None = None) -> float:
+        if values.empty:
+            return float("nan")
+        data_series = transform(values) if transform is not None else values
+        return float(np.nanmean(data_series))
+
+    return ExplorationProbeMetrics(
+        switch_after_streak_weak=_ratio(weak_streak["same_as_prev"], lambda x: 1.0 - x),
+        switch_after_streak_strong=_ratio(strong_streak["same_as_prev"], lambda x: 1.0 - x),
+        weak_streak_count=int(len(weak_streak)),
+        strong_streak_count=int(len(strong_streak)),
+    )
+
+
 def _sanitize(obj: object) -> object:
     if isinstance(obj, bool):
         return obj
@@ -406,6 +549,8 @@ def compute_all_metrics(df: pd.DataFrame, task: str, is_choice_only: bool = Fals
         metrics["history"] = _sanitize(asdict(compute_history_metrics(df)))
     else:  # pragma: no cover - defensive fallback for future tasks
         metrics["history"] = _sanitize(asdict(compute_history_metrics(df)))
+    metrics["adaptive_control_probe"] = _sanitize(asdict(compute_adaptive_control_probe_metrics(df)))
+    metrics["exploration_probe"] = _sanitize(asdict(compute_exploration_probe_metrics(df)))
     metrics["quality"] = _quality_flags(metrics, task, is_choice_only)
     return _sanitize(metrics)  # type: ignore[return-value]
 
@@ -419,11 +564,15 @@ def load_and_compute(path: str | Path, is_choice_only: bool = False) -> dict[str
 
 
 __all__ = [
+    "AdaptiveControlProbeMetrics",
     "ChronometricMetrics",
+    "ExplorationProbeMetrics",
     "HistoryMetrics",
     "PsychometricMetrics",
+    "compute_adaptive_control_probe_metrics",
     "compute_all_metrics",
     "compute_chronometric",
+    "compute_exploration_probe_metrics",
     "compute_history_metrics",
     "compute_psychometric",
     "load_and_compute",

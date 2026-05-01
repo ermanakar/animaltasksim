@@ -14,7 +14,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from agents.losses import per_trial_history_loss
+from agents.losses import history_distillation_loss, per_trial_history_loss
 
 
 class TestPerTrialHistoryLoss:
@@ -205,3 +205,43 @@ class TestPerTrialEdgeCases:
         assert per_trial.item() >= batch_mean_loss.item() - 1e-8
         # And in this case per-trial should be strictly positive (variance > 0)
         assert per_trial.item() > 0.01
+
+
+class TestHistoryDistillationLoss:
+    """Direct teacher-to-student supervision for win/lose history pathways."""
+
+    def test_zero_loss_when_tendencies_match_targets(self) -> None:
+        win_tendency = torch.tensor([0.3, 0.3, 0.1, 0.1])
+        lose_tendency = torch.tensor([0.2, 0.2, 0.15, 0.15])
+        prev_action = torch.tensor([1.0, -1.0, 1.0, -1.0])
+        prev_reward = torch.tensor([1.0, 1.0, 0.0, 0.0])
+        loss = history_distillation_loss(
+            win_tendency=win_tendency,
+            lose_tendency=lose_tendency,
+            prev_action=prev_action,
+            prev_reward=prev_reward,
+            target_win_tendency=0.3,
+            target_lose_tendency=0.15,
+            no_action_value=0.0,
+        )
+        assert loss.item() == pytest.approx(0.0, abs=1e-8)
+
+    def test_gradients_flow_to_history_tendencies(self) -> None:
+        win_tendency = torch.tensor([0.05, 0.05, 0.05, 0.05], requires_grad=True)
+        lose_tendency = torch.tensor([0.02, 0.02, 0.02, 0.02], requires_grad=True)
+        prev_action = torch.tensor([1.0, -1.0, 1.0, -1.0])
+        prev_reward = torch.tensor([1.0, 1.0, 0.0, 0.0])
+        loss = history_distillation_loss(
+            win_tendency=win_tendency,
+            lose_tendency=lose_tendency,
+            prev_action=prev_action,
+            prev_reward=prev_reward,
+            target_win_tendency=0.3,
+            target_lose_tendency=0.15,
+            no_action_value=0.0,
+        )
+        loss.backward()
+        assert win_tendency.grad is not None
+        assert lose_tendency.grad is not None
+        assert win_tendency.grad.abs().sum().item() > 0.0
+        assert lose_tendency.grad.abs().sum().item() > 0.0

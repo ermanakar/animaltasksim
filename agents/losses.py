@@ -23,6 +23,7 @@ class LossWeights:
     twin_supervision: float = 0.0  # Encourage alignment with per-session DDM fits
     history_supervision: float = 0.0  # MSE loss on win-stay/lose-shift targets
     per_trial_history: float = 0.0  # Per-trial differentiable history loss
+    history_distillation: float = 0.0  # Directly teach win/lose history nets target tendencies
 
     def clamp_non_negative(self) -> None:
         """Ensure weights remain non-negative."""
@@ -37,6 +38,7 @@ class LossWeights:
         self.twin_supervision = max(0.0, float(self.twin_supervision))
         self.history_supervision = max(0.0, float(self.history_supervision))
         self.per_trial_history = max(0.0, float(self.per_trial_history))
+        self.history_distillation = max(0.0, float(self.history_distillation))
 
 
 def history_supervision_loss(
@@ -204,6 +206,36 @@ def per_trial_history_loss(
     return loss.squeeze()
 
 
+def history_distillation_loss(
+    win_tendency: torch.Tensor,
+    lose_tendency: torch.Tensor,
+    prev_action: torch.Tensor,
+    prev_reward: torch.Tensor,
+    target_win_tendency: float,
+    target_lose_tendency: float,
+    mask: torch.Tensor | None = None,
+    no_action_value: float = 0.0,
+) -> torch.Tensor:
+    """Directly supervise the asymmetric history networks toward teacher values."""
+    valid = prev_action.ne(no_action_value)
+    if mask is not None:
+        valid = valid & mask
+
+    win_mask = valid & (prev_reward > 0.5)
+    lose_mask = valid & (prev_reward <= 0.5)
+    loss = torch.zeros(1, device=win_tendency.device, dtype=win_tendency.dtype)
+
+    if win_mask.any():
+        win_target = torch.full_like(win_tendency[win_mask], target_win_tendency)
+        loss = loss + F.mse_loss(win_tendency[win_mask], win_target)
+
+    if lose_mask.any():
+        lose_target = torch.full_like(lose_tendency[lose_mask], target_lose_tendency)
+        loss = loss + F.mse_loss(lose_tendency[lose_mask], lose_target)
+
+    return loss.squeeze()
+
+
 __all__ = [
     "LossWeights",
     "choice_loss",
@@ -214,4 +246,5 @@ __all__ = [
     "drift_supervision_loss",
     "non_decision_supervision_loss",
     "per_trial_history_loss",
+    "history_distillation_loss",
 ]

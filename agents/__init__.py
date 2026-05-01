@@ -1,3 +1,15 @@
 """Baseline agents shipped with AnimalTaskSim."""
 
-__all__: list[str] = []
+from agents.adaptive_control_agent import (
+    AdaptiveControlConfig,
+    AdaptiveControlModel,
+    AdaptiveControlTrainer,
+    train_adaptive_control,
+)
+
+__all__ = [
+    "AdaptiveControlConfig",
+    "AdaptiveControlModel",
+    "AdaptiveControlTrainer",
+    "train_adaptive_control",
+]

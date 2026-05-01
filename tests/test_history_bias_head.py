@@ -13,10 +13,14 @@ Validates that:
 
 from __future__ import annotations
 
+from pathlib import Path
+
+import pytest
 import torch
 import torch.nn.functional as F
 
 from agents.hybrid_ddm_lstm import HybridDDMModel
+from agents.losses import per_trial_history_loss
 
 
 def _make_model(hidden_size: int = 16, **kwargs) -> HybridDDMModel:
@@ -70,6 +74,7 @@ class TestHistoryArchitecture:
         assert "history_bias" in out
         assert "stay_tendency" in out
         assert "win_stay_tendency" in out
+        assert "lose_shift_tendency" in out
         assert "lose_stay_tendency" in out
         assert out["stay_tendency"].shape == out["bias"].shape
 
@@ -119,7 +124,7 @@ class TestAsymmetricPathwaySelection:
     """Verify win/lose pathway routing based on prev_reward."""
 
     def test_win_loss_pathway_selection(self) -> None:
-        """When prev_reward=1 → output from win_network; prev_reward=0 → lose_network."""
+        """When prev_reward=1 use win-stay; when prev_reward=0 use lose-shift."""
         model = _make_model()
         # Set different weights for win and lose networks to distinguish them
         with torch.no_grad():
@@ -127,9 +132,9 @@ class TestAsymmetricPathwaySelection:
             model.win_history_network[0].bias.fill_(0.5)
             model.win_history_network[2].weight.fill_(1.0)
             model.win_history_network[2].bias.fill_(0.0)
-            model.lose_history_network[0].weight.fill_(-1.0)
-            model.lose_history_network[0].bias.fill_(-0.5)
-            model.lose_history_network[2].weight.fill_(-1.0)
+            model.lose_history_network[0].weight.fill_(1.0)
+            model.lose_history_network[0].bias.fill_(0.5)
+            model.lose_history_network[2].weight.fill_(1.0)
             model.lose_history_network[2].bias.fill_(0.0)
 
         state = model.init_state(1)
@@ -142,9 +147,13 @@ class TestAsymmetricPathwaySelection:
         x_lose = torch.tensor([[0.1, 0.1, 1.0, 1.0, 0.0, 0.0, 0.5]])
         out_lose, _ = model(x_lose, state)
 
-        # stay_tendency should match the appropriate pathway
-        assert abs(out_win["stay_tendency"].item() - out_win["win_stay_tendency"].item()) < 1e-6
-        assert abs(out_lose["stay_tendency"].item() - out_lose["lose_stay_tendency"].item()) < 1e-6
+        # stay_tendency should match the appropriate pathway semantics after the
+        # final tanh nonlinearity applied to the combined history signal.
+        expected_win_stay = torch.tanh(out_win["win_stay_tendency"])
+        expected_lose_stay = -torch.tanh(out_lose["lose_shift_tendency"])
+        assert abs(out_win["stay_tendency"].item() - expected_win_stay.item()) < 1e-6
+        assert abs(out_lose["stay_tendency"].item() - expected_lose_stay.item()) < 1e-6
+        assert abs(out_lose["lose_stay_tendency"].item() + out_lose["lose_shift_tendency"].item()) < 1e-6
 
         # And they should differ from each other
         assert out_win["stay_tendency"].item() != out_lose["stay_tendency"].item()
@@ -188,6 +197,23 @@ class TestSeparateHistoryStream:
 
         # Stay tendency should differ between win and loss
         assert out_wr["stay_tendency"].item() != out_lr["stay_tendency"].item()
+
+    def test_loss_pathway_represents_shift_pressure(self) -> None:
+        """Positive lose head output should reduce stay tendency after losses."""
+        model = _make_model()
+        with torch.no_grad():
+            model.lose_history_network[0].weight.fill_(0.5)
+            model.lose_history_network[0].bias.fill_(0.1)
+            model.lose_history_network[2].weight.fill_(0.5)
+            model.lose_history_network[2].bias.fill_(0.0)
+
+        state = model.init_state(1)
+        x_lose_right = torch.tensor([[0.1, 0.1, 1.0, 1.0, 0.0, 0.0, 0.5]])
+        out, _ = model(x_lose_right, state)
+
+        assert out["lose_shift_tendency"].item() > 0.0
+        assert out["lose_stay_tendency"].item() < 0.0
+        assert out["stay_tendency"].item() < 0.0
 
     def test_history_network_independent_of_coherence(self) -> None:
         """stay_tendency should not change when only coherence changes."""
@@ -249,7 +275,7 @@ class TestGradientIsolation:
             model.win_history_network[2].weight.fill_(0.1)
 
         # Use a win trial (prev_reward=1) so gradient flows to win_history_network
-        x = torch.tensor([[0.1, 0.1, 1.0, 1.0, 1.0, 1.0, 0.5]])
+        x = torch.tensor([[0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.5]])
         state = model.init_state(1)
         out, _ = model(x, state)
 
@@ -272,7 +298,7 @@ class TestGradientIsolation:
             model.win_history_network[0].weight.fill_(0.5)
             model.win_history_network[2].weight.fill_(0.1)
 
-        x = torch.tensor([[0.1, 0.1, 1.0, 1.0, 1.0, 1.0, 0.5]])
+        x = torch.tensor([[0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.5]])
         state = model.init_state(1)
         out, _ = model(x, state)
 
@@ -292,7 +318,7 @@ class TestGradientIsolation:
             model.win_history_network[0].weight.fill_(0.5)
             model.win_history_network[2].weight.fill_(0.1)
 
-        x = torch.tensor([[0.1, 0.1, 1.0, 1.0, 1.0, 1.0, 0.5]])
+        x = torch.tensor([[0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.5]])
         state = model.init_state(1)
         out, _ = model(x, state)
 
@@ -302,6 +328,69 @@ class TestGradientIsolation:
 
         assert model.bias_head.weight.grad is None or \
             model.bias_head.weight.grad.abs().max().item() < 1e-10
+
+    def test_ddm_direct_history_loss_reaches_history_network(self) -> None:
+        """DDM-direct history loss should propagate into the win history network."""
+        model = _make_model(history_bias_scale=2.0, history_drift_scale=0.3)
+        model.train()
+        with torch.no_grad():
+            model.win_history_network[0].weight.fill_(0.5)
+            model.win_history_network[0].bias.fill_(0.1)
+            model.win_history_network[2].weight.fill_(0.2)
+            model.win_history_network[2].bias.fill_(0.1)
+
+        x = torch.tensor([[0.1, 0.1, 1.0, 1.0, 1.0, 1.0, 0.5]])
+        state = model.init_state(1)
+        out, _ = model(x, state)
+
+        coherence = x[0, 0]
+        drift = out["drift_gain"] * coherence
+        bound = out["bound"]
+        bias = out["bias"]
+        prev_direction = torch.tensor(1.0)
+        history_drift = out["stay_tendency"] * model.history_drift_scale * prev_direction
+        gated_history_drift = history_drift * (1.0 - torch.abs(coherence))
+        effective_drift = drift + gated_history_drift
+        stay_shift = out["stay_tendency"] * model.effective_history_bias_scale * bound
+        effective_bias = bias + stay_shift * prev_direction
+
+        max_steps = 40
+        dt = 0.01
+        temp = 0.1
+        step_drift = effective_drift * dt
+        evidence_trajectory = effective_bias + torch.cumsum(
+            torch.ones(max_steps, dtype=step_drift.dtype) * step_drift.squeeze(),
+            dim=0,
+        )
+
+        prob_upper = torch.sigmoid((evidence_trajectory - bound.squeeze()) / temp)
+        prob_lower = torch.sigmoid((-bound.squeeze() - evidence_trajectory) / temp)
+        prob_commit = torch.clamp(prob_upper + prob_lower, 0.0, 1.0)
+        prob_not_commit = 1.0 - prob_commit
+        cum_not_commit = torch.cat([
+            torch.ones(1, dtype=prob_commit.dtype),
+            torch.cumprod(prob_not_commit[:-1], dim=0),
+        ])
+        commit_density = prob_commit * cum_not_commit
+        prob_timeout = cum_not_commit[-1] * (1.0 - prob_commit[-1])
+        p_right_given_commit = torch.sum(prob_upper * cum_not_commit) / torch.clamp(
+            torch.sum(commit_density), min=1e-8
+        )
+        p_right_given_timeout = torch.sigmoid(evidence_trajectory[-1] / temp)
+        prob_right = (1.0 - prob_timeout) * p_right_given_commit + prob_timeout * p_right_given_timeout
+
+        loss = per_trial_history_loss(
+            choice_prob=prob_right.unsqueeze(0),
+            prev_action=torch.tensor([1.0]),
+            prev_reward=torch.tensor([1.0]),
+            target_win_stay=0.95,
+            no_action_value=0.0,
+        )
+        loss.backward()
+
+        out_layer = model.win_history_network[2]
+        assert out_layer.weight.grad is not None
+        assert out_layer.weight.grad.abs().sum().item() > 0.0
 
 
 class TestCombinedBiasComputation:
@@ -344,3 +433,62 @@ class TestCombinedBiasComputation:
 
         stay_shift = stay_tendency * scale * bound
         assert abs(stay_shift) > 0.01
+
+
+class TestHistoryTeacherForcing:
+    """Verify annealed history teacher forcing blends injected and learned tendencies."""
+
+    def test_teacher_forcing_blends_tendencies(self) -> None:
+        from agents.hybrid_config import HybridTrainingConfig
+        from agents.hybrid_trainer import HybridDDMTrainer
+
+        config = HybridTrainingConfig(
+            task="ibl_2afc",
+            output_dir=Path("runs/test_teacher_forcing_blend"),
+            inject_win_tendency=0.3,
+            inject_lose_tendency=0.1,
+            anneal_history_injection=True,
+            history_injection_alpha_start=1.0,
+            history_injection_alpha_end=0.0,
+            max_sessions=1,
+            max_trials_per_session=4,
+            episodes=1,
+            epochs=2,
+        )
+        trainer = HybridDDMTrainer(config)
+
+        learned = torch.tensor([0.05])
+        reward = torch.tensor(1.0)
+
+        trainer._set_history_injection_alpha(1.0)
+        full_teacher = trainer._apply_history_teacher_forcing(learned, reward)
+        assert full_teacher.item() == pytest.approx(0.3)
+
+        trainer._set_history_injection_alpha(0.5)
+        blended = trainer._apply_history_teacher_forcing(learned, reward)
+        assert blended.item() == pytest.approx(0.175)
+
+        trainer._set_history_injection_alpha(0.0)
+        learned_only = trainer._apply_history_teacher_forcing(learned, reward)
+        assert learned_only.item() == pytest.approx(learned.item())
+
+    def test_teacher_alpha_anneals_over_epochs(self) -> None:
+        from agents.hybrid_config import HybridTrainingConfig
+        from agents.hybrid_trainer import HybridDDMTrainer
+
+        config = HybridTrainingConfig(
+            task="ibl_2afc",
+            output_dir=Path("runs/test_teacher_alpha_schedule"),
+            inject_win_tendency=0.3,
+            anneal_history_injection=True,
+            history_injection_alpha_start=1.0,
+            history_injection_alpha_end=0.25,
+            max_sessions=1,
+            max_trials_per_session=4,
+            episodes=1,
+            epochs=4,
+        )
+        trainer = HybridDDMTrainer(config)
+
+        alphas = [trainer._teacher_forcing_alpha_for_epoch(epoch, 4) for epoch in range(4)]
+        assert alphas == pytest.approx([1.0, 0.75, 0.5, 0.25])

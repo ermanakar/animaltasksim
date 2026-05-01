@@ -104,11 +104,15 @@ class TrainCurriculumArgs:
     freeze_history_scales: bool = False  # Freeze history scale params as non-trainable hyperparams
     inject_win_tendency: float | None = None  # Override stay_tendency after wins in rollout (diagnostic/calibration)
     inject_lose_tendency: float | None = None  # Override stay_tendency after losses in rollout (diagnostic/calibration)
+    anneal_history_injection: bool = False  # Blend injected history into learned history during training
+    history_injection_alpha_start: float = 1.0
+    history_injection_alpha_end: float = 0.0
 
     # Phase 4: History finetuning (opt-in, appended after 3-phase curriculum)
     phase4_history_finetune: bool = False  # Enable Phase 4 history finetuning
     phase4_epochs: int = 10
     phase4_per_trial_history_weight: float = 0.5
+    phase4_history_distillation_weight: float = 0.0
     phase4_choice_weight: float = 1.0
     phase4_drift_magnitude_weight: float = 0.5
     phase4_history_bias_lr: float = 3e-3
@@ -192,6 +196,7 @@ def main(args: TrainCurriculumArgs) -> None:
                 loss_weights=LossWeights(
                     choice=args.phase4_choice_weight,
                     per_trial_history=args.phase4_per_trial_history_weight,
+                    history_distillation=args.phase4_history_distillation_weight,
                     drift_magnitude=args.phase4_drift_magnitude_weight,
                 ),
                 success_criteria={},
@@ -249,6 +254,9 @@ def main(args: TrainCurriculumArgs) -> None:
         freeze_history_scales=args.freeze_history_scales,
         inject_win_tendency=args.inject_win_tendency,
         inject_lose_tendency=args.inject_lose_tendency,
+        anneal_history_injection=args.anneal_history_injection,
+        history_injection_alpha_start=args.history_injection_alpha_start,
+        history_injection_alpha_end=args.history_injection_alpha_end,
     )
     
     print(f"\n{'='*80}")

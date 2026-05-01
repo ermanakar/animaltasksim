@@ -139,7 +139,7 @@ The complete experimental narrative is in [FINDINGS.md](FINDINGS.md).
 ## Limitations
 
 > [!WARNING]
-> **History effects are injected, not learned.** The win-stay and lose-shift tendencies (`inject_win_tendency=0.30`, `inject_lose_tendency=0.15`) are hand-set hyperparameters that bypass the history networks. The networks themselves produce near-zero outputs. The architecture can *express* animal-like history effects, but it cannot yet *discover* them from data.
+> **The best validated history effects are still injection-assisted.** The flagship 5-seed result uses injected win/lose tendencies (`inject_win_tendency=0.30`, `inject_lose_tendency=0.15`) during co-evolution training. March 2026 plastic-history experiments added online reward-prediction-error updates, asymmetric positive/negative plasticity, and explicit lose-shift semantics, but none of those variants matched the injected-history baseline on win-stay. The architecture can *express* animal-like history effects; fully *learning* them remains open.
 
 1. **Single task validation.** Results are validated on IBL mouse 2AFC only. The macaque RDM task produces correct intra-trial dynamics (chronometric slope) but lacks the history effects that are the primary focus of this work (consistent with the overtrained animal in the Roitman & Shadlen dataset). PRL and DMS tasks are not yet implemented.
 
@@ -247,6 +247,7 @@ flowchart LR
 | Document | Contents |
 |----------|----------|
 | [FINDINGS.md](FINDINGS.md) | 70+ experiments, failure modes, architectural evolution, calibration narrative |
+| [Adaptive Control Agent Design](docs/adaptive_control_agent_design.md) | Proposed next-generation agent: evidence + value + persistence + exploration |
 | [Theory & Concepts](docs/THEORY_AND_CONCEPTS.md) | Accessible introduction to tasks, fingerprints, and the hybrid model |
 | [CHANGELOG.md](CHANGELOG.md) | Version history and corrections |
 
@@ -254,7 +255,23 @@ flowchart LR
 
 ## Current Research Direction
 
-The immediate frontier is **learned history**: training the asymmetric win/lose networks to discover appropriate stay tendencies from data, replacing the current injected fixed values. This requires either differentiable rollout through the stochastic DDM simulator or a reinforcement learning signal that shapes history-dependent behavior. Beyond this, lesion experiments (systematically removing architectural components) will test the model's predictions about which circuits are necessary for which behavioral features.
+The immediate frontier is no longer just "learned history" in the narrow sense of a better stay/shift head. March 2026 experiments showed that:
+
+- annealed teacher forcing and history distillation improve training mechanics but do not reliably teach the model to discover the fingerprint on its own
+- online plastic history rules can become strongly active internally without producing the right win-stay / lose-shift asymmetry in behavior
+- simply making the plastic pathway stronger turns it into a generic recent-history bias, not an animal-like control system
+
+The next architecture should therefore move from **history bias** to **adaptive control**:
+
+- an evidence circuit for current stimulus processing
+- a value / critic circuit for better-than-expected vs worse-than-expected outcomes
+- a persistence controller that decides when to keep trying despite failure
+- an exploration / novelty controller that samples alternatives when the world is uncertain, stale, or uninformative
+- an arbitration mechanism that combines evidence, value, persistence, and exploration
+
+This is closer to the biological story suggested by mouse, monkey, and human behavior: after failure, the brain does not only "shift" or "stay". It can persist because the evidence was weak, switch because the action seems wrong, or explore because the environment may have changed. The next implementation target is an evidence + value + persistence + exploration agent family, with lesion experiments following once that controller exists.
+
+The concrete repo-level design for that next step is in [Adaptive Control Agent Design](docs/adaptive_control_agent_design.md).
 
 ---
 

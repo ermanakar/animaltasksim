@@ -45,6 +45,9 @@ class HybridTrainingConfig:
     freeze_history_scales: bool = False  # Freeze history_bias_scale/history_drift_scale as non-trainable hyperparams
     inject_win_tendency: float | None = None  # Override stay_tendency after wins (bypass history network)
     inject_lose_tendency: float | None = None  # Override stay_tendency after losses (bypass history network)
+    anneal_history_injection: bool = False  # Blend injected history into learned history during training only
+    history_injection_alpha_start: float = 1.0  # Initial teacher forcing weight on injected history
+    history_injection_alpha_end: float = 0.0  # Final teacher forcing weight on injected history
 
     def __post_init__(self) -> None:
         paths = ProjectPaths.from_cwd()

@@ -29,10 +29,14 @@ CLAUDE.md
 # Claude Code skills
 .claude/skills/
 
+# Local Codex agent context
+.agents/
+
 # Project-specific
 runs/
 out/
 logs/
+*.log
 *.ndjson
 *.pt
 *.pth

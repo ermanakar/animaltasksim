@@ -5,10 +5,11 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import torch
 
 pytest.importorskip("torch")
 
-from agents.hybrid_ddm_lstm import HybridTrainingConfig, LossWeights, train_hybrid
+from agents.hybrid_ddm_lstm import HybridDDMModel, HybridTrainingConfig, LossWeights, train_hybrid
 
 
 def test_hybrid_training_smoke(tmp_path: Path) -> None:
@@ -71,3 +72,61 @@ def test_hybrid_attention_gate(tmp_path: Path) -> None:
     
     assert "training_metrics" in result
     assert "rollout_stats" in result
+
+
+def test_plastic_history_update_creates_rewarded_stay_bias() -> None:
+    model = HybridDDMModel(
+        feature_dim=7,
+        hidden_size=16,
+        device=torch.device("cpu"),
+    )
+    plastic_state, eligibility_trace, prev_value_prediction, prev_history_gate = model.init_plastic_state()
+
+    plastic_state, eligibility_trace, delta = model.update_plastic_history(
+        plastic_state=plastic_state,
+        eligibility_trace=eligibility_trace,
+        prev_action=torch.tensor([1.0]),
+        prev_reward=torch.tensor([1.0]),
+        prev_value_prediction=prev_value_prediction,
+        prev_history_gate=torch.tensor([[1.0]]),
+    )
+
+    assert delta.item() > 0.0
+    assert plastic_state[0, 1].item() > 0.0
+    assert plastic_state[0, 0].item() == pytest.approx(0.0)
+
+    features = torch.tensor([[0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.5]], dtype=torch.float32)
+    outputs, _ = model(features, model.init_state(), plastic_state=plastic_state)
+
+    assert outputs["plastic_stay_tendency"].item() > 0.0
+    assert 0.0 <= outputs["critic_value"].item() <= 1.0
+
+
+def test_plastic_history_update_promotes_switch_after_loss() -> None:
+    model = HybridDDMModel(
+        feature_dim=7,
+        hidden_size=16,
+        device=torch.device("cpu"),
+    )
+    plastic_state, eligibility_trace, _, _ = model.init_plastic_state()
+
+    # A negative prediction error on a previous right action should weaken that
+    # action and strengthen the alternative through the counterfactual update.
+    plastic_state, _, delta = model.update_plastic_history(
+        plastic_state=plastic_state,
+        eligibility_trace=eligibility_trace,
+        prev_action=torch.tensor([1.0]),
+        prev_reward=torch.tensor([0.0]),
+        prev_value_prediction=torch.tensor([[1.0]]),
+        prev_history_gate=torch.tensor([[1.0]]),
+    )
+
+    assert delta.item() < 0.0
+    assert plastic_state[0, 1].item() < 0.0
+    assert plastic_state[0, 0].item() > 0.0
+
+    features = torch.tensor([[0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.5]], dtype=torch.float32)
+    outputs, _ = model(features, model.init_state(), plastic_state=plastic_state)
+
+    assert outputs["plastic_stay_tendency"].item() < 0.0
+    assert outputs["lose_stay_tendency"].item() <= outputs["lose_shift_tendency"].item()

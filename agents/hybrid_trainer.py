@@ -10,8 +10,9 @@ import torch
 import torch.nn.functional as F
 from agents.losses import (
     LossWeights, choice_loss, history_penalty,
-    history_supervision_loss, non_decision_supervision_loss,
-    rt_loss, soft_rt_penalty
+    history_distillation_loss, history_supervision_loss,
+    non_decision_supervision_loss, per_trial_history_loss, rt_loss,
+    soft_rt_penalty
 )
 from agents.wfpt_loss import wfpt_loss
 from envs.ibl_2afc import (
@@ -52,6 +53,66 @@ class HybridDDMTrainer:
             self.model.history_bias_scale.requires_grad_(False)
             self.model.history_drift_scale.requires_grad_(False)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.config.learning_rate)
+        self._history_injection_alpha = 0.0
+        self._history_injection_alpha_start = float(self.config.history_injection_alpha_start)
+        self._history_injection_alpha_end = float(self.config.history_injection_alpha_end)
+
+    def _history_injection_enabled(self) -> bool:
+        return (
+            self.config.anneal_history_injection
+            and self.config.inject_win_tendency is not None
+        )
+
+    def _set_history_injection_alpha(self, alpha: float) -> None:
+        self._history_injection_alpha = float(np.clip(alpha, 0.0, 1.0))
+
+    def set_history_injection_schedule(self, start_alpha: float, end_alpha: float) -> None:
+        self._history_injection_alpha_start = float(np.clip(start_alpha, 0.0, 1.0))
+        self._history_injection_alpha_end = float(np.clip(end_alpha, 0.0, 1.0))
+
+    def _teacher_forcing_alpha_for_epoch(self, epoch: int, total_epochs: int) -> float:
+        if not self._history_injection_enabled():
+            return 0.0
+        if total_epochs <= 1:
+            return self._history_injection_alpha_end
+        start = self._history_injection_alpha_start
+        end = self._history_injection_alpha_end
+        progress = epoch / max(total_epochs - 1, 1)
+        alpha = start + (end - start) * progress
+        return float(np.clip(alpha, 0.0, 1.0))
+
+    def _apply_history_teacher_forcing(
+        self,
+        stay_tendency: torch.Tensor,
+        prev_reward: torch.Tensor,
+    ) -> torch.Tensor:
+        alpha = self._history_injection_alpha
+        if alpha <= 0.0 or self.config.inject_win_tendency is None:
+            return stay_tendency
+        win_teacher = torch.full_like(stay_tendency, float(self.config.inject_win_tendency))
+        lose_target = self.config.inject_lose_tendency if self.config.inject_lose_tendency is not None else 0.0
+        lose_teacher = torch.full_like(stay_tendency, float(lose_target))
+        teacher = torch.where(prev_reward > 0.5, win_teacher, lose_teacher)
+        return alpha * teacher + (1.0 - alpha) * stay_tendency
+
+    def _apply_rollout_history_policy(self, stay_tendency: float, prev_reward: float) -> float:
+        if self.config.inject_win_tendency is None:
+            return stay_tendency
+        if self.config.anneal_history_injection:
+            alpha = self._history_injection_alpha
+            if alpha <= 0.0:
+                return stay_tendency
+            teacher = (
+                self.config.inject_win_tendency
+                if prev_reward > 0.5
+                else (self.config.inject_lose_tendency or 0.0)
+            )
+            return alpha * teacher + (1.0 - alpha) * stay_tendency
+        return (
+            self.config.inject_win_tendency
+            if prev_reward > 0.5
+            else (self.config.inject_lose_tendency or 0.0)
+        )
 
     # ------------------------------------------------------------------
     # Reference data handling
@@ -363,25 +424,42 @@ class HybridDDMTrainer:
             "epoch_soft_rt_penalty": [],
             "epoch_history_penalty": [],
             "epoch_history_supervision": [],
+            "epoch_per_trial_history": [],
+            "epoch_history_distillation": [],
+            "epoch_reward_prediction": [],
             "epoch_drift_supervision": [],
             "epoch_non_decision_supervision": [],
             "epoch_drift_magnitude": [],
             "epoch_wfpt_loss": [],
             "epoch_twin_supervision": [],
+            "history_teacher_alpha": [],
+            "mean_plastic_stay_tendency": [],
+            "mean_win_stay_tendency": [],
+            "mean_lose_stay_tendency": [],
             "noise": [],
             "mean_bound": [],
         }
         for epoch in range(self.config.epochs):
+            self._set_history_injection_alpha(
+                self._teacher_forcing_alpha_for_epoch(epoch, self.config.epochs)
+            )
             epoch_choice = 0.0
             epoch_rt = 0.0
             epoch_soft_rt = 0.0
             epoch_hist = 0.0
             epoch_hist_sup = 0.0
+            epoch_pt_hist = 0.0
+            epoch_hist_distill = 0.0
+            epoch_reward_pred = 0.0
             epoch_drift_sup = 0.0
             epoch_non_decision_sup = 0.0
             epoch_drift_mag = 0.0
             epoch_wfpt = 0.0
             epoch_twin_sup = 0.0
+            epoch_plastic_tendency = 0.0
+            epoch_win_tendency = 0.0
+            epoch_lose_tendency = 0.0
+            tendency_batches = 0
             session_count = 0
             # Shuffle sessions using random.shuffle for type compatibility
             shuffled_sessions = list(self.sessions)
@@ -389,6 +467,9 @@ class HybridDDMTrainer:
             for session in shuffled_sessions:
                 self.optimizer.zero_grad()
                 h, c = self.model.init_state()
+                plastic_state, eligibility_trace, prev_value_prediction, prev_history_gate = (
+                    self.model.init_plastic_state()
+                )
                 features = torch.from_numpy(session.features).to(self.device)
                 choice = torch.from_numpy(session.choice).to(self.device)
                 choice_mask = torch.from_numpy(session.choice_mask).to(self.device)
@@ -397,17 +478,20 @@ class HybridDDMTrainer:
 
                 total_choice_loss = torch.zeros(1, device=self.device)
                 total_rt_loss = torch.zeros(1, device=self.device)
+                total_reward_pred_loss = torch.zeros(1, device=self.device)
                 choice_weight = 0.0
                 rt_weight = 0.0
+                reward_pred_weight = 0.0
 
                 prob_buffer: list[float] = []
                 prob_tensor_buffer: list[torch.Tensor] = []  # differentiable copy
-                history_prob_tensor_buffer: list[torch.Tensor] = []  # gradient-isolated for history loss
-                stay_tendency_buffer: list[torch.Tensor] = []  # from history_network
                 drift_gain_buffer: list[torch.Tensor] = []  # Collect for supervision
                 bound_buffer: list[torch.Tensor] = []
                 bias_buffer: list[torch.Tensor] = []
                 noise_buffer: list[torch.Tensor] = []
+                plastic_tendency_buffer: list[torch.Tensor] = []
+                win_tendency_buffer: list[torch.Tensor] = []
+                lose_tendency_buffer: list[torch.Tensor] = []
                 soft_rt_pred_buffer: list[torch.Tensor] = []
                 soft_rt_target_buffer: list[torch.Tensor] = []
                 soft_rt_var_buffer: list[torch.Tensor] = []
@@ -432,8 +516,33 @@ class HybridDDMTrainer:
                     if idx > 0 and idx % tbptt_chunk_size == 0:
                         h = h.detach()
                         c = c.detach()
+                        plastic_state = plastic_state.detach()
+                        eligibility_trace = eligibility_trace.detach()
+                        prev_value_prediction = prev_value_prediction.detach()
+                        prev_history_gate = prev_history_gate.detach()
                     x = features[idx : idx + 1]
-                    out, (h, c) = self.model(x, (h, c))
+                    reward_pred_loss = torch.zeros(1, device=self.device)
+                    if torch.abs(x[0, 3]).item() > 0.0:
+                        reward_pred_loss = F.mse_loss(
+                            prev_value_prediction,
+                            x[:, 4:5],
+                        )
+                        total_reward_pred_loss = total_reward_pred_loss + reward_pred_loss
+                        reward_pred_weight += 1.0
+                    plastic_state, eligibility_trace, _ = self.model.update_plastic_history(
+                        plastic_state=plastic_state,
+                        eligibility_trace=eligibility_trace,
+                        prev_action=x[:, 3],
+                        prev_reward=x[:, 4],
+                        prev_value_prediction=prev_value_prediction,
+                        prev_history_gate=prev_history_gate,
+                    )
+                    out, (h, c) = self.model(x, (h, c), plastic_state=plastic_state)
+                    prev_value_prediction = out["critic_value"].reshape(-1, 1)
+                    prev_history_gate = torch.clamp(1.0 - torch.abs(x[:, 0:1]), min=0.0, max=1.0)
+                    plastic_tendency_buffer.append(out["plastic_stay_tendency"])
+                    win_tendency_buffer.append(out["win_stay_tendency"])
+                    lose_tendency_buffer.append(out["lose_stay_tendency"])
                     non_decision_buffer.append(out["non_decision_ms"])
                     coherence = x[0, 0]
                     drift = out["drift_gain"] * coherence
@@ -453,9 +562,10 @@ class HybridDDMTrainer:
                     # At v→0:  P(right) = z/a = (bound + bias) / (2*bound).
                     # Combine with history effects immediately for true joint learning
                     bias_val = out["bias"]  # tanh output ∈ (-1, 1)
-                    history_bias_val = out["history_bias"]  # tanh output ∈ (-1, 1)
-                    
-                    stay_tendency_val = out["stay_tendency"]
+                    stay_tendency_val = self._apply_history_teacher_forcing(
+                        out["stay_tendency"],
+                        x[0, 4],
+                    )
                     prev_action_val_t = x[0, 3] # features array index 3 is prev_action_val
                     prev_direction = torch.where(
                         prev_action_val_t > 0, 
@@ -518,7 +628,6 @@ class HybridDDMTrainer:
                         torch.ones(1, device=self.device), 
                         torch.cumprod(prob_not_commit[:-1], dim=0)
                     ])
-                    
                     # Density function of commit time 
                     commit_density = prob_commit * cum_not_commit
                     
@@ -559,10 +668,6 @@ class HybridDDMTrainer:
                     # silently zero (empty buffers).
                     prob_buffer.append(float(prob_right.detach().cpu()))
                     prob_tensor_buffer.append(prob_right)
-                    stay_tendency_buffer.append(out["stay_tendency"])
-                    history_logit = history_bias_val * self.model.effective_history_bias_scale * bound
-                    history_prob_stay = torch.sigmoid(history_logit)
-                    history_prob_tensor_buffer.append(history_prob_stay)
 
                     if (
                         weights.rt_soft > 0.0
@@ -613,6 +718,8 @@ class HybridDDMTrainer:
                     total_choice_loss = total_choice_loss / choice_weight
                 if rt_weight > 0:
                     total_rt_loss = total_rt_loss / rt_weight
+                if reward_pred_weight > 0:
+                    total_reward_pred_loss = total_reward_pred_loss / reward_pred_weight
 
                 total_loss = (
                     weights.choice * total_choice_loss
@@ -642,45 +749,72 @@ class HybridDDMTrainer:
                     )
                     total_loss = total_loss + weights.history_supervision * hist_sup_loss
 
-                # Per-trial history loss using the SEPARATE HISTORY NETWORK.
-                # stay_tendency comes from history_network(prev_action, prev_reward),
-                # which bypasses the LSTM entirely. Convert to P(stay) via sigmoid
-                # for the training loss; in rollout, stay_tendency shifts the DDM
-                # starting point directly.
+                # Per-trial history loss through the ACTUAL differentiable DDM
+                # choice probability. This keeps the training objective aligned
+                # with the same mechanism that drives rollout behavior.
                 pt_hist_loss = torch.zeros(1, device=self.device)
-                if weights.per_trial_history > 0.0 and stay_tendency_buffer:
-                    stay_tendency_tensor = torch.cat(stay_tendency_buffer).squeeze()
-                    # Convert stay_tendency to P(stay) via sigmoid.
-                    # Scale must match rollout: stay_shift = tendency * bias_scale * bound.
-                    # Previously used a hardcoded 4.0 which created a scale mismatch —
-                    # the loss would converge while rollout effects remained tiny.
-                    avg_bound = torch.cat(bound_buffer).mean().detach() if bound_buffer else torch.tensor(1.0, device=self.device)
-                    stay_prob = torch.sigmoid(stay_tendency_tensor * self.model.effective_history_bias_scale * avg_bound)
-                    # Extract prev_action and prev_reward from features
+                if weights.per_trial_history > 0.0 and prob_tensor_buffer:
+                    choice_prob_tensor = torch.cat(prob_tensor_buffer).reshape(-1)
                     prev_act = torch.from_numpy(session.features[:, 3]).to(self.device)
                     prev_rew = torch.from_numpy(session.features[:, 4]).to(self.device)
                     choice_m = torch.from_numpy(session.choice_mask).bool().to(self.device)
-                    n = min(len(stay_prob), len(prev_act), len(choice_m))
-                    stay_prob = stay_prob[:n]
+                    n = min(len(choice_prob_tensor), len(prev_act), len(choice_m))
+                    choice_prob_tensor = choice_prob_tensor[:n]
                     prev_act = prev_act[:n]
                     prev_rew = prev_rew[:n]
                     choice_m = choice_m[:n]
-                    # Valid = has a previous action and is a commit trial
-                    valid = prev_act.ne(0.0) & choice_m
-                    win_mask = valid & (prev_rew > 0.5)
-                    lose_mask = valid & (prev_rew <= 0.5)
-                    target_ws = float(session.win_stay_target)
-                    target_ls = float(session.lose_shift_target)
-                    if win_mask.any():
-                        # Win: push P(stay) toward target_win_stay
-                        target = torch.full_like(stay_prob[win_mask], target_ws)
-                        pt_hist_loss = pt_hist_loss + F.mse_loss(stay_prob[win_mask], target)
-                    if lose_mask.any():
-                        # Lose: push P(shift)=1-P(stay) toward target_lose_shift
-                        shift_prob = 1.0 - stay_prob
-                        target = torch.full_like(shift_prob[lose_mask], target_ls)
-                        pt_hist_loss = pt_hist_loss + F.mse_loss(shift_prob[lose_mask], target)
+                    pt_hist_loss = per_trial_history_loss(
+                        choice_prob=choice_prob_tensor,
+                        prev_action=prev_act,
+                        prev_reward=prev_rew,
+                        target_win_stay=float(session.win_stay_target),
+                        target_lose_shift=float(session.lose_shift_target),
+                        mask=choice_m,
+                        no_action_value=0.0,
+                    )
                     total_loss = total_loss + weights.per_trial_history * pt_hist_loss
+
+                hist_distill_loss = torch.zeros(1, device=self.device)
+                if (
+                    weights.history_distillation > 0.0
+                    and self.config.inject_win_tendency is not None
+                    and win_tendency_buffer
+                    and lose_tendency_buffer
+                ):
+                    win_tendency_tensor = torch.cat(win_tendency_buffer).reshape(-1)
+                    lose_tendency_tensor = torch.cat(lose_tendency_buffer).reshape(-1)
+                    prev_act = torch.from_numpy(session.features[:, 3]).to(self.device)
+                    prev_rew = torch.from_numpy(session.features[:, 4]).to(self.device)
+                    choice_m = torch.from_numpy(session.choice_mask).bool().to(self.device)
+                    n = min(
+                        len(win_tendency_tensor),
+                        len(lose_tendency_tensor),
+                        len(prev_act),
+                        len(prev_rew),
+                        len(choice_m),
+                    )
+                    hist_distill_loss = history_distillation_loss(
+                        win_tendency=win_tendency_tensor[:n],
+                        lose_tendency=lose_tendency_tensor[:n],
+                        prev_action=prev_act[:n],
+                        prev_reward=prev_rew[:n],
+                        target_win_tendency=float(self.config.inject_win_tendency),
+                        target_lose_tendency=float(self.config.inject_lose_tendency or 0.0),
+                        mask=choice_m[:n],
+                        no_action_value=0.0,
+                    )
+                    total_loss = total_loss + weights.history_distillation * hist_distill_loss
+
+                if win_tendency_buffer and lose_tendency_buffer:
+                    epoch_plastic_tendency += float(
+                        torch.cat(plastic_tendency_buffer).mean().detach().cpu()
+                    )
+                    epoch_win_tendency += float(torch.cat(win_tendency_buffer).mean().detach().cpu())
+                    epoch_lose_tendency += float(torch.cat(lose_tendency_buffer).mean().detach().cpu())
+                    tendency_batches += 1
+
+                reward_prediction_weight = 0.1 + 0.5 * weights.per_trial_history
+                total_loss = total_loss + reward_prediction_weight * total_reward_pred_loss
 
                 # Drift supervision: penalize weak drift parameters
                 drift_sup_loss = torch.zeros(1, device=self.device)
@@ -786,6 +920,9 @@ class HybridDDMTrainer:
                 epoch_soft_rt += float(soft_rt_loss.detach().cpu())
                 epoch_hist += float(hist_loss.detach().cpu())
                 epoch_hist_sup += float(hist_sup_loss.detach().cpu())
+                epoch_pt_hist += float(pt_hist_loss.detach().cpu())
+                epoch_hist_distill += float(hist_distill_loss.detach().cpu())
+                epoch_reward_pred += float(total_reward_pred_loss.detach().cpu())
                 epoch_drift_sup += float(drift_sup_loss.detach().cpu())
                 epoch_non_decision_sup += float(non_decision_sup_loss.detach().cpu())
                 epoch_drift_mag += float(drift_mag_loss.detach().cpu())
@@ -802,6 +939,15 @@ class HybridDDMTrainer:
             metrics["epoch_history_supervision"].append(
                 epoch_hist_sup / max(session_count, 1)
             )
+            metrics["epoch_per_trial_history"].append(
+                epoch_pt_hist / max(session_count, 1)
+            )
+            metrics["epoch_history_distillation"].append(
+                epoch_hist_distill / max(session_count, 1)
+            )
+            metrics["epoch_reward_prediction"].append(
+                epoch_reward_pred / max(session_count, 1)
+            )
             metrics["epoch_drift_supervision"].append(epoch_drift_sup / max(session_count, 1))
             metrics["epoch_non_decision_supervision"].append(
                 epoch_non_decision_sup / max(session_count, 1)
@@ -809,9 +955,21 @@ class HybridDDMTrainer:
             metrics["epoch_drift_magnitude"].append(epoch_drift_mag / max(session_count, 1))
             metrics["epoch_wfpt_loss"].append(epoch_wfpt / max(session_count, 1))
             metrics["epoch_twin_supervision"].append(epoch_twin_sup / max(session_count, 1))
+            metrics["history_teacher_alpha"].append(self._history_injection_alpha)
+            metrics["mean_plastic_stay_tendency"].append(
+                epoch_plastic_tendency / max(tendency_batches, 1)
+            )
+            metrics["mean_win_stay_tendency"].append(
+                epoch_win_tendency / max(tendency_batches, 1)
+            )
+            metrics["mean_lose_stay_tendency"].append(
+                epoch_lose_tendency / max(tendency_batches, 1)
+            )
             noise_value = torch.exp(torch.nan_to_num(self.model.log_noise, nan=0.0)).detach().cpu()
             metrics["noise"].append(float(noise_value))
             metrics["mean_bound"].append(self._estimate_mean_bound())
+        if self._history_injection_enabled():
+            self._set_history_injection_alpha(self.config.history_injection_alpha_end)
         return metrics
 
     def _estimate_mean_bound(self) -> float:
@@ -950,6 +1108,9 @@ class HybridDDMTrainer:
         for episode in range(self.config.episodes):
             observation, info = env.reset(seed=self.config.seed + episode)
             h, c = self.model.init_state()
+            plastic_state, eligibility_trace, prev_value_prediction, prev_history_gate = (
+                self.model.init_plastic_state()
+            )
             cumulative_reward = 0.0
             planned_action = wait_action
             commit_step_target = self.config.min_commit_steps
@@ -976,7 +1137,17 @@ class HybridDDMTrainer:
                             trial_norm,
                         )
                         x = torch.from_numpy(features).unsqueeze(0).to(self.device)
-                        out, (h, c) = self.model(x, (h, c))
+                        plastic_state, eligibility_trace, _ = self.model.update_plastic_history(
+                            plastic_state=plastic_state,
+                            eligibility_trace=eligibility_trace,
+                            prev_action=x[:, 3],
+                            prev_reward=x[:, 4],
+                            prev_value_prediction=prev_value_prediction,
+                            prev_history_gate=prev_history_gate,
+                        )
+                        out, (h, c) = self.model(x, (h, c), plastic_state=plastic_state)
+                        prev_value_prediction = out["critic_value"].reshape(-1, 1)
+                        prev_history_gate = torch.clamp(1.0 - torch.abs(x[:, 0:1]), min=0.0, max=1.0)
 
                         # Extract DDM parameters
                         stimulus = x[0, 0].item()
@@ -986,11 +1157,10 @@ class HybridDDMTrainer:
                         bias = out["bias"].item()
                         stay_tendency = out["stay_tendency"].item()
                         # Override with injected values if configured (diagnostic mode)
-                        if self.config.inject_win_tendency is not None:
-                            if prev_reward > 0.5:
-                                stay_tendency = self.config.inject_win_tendency
-                            else:
-                                stay_tendency = self.config.inject_lose_tendency or 0.0
+                        stay_tendency = self._apply_rollout_history_policy(
+                            stay_tendency,
+                            prev_reward,
+                        )
                         non_decision_ms = out["non_decision_ms"].item()
 
                         # Combine DDM bias with history-dependent stay bias
@@ -1199,13 +1369,28 @@ def train_hybrid_curriculum(config: HybridTrainingConfig) -> dict[str, Any]:
     # Ensure commit window is wide enough before applying curriculum adjustments.
     trainer.config.max_commit_steps = max(trainer.config.max_commit_steps, 120)
     paths = config.output_paths()
+    total_curriculum_epochs = sum(phase.epochs for phase in curriculum.phases)
+    completed_curriculum_epochs = 0
     
     # Track all phase metrics with proper types
     cumulative_metrics: dict[str, list[float]] = {
         "epoch_choice_loss": [],
         "epoch_rt_loss": [],
+            "epoch_soft_rt_penalty": [],
         "epoch_history_penalty": [],
+        "epoch_history_supervision": [],
+        "epoch_per_trial_history": [],
+        "epoch_history_distillation": [],
+            "epoch_reward_prediction": [],
         "epoch_drift_supervision": [],
+        "epoch_non_decision_supervision": [],
+        "epoch_drift_magnitude": [],
+        "epoch_wfpt_loss": [],
+        "epoch_twin_supervision": [],
+        "history_teacher_alpha": [],
+            "mean_plastic_stay_tendency": [],
+        "mean_win_stay_tendency": [],
+        "mean_lose_stay_tendency": [],
         "noise": [],
         "mean_bound": [],
     }
@@ -1230,6 +1415,20 @@ def train_hybrid_curriculum(config: HybridTrainingConfig) -> dict[str, Any]:
         print(
             f"Commit window (steps): min={phase_min_commit}, max={phase_max_commit}"
         )
+        if trainer._history_injection_enabled():
+            if total_curriculum_epochs <= 1:
+                phase_alpha_start = config.history_injection_alpha_end
+                phase_alpha_end = config.history_injection_alpha_end
+            else:
+                phase_start_progress = completed_curriculum_epochs / max(total_curriculum_epochs - 1, 1)
+                phase_end_progress = (completed_curriculum_epochs + phase.epochs - 1) / max(total_curriculum_epochs - 1, 1)
+                alpha_delta = config.history_injection_alpha_end - config.history_injection_alpha_start
+                phase_alpha_start = config.history_injection_alpha_start + alpha_delta * phase_start_progress
+                phase_alpha_end = config.history_injection_alpha_start + alpha_delta * phase_end_progress
+            trainer.set_history_injection_schedule(phase_alpha_start, phase_alpha_end)
+            print(
+                f"History teacher alpha: start={phase_alpha_start:.3f}, end={phase_alpha_end:.3f}"
+            )
         print(f"{'='*80}\n")
 
         # Optionally freeze all params except history modules for this phase
@@ -1246,6 +1445,13 @@ def train_hybrid_curriculum(config: HybridTrainingConfig) -> dict[str, Any]:
                     and "history_bias_head" not in name
                     and "history_bias_scale" not in name
                     and "history_drift_scale" not in name
+                    and "critic_head" not in name
+                    and "positive_history_plasticity" not in name
+                    and "negative_history_plasticity" not in name
+                    and "counterfactual_switch_boost" not in name
+                    and "history_trace_decay" not in name
+                    and "history_state_decay" not in name
+                    and "plastic_history_scale" not in name
                 ):
                     param.requires_grad_(False)
                     frozen_params.append((name, param))
@@ -1253,8 +1459,18 @@ def train_hybrid_curriculum(config: HybridTrainingConfig) -> dict[str, Any]:
             hb_lr = phase.history_bias_lr or trainer.config.learning_rate * 10
             history_params = list(trainer.model.win_history_network.parameters()) + \
                              list(trainer.model.lose_history_network.parameters()) + \
+                             list(trainer.model.critic_head.parameters()) + \
                              list(trainer.model.history_bias_head.parameters()) + \
-                             [trainer.model.history_bias_scale, trainer.model.history_drift_scale]
+                             [
+                                 trainer.model.history_bias_scale,
+                                 trainer.model.history_drift_scale,
+                                 trainer.model.positive_history_plasticity,
+                                 trainer.model.negative_history_plasticity,
+                                 trainer.model.counterfactual_switch_boost,
+                                 trainer.model.history_trace_decay,
+                                 trainer.model.history_state_decay,
+                                 trainer.model.plastic_history_scale,
+                             ]
             trainer.optimizer = torch.optim.Adam(history_params, lr=hb_lr)
 
         # Train with phase-specific loss weights
@@ -1268,6 +1484,7 @@ def train_hybrid_curriculum(config: HybridTrainingConfig) -> dict[str, Any]:
 
         # Restore epoch count (commit window persists unless overridden later)
         trainer.config.epochs = original_epochs
+        completed_curriculum_epochs += phase.epochs
 
         # Append phase metrics to cumulative tracking
         for key in phase_metrics:

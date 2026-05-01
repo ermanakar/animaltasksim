@@ -5,8 +5,10 @@ import pandas as pd
 import pytest
 
 from eval.metrics import (
+    compute_adaptive_control_probe_metrics,
     compute_all_metrics,
     compute_chronometric,
+    compute_exploration_probe_metrics,
     compute_history_metrics,
     compute_psychometric,
 )
@@ -136,6 +138,151 @@ def _make_history_df() -> pd.DataFrame:
     )
 
 
+def _make_adaptive_probe_df() -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "task": "ibl_2afc",
+                "session_id": "s4",
+                "trial_index": 0,
+                "stimulus_contrast": 0.0,
+                "action": "left",
+                "reward": 0.0,
+                "rt_ms": 520.0,
+                "prev_action": "left",
+                "prev_reward": 0.0,
+                "prev_correct": 0.0,
+            },
+            {
+                "task": "ibl_2afc",
+                "session_id": "s4",
+                "trial_index": 1,
+                "stimulus_contrast": 0.0625,
+                "action": "right",
+                "reward": 0.0,
+                "rt_ms": 510.0,
+                "prev_action": "right",
+                "prev_reward": 0.0,
+                "prev_correct": 0.0,
+            },
+            {
+                "task": "ibl_2afc",
+                "session_id": "s4",
+                "trial_index": 2,
+                "stimulus_contrast": 0.25,
+                "action": "right",
+                "reward": 0.0,
+                "rt_ms": 430.0,
+                "prev_action": "left",
+                "prev_reward": 0.0,
+                "prev_correct": 0.0,
+            },
+            {
+                "task": "ibl_2afc",
+                "session_id": "s4",
+                "trial_index": 3,
+                "stimulus_contrast": 1.0,
+                "action": "left",
+                "reward": 0.0,
+                "rt_ms": 360.0,
+                "prev_action": "right",
+                "prev_reward": 0.0,
+                "prev_correct": 0.0,
+            },
+        ]
+    )
+
+
+def _make_exploration_probe_df() -> pd.DataFrame:
+    rows = []
+    for idx, action in enumerate(["right", "right", "right"]):
+        rows.append(
+            {
+                "task": "ibl_2afc",
+                "session_id": "s5",
+                "trial_index": idx,
+                "stimulus_contrast": 0.0,
+                "action": action,
+                "correct": True,
+                "reward": 1.0,
+                "rt_ms": 400.0,
+                "prev_action": "right" if idx > 0 else None,
+                "prev_reward": 1.0 if idx > 0 else None,
+                "prev_correct": 1.0 if idx > 0 else None,
+            }
+        )
+    rows.extend(
+        [
+            {
+                "task": "ibl_2afc",
+                "session_id": "s5",
+                "trial_index": 3,
+                "stimulus_contrast": 0.0,
+                "action": "left",
+                "correct": False,
+                "reward": 0.0,
+                "rt_ms": 420.0,
+                "prev_action": "right",
+                "prev_reward": 1.0,
+                "prev_correct": 1.0,
+            },
+            {
+                "task": "ibl_2afc",
+                "session_id": "s5",
+                "trial_index": 4,
+                "stimulus_contrast": 1.0,
+                "action": "right",
+                "correct": True,
+                "reward": 1.0,
+                "rt_ms": 300.0,
+                "prev_action": "right",
+                "prev_reward": 1.0,
+                "prev_correct": 1.0,
+            },
+            {
+                "task": "ibl_2afc",
+                "session_id": "s5",
+                "trial_index": 5,
+                "stimulus_contrast": 1.0,
+                "action": "right",
+                "correct": True,
+                "reward": 1.0,
+                "rt_ms": 300.0,
+                "prev_action": "right",
+                "prev_reward": 1.0,
+                "prev_correct": 1.0,
+            },
+            {
+                "task": "ibl_2afc",
+                "session_id": "s5",
+                "trial_index": 6,
+                "stimulus_contrast": 1.0,
+                "action": "right",
+                "correct": True,
+                "reward": 1.0,
+                "rt_ms": 300.0,
+                "prev_action": "right",
+                "prev_reward": 1.0,
+                "prev_correct": 1.0,
+            },
+            {
+                "task": "ibl_2afc",
+                "session_id": "s5",
+                "trial_index": 7,
+                "stimulus_contrast": 1.0,
+                "action": "right",
+                "correct": True,
+                "reward": 1.0,
+                "rt_ms": 300.0,
+                "prev_action": "right",
+                "prev_reward": 1.0,
+                "prev_correct": 1.0,
+            },
+        ]
+    )
+    return pd.DataFrame(rows)
+
+
 def test_psychometric_fit_returns_positive_slope():
     df = _make_psychometric_df()
     metrics = compute_psychometric(df, stimulus_key="contrast")
@@ -158,6 +305,42 @@ def test_history_metrics_win_stay_and_betas():
     assert metrics.sticky_choice > 0.5
     assert np.isfinite(metrics.prev_choice_beta)
     assert np.isfinite(metrics.prev_correct_beta)
+
+
+def test_adaptive_probe_metrics_split_retry_by_evidence_strength():
+    df = _make_adaptive_probe_df()
+    metrics = compute_adaptive_control_probe_metrics(df)
+    assert metrics.weak_failure_count == 2
+    assert metrics.strong_failure_count == 2
+    assert metrics.retry_after_failure_weak == pytest.approx(1.0)
+    assert metrics.retry_after_failure_strong == pytest.approx(0.0)
+    assert metrics.switch_after_failure_weak == pytest.approx(0.0)
+    assert metrics.switch_after_failure_strong == pytest.approx(1.0)
+
+
+def test_compute_all_metrics_includes_adaptive_probe():
+    df = _make_adaptive_probe_df()
+    metrics = compute_all_metrics(df, task="ibl_2afc")
+    probe = metrics["adaptive_control_probe"]
+    assert probe["retry_after_failure_weak"] == pytest.approx(1.0)
+    assert probe["retry_after_failure_strong"] == pytest.approx(0.0)
+
+
+def test_exploration_probe_metrics_capture_switch_after_streak():
+    df = _make_exploration_probe_df()
+    metrics = compute_exploration_probe_metrics(df)
+    assert metrics.weak_streak_count == 1
+    assert metrics.strong_streak_count == 1
+    assert metrics.switch_after_streak_weak == pytest.approx(1.0)
+    assert metrics.switch_after_streak_strong == pytest.approx(0.0)
+
+
+def test_compute_all_metrics_includes_exploration_probe():
+    df = _make_exploration_probe_df()
+    metrics = compute_all_metrics(df, task="ibl_2afc")
+    probe = metrics["exploration_probe"]
+    assert probe["switch_after_streak_weak"] == pytest.approx(1.0)
+    assert probe["switch_after_streak_strong"] == pytest.approx(0.0)
 
 
 def _make_ceiling_df() -> pd.DataFrame:
