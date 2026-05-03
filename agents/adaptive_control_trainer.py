@@ -12,6 +12,7 @@ from agents.hybrid_trainer import HybridDDMTrainer
 from animaltasksim.seeding import seed_everything
 from envs.ibl_2afc import ACTION_NO_OP, AgentMetadata as IBLAgentMetadata, IBL2AFCConfig, IBL2AFCEnv
 from envs.rdm_macaque import ACTION_HOLD, ACTION_LEFT, ACTION_RIGHT, AgentMetadata, RDMConfig, RDMMacaqueEnv
+from envs.utils_timing import PhaseTiming
 
 
 class AdaptiveControlTrainer(HybridDDMTrainer):
@@ -33,6 +34,7 @@ class AdaptiveControlTrainer(HybridDDMTrainer):
             drift_scale=self.config.drift_scale,
             history_bias_scale=self.config.history_bias_scale,
             history_drift_scale=self.config.history_drift_scale,
+            control_state_enabled=self.config.control_state_enabled,
             persistence_enabled=self.config.persistence_enabled,
             exploration_enabled=self.config.exploration_enabled,
             persistence_learning_rate=self.config.persistence_learning_rate,
@@ -42,6 +44,9 @@ class AdaptiveControlTrainer(HybridDDMTrainer):
             control_state_scale=self.config.control_state_scale,
             persistence_bias_scale=self.config.persistence_bias_scale,
             exploration_bias_scale=self.config.exploration_bias_scale,
+            control_residual_limit=self.config.control_residual_limit,
+            control_pressure_limit=self.config.control_pressure_limit,
+            control_uncertainty_power=self.config.control_uncertainty_power,
         )
         self.model.to(self.device)
         if self.config.freeze_history_scales:
@@ -52,6 +57,16 @@ class AdaptiveControlTrainer(HybridDDMTrainer):
         self._history_injection_alpha_start = float(self.config.history_injection_alpha_start)
         self._history_injection_alpha_end = float(self.config.history_injection_alpha_end)
 
+    @staticmethod
+    def _ibl_phase_schedule(max_commit_steps: int) -> tuple[PhaseTiming, ...]:
+        """Build an IBL phase schedule with the trained DDM response window."""
+        return (
+            PhaseTiming("iti", 10),
+            PhaseTiming("stimulus", 10),
+            PhaseTiming("response", max_commit_steps),
+            PhaseTiming("outcome", 10),
+        )
+
     def rollout(self, paths) -> dict[str, float]:
         """Run episodes in the environment and write schema-valid `.ndjson` logs."""
         if self.config.task == "ibl_2afc":
@@ -60,6 +75,7 @@ class AdaptiveControlTrainer(HybridDDMTrainer):
                 log_path=paths.log,
                 agent=IBLAgentMetadata(name="adaptive_control", version=self.config.agent_version),
                 seed=self.config.seed,
+                phase_schedule=self._ibl_phase_schedule(self.config.max_commit_steps),
                 min_response_latency_steps=self.config.min_commit_steps,
             )
             env = IBL2AFCEnv(ibl_config)

@@ -50,8 +50,8 @@ class CandidateCompareArgs:
 
     run_root: Path = Path("runs/adaptive_control_candidate_compare")
     seeds: Sequence[int] = (42, 123, 456)
-    persistence_bias_scales: Sequence[float] = (0.5, 0.4)
-    persistence_learning_rates: Sequence[float] = (0.3, 0.4)
+    persistence_bias_scales: Sequence[float] = (1.6,)
+    persistence_learning_rates: Sequence[float] = (0.8,)
     include_no_persistence_control: bool = False
     task: Literal["ibl_2afc", "rdm"] = "ibl_2afc"
     episodes: int = 20
@@ -63,10 +63,11 @@ class CandidateCompareArgs:
     max_trials_per_session: int = 128
     min_commit_steps: int = 5
     max_commit_steps: int = 300
-    drift_scale: float = 10.0
+    drift_scale: float = 6.0
     history_bias_scale: float = 2.0
     history_drift_scale: float = 0.3
     lapse_rate: float = 0.05
+    control_uncertainty_power: float = 2.0
     dry_run: bool = False
 
     def run(self) -> None:
@@ -262,9 +263,11 @@ class CandidateCompareArgs:
             str(persistence_bias_scale),
             "--persistence-learning-rate",
             str(persistence_learning_rate),
+            "--control-uncertainty-power",
+            str(self.control_uncertainty_power),
         ]
         if not persistence_enabled:
-            cmd.append("--no-persistence-enabled")
+            cmd.extend(["--no-control-state-enabled", "--no-persistence-enabled"])
         return cmd
 
     @staticmethod

@@ -307,11 +307,40 @@ After 70+ experiments, five agent architectures, and one protocol correction tha
 
 **All five behavioral metrics fall within the per-session reference distribution.**
 
+### Adaptive Control: The New Mechanism Under Test
+
+The history-injection result above remains the best full behavioral match, but it does not solve learned history: the win/lose strengths are still supplied by hand. The next question became simpler and more biological:
+
+**Can an agent learn when to persist, switch, or explore after uncertain outcomes?**
+
+The adaptive-control agent adds a small control system on top of the evidence accumulator:
+
+- the evidence core asks, "what does the stimulus say?"
+- the outcome/value state asks, "what just happened?"
+- the persistence state asks, "was that failure ambiguous enough that I should retry?"
+- the exploration state asks, "is this context stale or uncertain enough to sample alternatives?"
+- the arbitration head combines those pressures without letting them erase strong sensory evidence
+
+The phase-1 result is intentionally narrow. In a 5-seed matched lesion suite, full adaptive control increased retry after weak-evidence failures relative to a clean no-control lesion:
+
+| Condition | Psych slope | Chrono slope | Retry gap | Notes |
+|-----------|-------------|--------------|-----------|-------|
+| no-control lesion | 27.71 +/- 3.28 | -48.54 +/- 7.05 | 0.057 +/- 0.062 | adaptive state disabled |
+| full adaptive control | 22.26 +/- 1.80 | -33.97 +/- 4.02 | 0.165 +/- 0.045 | 0/5 degenerate, 0/5 RT ceiling flagged |
+
+Paired retry lift was `+0.109 +/- 0.086`, positive in 5/5 seeds.
+
+This is legitimate as a computational result, but it is not a claim of exact brain anatomy. The analogy is: real brains likely use separate sensory, value, persistence, exploration, and arbitration-like computations. The model tests whether that computational separation can generate animal-like behavior.
+
+The gate lesion sharpened the caveat. A linear uncertainty gate still worked somewhat (`+0.087 +/- 0.130`, positive in 3/5 seeds), while the nonlinear gate was stronger and more reliable. So the honest claim is not "the exponent 2 gate is necessary." The honest claim is "uncertainty-gated adaptive control is useful, and sharpening the gate improves robustness."
+
 ### What Is Not Solved Yet
 
 | Gap | Detail |
 |-----|--------|
 | History is injected, not learned | The win-stay and lose-shift strengths (0.30 and 0.15) are hand-set numbers, not values the history networks discovered on their own. The architecture *can* express history effects, but it cannot yet *discover* them from data. |
+| Adaptive control is an analogy | The new controller is lesion-tested in simulation, but it is not a neural anatomy claim and has not transferred to PRL/DMS yet. |
+| Exploration is not isolated | Full control works better than no-control, but the exploration component still needs a cleaner necessary-role test. |
 | Lapse variance across seeds | Lapse rates range from 0.043 to 0.156 across seeds, suggesting the lapse mechanism interacts with training dynamics in ways we do not fully understand. |
 | Single task validated | Results are validated on IBL mouse only. The macaque RDM task produces correct reaction-time dynamics but lacks history effects (the macaque in the reference dataset was overtrained). |
 

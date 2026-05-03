@@ -40,7 +40,7 @@ class AdaptiveControlConfig:
     max_trials_per_session: int | None = None
     min_commit_steps: int = 5
     max_commit_steps: int = 300
-    drift_scale: float = 10.0
+    drift_scale: float = 6.0
     drift_magnitude_target: float = 12.0
     history_bias_scale: float = 2.0
     history_drift_scale: float = 0.3
@@ -51,6 +51,7 @@ class AdaptiveControlConfig:
     anneal_history_injection: bool = False
     history_injection_alpha_start: float = 1.0
     history_injection_alpha_end: float = 0.0
+    control_state_enabled: bool = True
     persistence_enabled: bool = True
     exploration_enabled: bool = True
     persistence_learning_rate: float = 0.8
@@ -58,10 +59,23 @@ class AdaptiveControlConfig:
     reward_learning_rate: float = 0.6
     control_state_decay: float = 0.7
     control_state_scale: float = 1.0
-    persistence_bias_scale: float = 0.8
+    persistence_bias_scale: float = 1.6
     exploration_bias_scale: float = 0.8
+    control_residual_limit: float = 0.35
+    control_pressure_limit: float = 0.35
+    control_uncertainty_power: float = 2.0
+    adaptive_control_regularization: float = 0.05
+    evidence_preservation_regularization: float = 0.05
 
     def __post_init__(self) -> None:
+        self.control_residual_limit = max(0.0, float(self.control_residual_limit))
+        self.control_pressure_limit = max(0.0, float(self.control_pressure_limit))
+        self.control_uncertainty_power = max(1.0, float(self.control_uncertainty_power))
+        self.adaptive_control_regularization = max(0.0, float(self.adaptive_control_regularization))
+        self.evidence_preservation_regularization = max(
+            0.0,
+            float(self.evidence_preservation_regularization),
+        )
         paths = ProjectPaths.from_cwd()
         if self.reference_log is None:
             if self.task == "ibl_2afc":

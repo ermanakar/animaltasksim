@@ -1723,6 +1723,109 @@ This reframes the scientific question from "can the model learn the right histor
 3. **Prototype a new evidence + value + persistence + exploration controller** as a new agent family rather than a patch on the existing history injection pathway.
 4. **Evaluate new metrics beyond WS/LS alone,** including retry-after-failure on ambiguous trials, exploratory switching after repeated predictable outcomes, and persistence as a function of confidence.
 
+## Adaptive Control Experiments — May 2026
+
+### Question
+
+Can the project move beyond a single learned or injected history-bias scalar and instead model a richer control system that decides when to persist, switch, or explore under uncertainty?
+
+The biological framing is deliberately modest: this is a biologically inspired computational analogy, not a claim that the model implements exact brain anatomy. The analogy is:
+
+- **evidence system**: what does the stimulus say now?
+- **value/outcome system**: was the previous outcome good or bad?
+- **persistence controller**: after uncertain failure, should the agent retry?
+- **exploration controller**: when behavior is stale or uninformative, should the agent sample alternatives?
+- **arbitration mechanism**: combine these pressures without letting them overwrite strong sensory evidence
+
+### Implementation lessons
+
+The adaptive-control family is implemented as a separate agent path (`agents/adaptive_control_*`, `scripts/train_adaptive_control.py`) so the validated hybrid DDM+LSTM path remains intact.
+
+Several guardrails turned out to be scientifically important:
+
+1. **Clean no-control lesion**: `--no-control-state-enabled` must zero all adaptive-control outputs, not merely disable one head.
+2. **Explicit outcome valence**: failure teaching cannot depend only on critic prediction error, because a calibrated critic can otherwise silence failure updates.
+3. **Bounded residual overlays**: adaptive control must be a bounded residual on top of the evidence core, not a replacement for it.
+4. **Evidence preservation**: residuals are regularized more on high-evidence trials so control does not erase the psychometric curve.
+5. **Long IBL response window**: adaptive-control rollout must use the configured DDM response window; the environment's short default response phase produced an artificial 300 ms RT ceiling.
+6. **Nonlinear uncertainty gate**: `control_uncertainty_power=2.0` sharpens control expression around genuinely ambiguous evidence.
+
+### Phase-1 calibrated defaults
+
+| Parameter | Value | Reason |
+|-----------|-------|--------|
+| `drift_scale` | `6.0` | Calibrates psychometric/chronometric behavior after the long-response fix |
+| `persistence_bias_scale` | `1.6` | Restores reliable weak-failure retry lift without degenerate runs |
+| `control_uncertainty_power` | `2.0` | Makes the adaptive effect more reliable than a linear gate |
+| `control_residual_limit` | `0.35` | Keeps adaptive control bounded |
+| `control_pressure_limit` | `0.35` | Keeps persistence/exploration pressures bounded |
+
+### Phase-1 5-seed validation
+
+Run: `runs/adaptive_control_validation_suite_phase1/`
+
+| Condition | Psych slope | Chrono slope | Retry gap | RT ceiling warnings | Degenerate |
+|-----------|-------------|--------------|-----------|---------------------|------------|
+| true no-control | 27.71 +/- 3.28 | -48.54 +/- 7.05 | 0.057 +/- 0.062 | 0/5 | 0/5 |
+| persistence-only | 21.75 +/- 2.69 | -33.47 +/- 4.49 | 0.164 +/- 0.108 | 1/5 | 0/5 |
+| full control | 22.26 +/- 1.80 | -33.97 +/- 4.02 | 0.165 +/- 0.045 | 0/5 | 0/5 |
+
+Paired deltas versus the clean no-control lesion:
+
+| Comparison | Delta retry gap | Positive seeds | Delta psych slope | Delta chrono slope |
+|------------|-----------------|----------------|-------------------|--------------------|
+| full control - no-control | +0.109 +/- 0.086 | 5/5 | -5.45 +/- 3.79 | +14.57 +/- 8.96 |
+| persistence-only - no-control | +0.107 +/- 0.136 | 3/5 | -5.96 +/- 2.22 | +15.07 +/- 7.01 |
+
+**Interpretation:** the full adaptive-control system gives the cleanest phase-1 result. It increases retry after weak-evidence failures in 5/5 seeds while preserving calibrated psychometric/chronometric behavior and avoiding RT-ceiling warnings.
+
+### Gate lesion
+
+Run: `runs/adaptive_control_validation_suite_phase1_gate/`
+
+The linear-gate lesion (`control_uncertainty_power=1.0`) did not fail catastrophically:
+
+| Condition | Psych slope | Chrono slope | Retry gap | RT ceiling warnings | Degenerate |
+|-----------|-------------|--------------|-----------|---------------------|------------|
+| full control, nonlinear gate | 22.26 +/- 1.80 | -33.97 +/- 4.02 | 0.165 +/- 0.045 | 0/5 | 0/5 |
+| full control, linear gate | 22.79 +/- 1.54 | -34.99 +/- 5.79 | 0.144 +/- 0.090 | 0/5 | 0/5 |
+
+Paired deltas versus no-control:
+
+| Comparison | Delta retry gap | Positive seeds |
+|------------|-----------------|----------------|
+| nonlinear full control - no-control | +0.109 +/- 0.086 | 5/5 |
+| linear-gate full control - no-control | +0.087 +/- 0.130 | 3/5 |
+
+**Interpretation:** the nonlinear gate is not strictly necessary for calibrated behavior. The more honest claim is that sharpened uncertainty gating makes the adaptive retry effect stronger and more reliable. The broader mechanism appears to be uncertainty-gated adaptive control, not the exact exponent value.
+
+### What this achieved
+
+This is a legitimate controlled computational result:
+
+1. The effect is lesion-tested against a clean no-control baseline.
+2. The key behavior is reproducible across 5 seeds in the full-control condition.
+3. Core psychometric and chronometric behavior remain in the calibrated neighborhood.
+4. The result has an explicit caveat: it is a computational analogy, not brain anatomy.
+
+### Why this is not a breakthrough yet
+
+1. The result is still inside our simulator and our evaluation stack.
+2. The retry metric was designed to probe this hypothesis, so it needs out-of-sample tasks.
+3. Exploration is not yet independently proven as a necessary component.
+4. The gate lesion softened, but did not abolish, the effect.
+5. No neural data or anatomical circuit claim is involved.
+
+The current status is best described as a **strong internal milestone**: a reproducible, lesion-tested adaptive-control mechanism that creates an animal-like weak-failure retry signature while preserving the evidence/RT profile.
+
+### Adaptive-control artifacts
+
+- Design note: `docs/adaptive_control_agent_design.md`
+- Validation CLI: `scripts/adaptive_control_validation_suite.py`
+- Main 5-seed validation: `runs/adaptive_control_validation_suite_phase1/`
+- Gate-lesion validation: `runs/adaptive_control_validation_suite_phase1_gate/`
+- Earlier calibration sweeps: `runs/adaptive_control_phase1/`
+
 ### Artifacts
 
 - Post-fix validation (3 seeds): `runs/post_fix_v1/`

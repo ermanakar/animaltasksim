@@ -1,8 +1,35 @@
 # Adaptive Control Agent Design
 
-> Status: design proposal, March 2026.
+> Status: phase-1 implementation validated, May 2026.
 >
 > Motivation: March 2026 plastic-history experiments showed that stronger local history plasticity can become numerically active without producing the correct behavioral fingerprint. The next agent family should model not just history bias, but the competing control pressures that make mammals persist, switch, or explore under uncertainty.
+>
+> Caveat: this is a biologically inspired computational analogy. It is not a claim that the repository models exact brain anatomy.
+
+## Phase-1 result
+
+The phase-1 validation suite now supports a narrow but useful claim:
+
+> The full adaptive-control model preserves calibrated psychometric/chronometric behavior while increasing weak-failure retry relative to a clean no-control lesion.
+
+Main validation: `runs/adaptive_control_validation_suite_phase1/`
+
+| Condition | Psych slope | Chrono slope | Retry gap | RT ceiling warnings | Degenerate |
+|-----------|-------------|--------------|-----------|---------------------|------------|
+| true no-control | 27.71 +/- 3.28 | -48.54 +/- 7.05 | 0.057 +/- 0.062 | 0/5 | 0/5 |
+| persistence-only | 21.75 +/- 2.69 | -33.47 +/- 4.49 | 0.164 +/- 0.108 | 1/5 | 0/5 |
+| full control | 22.26 +/- 1.80 | -33.97 +/- 4.02 | 0.165 +/- 0.045 | 0/5 | 0/5 |
+
+Paired against the clean no-control lesion, full control increased retry gap by `+0.109 +/- 0.086`, positive in 5/5 seeds.
+
+Gate-lesion validation: `runs/adaptive_control_validation_suite_phase1_gate/`
+
+| Gate condition | Retry lift vs no-control | Positive seeds | Interpretation |
+|----------------|--------------------------|----------------|----------------|
+| nonlinear gate (`control_uncertainty_power=2.0`) | +0.109 +/- 0.086 | 5/5 | stronger and more reliable |
+| linear gate (`control_uncertainty_power=1.0`) | +0.087 +/- 0.130 | 3/5 | still works, but less robust |
+
+This means the nonlinear gate is not strictly necessary. The honest mechanism claim is uncertainty-gated adaptive control, with the sharpened gate improving reliability.
 
 ## 1. Objective
 
@@ -292,6 +319,16 @@ Required probes:
 3. repeated low-information rewarded choices increase exploration pressure
 4. strong current evidence suppresses adaptive control bias
 
+Required ablation:
+
+- `control_state_enabled=False` must zero all adaptive-control state outputs, even if persistence and exploration heads are otherwise enabled. This keeps the no-control baseline causally clean: residual behavior can come from the inherited evidence/history core, but not from adaptive-control fast state, retry/switch pressure, exploration pressure, or arbitration.
+- Adaptive-control heads must be zero-centered at initialization and routed through a bounded `control_residual`, with training regularization on residual/control pressure magnitude. This keeps persistence and exploration as residual overlays so they cannot erase the evidence core's psychometric and chronometric calibration.
+- Adaptive-control state updates use explicit outcome valence: positive reward reinforces the chosen action, while zero/negative reward teaches persistence under uncertainty or switching under confidence. The critic prediction error remains available for value learning and diagnostics, but it must not silence failure teaching when the critic is poorly calibrated.
+- Arbitration is gated by current evidence confidence, and training tracks an evidence-preservation penalty on control residuals during high-evidence trials. The adaptive controller should explain ambiguous-trial history effects without rewriting the evidence pathway on easy trials. The expression gate is nonlinear (`control_uncertainty_power`) so control remains available near zero contrast but falls quickly as sensory evidence becomes informative.
+- IBL rollout must use the configured DDM response window, not the environment's short default response phase. Otherwise weak-evidence trials saturate at 300 ms and the chronometric warning measures a rollout ceiling rather than agent dynamics.
+- Current IBL calibration uses `drift_scale=6.0`, `control_uncertainty_power=2.0`, and `persistence_bias_scale=1.6`. In the phase-1 5-seed validation suite, full control retained calibrated behavior (`psychometric_slope=22.26 +/- 1.80`, `chronometric_slope=-33.97 +/- 4.02`) while increasing weak-failure retry relative to the matched no-control lesion (`delta_retry_gap=+0.109 +/- 0.086`, positive in 5/5 seeds). No full-control runs were degenerate or RT-ceiling flagged.
+- Gate-lesion validation showed that a linear uncertainty gate still produces some adaptive retry behavior (`delta_retry_gap=+0.087 +/- 0.130`) but less reliably (3/5 positive seeds). Do not claim the nonlinear exponent is necessary; claim it improves robustness.
+
 Success criterion:
 
 - each probe passes in isolation, and each pressure is exposed by name in model outputs so later lesion runs can connect internal state to rollout behavior
@@ -308,6 +345,8 @@ Add analysis utilities for:
 4. persistence vs exploration as a function of confidence
 
 The existing evaluation pipeline can remain authoritative for psychometric, chronometric, and standard history metrics. The new metrics can be added as optional analysis outputs first.
+
+Use `scripts/adaptive_control_validation_suite.py` for the matched validation run. It trains the clean no-control lesion, persistence-only condition, and full-control condition across seeds, then writes per-run summaries, aggregate summaries, and paired deltas against the no-control lesion.
 
 ## 9. Minimal experiment sequence
 
@@ -332,13 +371,11 @@ The existing evaluation pipeline can remain authoritative for psychometric, chro
 4. Overfitting to newly invented metrics
    - mitigation: treat new metrics as probes of the scientific hypothesis, not optimization endpoints at first
 
-## 11. Recommended next implementation
+## 11. Recommended next work
 
-The lowest-risk next coding step is:
+The scaffold and phase-1 validation are complete. The next scientific steps are:
 
-1. create a new `AdaptiveControlModel` that wraps the existing DDM evidence core
-2. add a critic and a persistence state only
-3. route persistence into the DDM bias under low-confidence failure
-4. validate with one new metric: retry-after-failure on weak vs strong evidence
-
-That is the smallest change that is both biologically motivated and scientifically testable.
+1. isolate the exploration component with an exploration-disabled lesion and stronger stale-state probes
+2. test whether the adaptive-control idea transfers to PRL/DMS-style tasks
+3. keep the claim narrow: biologically inspired control mechanism, not exact anatomy
+4. avoid spending more budget on the nonlinear gate unless a task-transfer result makes it decisive

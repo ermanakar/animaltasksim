@@ -432,6 +432,8 @@ class HybridDDMTrainer:
             "epoch_drift_magnitude": [],
             "epoch_wfpt_loss": [],
             "epoch_twin_supervision": [],
+            "epoch_adaptive_control_regularization": [],
+            "epoch_evidence_preservation": [],
             "history_teacher_alpha": [],
             "mean_plastic_stay_tendency": [],
             "mean_win_stay_tendency": [],
@@ -456,6 +458,8 @@ class HybridDDMTrainer:
             epoch_drift_mag = 0.0
             epoch_wfpt = 0.0
             epoch_twin_sup = 0.0
+            epoch_adaptive_control_reg = 0.0
+            epoch_evidence_preservation = 0.0
             epoch_plastic_tendency = 0.0
             epoch_win_tendency = 0.0
             epoch_lose_tendency = 0.0
@@ -497,6 +501,8 @@ class HybridDDMTrainer:
                 soft_rt_var_buffer: list[torch.Tensor] = []
                 soft_rt_mask_buffer: list[torch.Tensor] = []
                 soft_rt_weights_buffer: list[torch.Tensor] = []
+                adaptive_control_buffer: list[torch.Tensor] = []
+                evidence_preservation_buffer: list[torch.Tensor] = []
 
                 # Buffers for WFPT loss (collect all DDM params + observed choice/RT)
                 non_decision_buffer: list[torch.Tensor] = []
@@ -543,6 +549,23 @@ class HybridDDMTrainer:
                     plastic_tendency_buffer.append(out["plastic_stay_tendency"])
                     win_tendency_buffer.append(out["win_stay_tendency"])
                     lose_tendency_buffer.append(out["lose_stay_tendency"])
+                    if "control_residual" in out:
+                        evidence_strength = torch.clamp(
+                            torch.abs(x[:, 0]),
+                            min=0.0,
+                            max=1.0,
+                        ).reshape(-1)
+                        evidence_preservation_buffer.append(
+                            out["control_residual"].reshape(-1) * evidence_strength
+                        )
+                    for control_key in (
+                        "control_residual",
+                        "persistence_pressure",
+                        "exploration_pressure",
+                        "arbitration_adjustment",
+                    ):
+                        if control_key in out:
+                            adaptive_control_buffer.append(out[control_key].reshape(-1))
                     non_decision_buffer.append(out["non_decision_ms"])
                     coherence = x[0, 0]
                     drift = out["drift_gain"] * coherence
@@ -903,6 +926,27 @@ class HybridDDMTrainer:
                         twin_sup_loss = torch.mean(torch.stack(components))
                         total_loss = total_loss + weights.twin_supervision * twin_sup_loss
 
+                adaptive_control_reg_loss = torch.zeros(1, device=self.device)
+                adaptive_control_reg_weight = float(
+                    getattr(self.config, "adaptive_control_regularization", 0.0)
+                )
+                if adaptive_control_reg_weight > 0.0 and adaptive_control_buffer:
+                    adaptive_control_values = torch.cat(adaptive_control_buffer)
+                    adaptive_control_reg_loss = torch.mean(adaptive_control_values**2)
+                    total_loss = total_loss + adaptive_control_reg_weight * adaptive_control_reg_loss
+
+                evidence_preservation_loss = torch.zeros(1, device=self.device)
+                evidence_preservation_weight = float(
+                    getattr(self.config, "evidence_preservation_regularization", 0.0)
+                )
+                if evidence_preservation_weight > 0.0 and evidence_preservation_buffer:
+                    evidence_weighted_residuals = torch.cat(evidence_preservation_buffer)
+                    evidence_preservation_loss = torch.mean(evidence_weighted_residuals**2)
+                    total_loss = (
+                        total_loss
+                        + evidence_preservation_weight * evidence_preservation_loss
+                    )
+
                 total_loss.backward()
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=5.0)
                 self.optimizer.step()
@@ -928,6 +972,8 @@ class HybridDDMTrainer:
                 epoch_drift_mag += float(drift_mag_loss.detach().cpu())
                 epoch_wfpt += float(wfpt_loss_val.detach().cpu())
                 epoch_twin_sup += float(twin_sup_loss.detach().cpu())
+                epoch_adaptive_control_reg += float(adaptive_control_reg_loss.detach().cpu())
+                epoch_evidence_preservation += float(evidence_preservation_loss.detach().cpu())
                 session_count += 1
 
             metrics["epoch_choice_loss"].append(epoch_choice / max(session_count, 1))
@@ -955,6 +1001,12 @@ class HybridDDMTrainer:
             metrics["epoch_drift_magnitude"].append(epoch_drift_mag / max(session_count, 1))
             metrics["epoch_wfpt_loss"].append(epoch_wfpt / max(session_count, 1))
             metrics["epoch_twin_supervision"].append(epoch_twin_sup / max(session_count, 1))
+            metrics["epoch_adaptive_control_regularization"].append(
+                epoch_adaptive_control_reg / max(session_count, 1)
+            )
+            metrics["epoch_evidence_preservation"].append(
+                epoch_evidence_preservation / max(session_count, 1)
+            )
             metrics["history_teacher_alpha"].append(self._history_injection_alpha)
             metrics["mean_plastic_stay_tendency"].append(
                 epoch_plastic_tendency / max(tendency_batches, 1)
@@ -1615,5 +1667,3 @@ def train_hybrid(config: HybridTrainingConfig) -> dict[str, Any]:
             "model": str(paths.model),
         },
     }
-
-
