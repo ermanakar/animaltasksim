@@ -36,7 +36,7 @@ The supported result is narrow but real: **uncertainty-gated adaptive retry/pers
 
 ## Current Validation
 
-Latest matched validation run:
+The latest matched validation suite spans 4 lesion conditions × 5 seeds × 1 task (IBL mouse 2AFC), for 20 independent runs. Every run produces a schema-validated trial log; metrics, dashboards, and per-seed reports live alongside the logs:
 
 ```text
 runs/adaptive_control_validation_suite_phase1_exploration/
@@ -45,47 +45,65 @@ runs/adaptive_control_validation_suite_phase1_exploration/
 ### How to read the numbers
 
 - **Retry gap** = P(retry | weak-evidence failure) − P(retry | strong-evidence failure). A positive gap means the agent specifically retries when the prior failure was *not* clearly disambiguated by the stimulus — the signature of uncertainty-gated persistence.
-- **Stale-switch lift** = P(switch | stale fresh-pair) − P(switch | fresh fresh-pair). A positive lift means the agent samples alternatives more often when its recent action history has gone stale — the signature of rewarded-streak exploration.
-- **Paired delta** = condition − no-control, computed seed-by-seed. Positive-seed counts (e.g. `5/5`) show how consistently the effect reproduces, not just whether the mean has the right sign.
-- **Lesion conditions.** *True no-control* disables all adaptive-control machinery; *persistence-only* and *exploration-only* enable one controller at a time; *full control* enables both. The arbitration layer is uncertainty-gated so that none of these can overwrite strong sensory evidence.
+- **Stale-switch lift** = P(switch | stale state) − P(switch | fresh state). A positive lift means the agent samples alternatives more often when its recent action history has gone stale — the signature of rewarded-streak exploration.
+- **Paired Δ** = condition − no-control, computed seed-by-seed. Positive-seed counts (e.g. `5/5`) show how consistently the effect reproduces, not just whether the mean has the right sign.
+- **Lesion conditions.** *No control* disables all adaptive-control machinery; *persistence only* and *exploration only* enable one controller at a time; *full control* enables both. The arbitration layer is uncertainty-gated so that none of these can overwrite strong sensory evidence.
+
+---
+
+### Behavioral overlay vs. the IBL mouse
+
+![Adaptive-control agent vs. IBL mouse: psychometric, chronometric, and history](docs/figures/agent_vs_animal_full_control_seed42.png)
+
+> **Figure 1 | The full-control agent reproduces the IBL mouse's choice psychometric, tracks its chronometric shape, and shows directionally correct history effects.**
+> **(a)** Psychometric curve, P(rightward choice) vs. signed stimulus contrast. Filled circles, agent (full-control, seed 42); open squares, IBL mouse aggregate (10 sessions, n = 8,406 trials). Solid blue and dashed gray curves are sigmoid fits with separate lapse parameters per side. The agent's slope (22.3 logits/contrast) sits inside the per-session IBL distribution (20.0 ± 5.7).
+> **(b)** Chronometric curve. Median reaction time vs. |stimulus contrast|, with error bars showing the standard error of the median. Both agent and mouse decline monotonically with stimulus strength; the agent matches the mouse at low contrast and commits faster than the mouse at the highest contrast.
+> **(c)** History effects (win-stay, lose-shift, sticky-choice). Hollow bars, mouse; filled blue bars, agent. Lose-shift is matched. Win-stay and sticky-choice are directionally correct (above 0.5) but trail the mouse by roughly 0.13 in this seed; this gap is the agent's main remaining behavioral deficit.
+
+---
+
+### Lesion suite summary
 
 | Condition | Psych slope | Chrono slope | Retry gap | Stale-switch lift | RT ceiling warnings | Degenerate |
 |-----------|-------------|--------------|-----------|-------------------|---------------------|------------|
-| True no-control | 27.71 | -48.54 | 0.057 | -0.073 | 0/5 | 0/5 |
-| Exploration-only | 24.00 | -38.83 | 0.092 | -0.160 | 0/5 | 0/5 |
-| Persistence-only | 21.75 | -33.47 | 0.164 | -0.159 | 1/5 | 0/5 |
-| Full control | 22.26 | -33.97 | 0.165 | -0.152 | 0/5 | 0/5 |
+| No control       | 27.71 | −48.54 |  0.057 | −0.073 | 0/5 | 0/5 |
+| Exploration only | 24.00 | −38.83 |  0.092 | −0.160 | 0/5 | 0/5 |
+| Persistence only | 21.75 | −33.47 |  0.164 | −0.159 | 1/5 | 0/5 |
+| Full control     | 22.26 | −33.97 |  0.165 | −0.152 | 0/5 | 0/5 |
 
-Paired deltas versus the clean no-control lesion:
+![Per-condition behavioral readouts across the lesion suite](docs/figures/suite_validation_summary.png)
 
-| Comparison | Delta retry gap | Retry positive seeds | Delta stale-switch lift | Stale-lift positive seeds |
-|------------|-----------------|----------------------|-------------------------|---------------------------|
-| Exploration-only - no-control | +0.035 | 3/5 | -0.087 | 0/5 |
-| Persistence-only - no-control | +0.107 | 3/5 | -0.086 | 0/5 |
-| Full control - no-control | +0.109 | 5/5 | -0.079 | 0/5 |
+> **Figure 2 | Per-condition behavioral readouts across the lesion suite.** Bars are means across n = 5 seeds; error bars are 1 s.d.
+> **(a)** Retry gap rises monotonically as adaptive control is added back, peaking in the persistence-only and full-control conditions.
+> **(b)** Stale-switch lift remains negative in every condition, and is more negative in the adaptive conditions than under no control — i.e. the exploration controller fails its isolation probe in this design.
+> **(c)** Psychometric slope. Shaded band marks the IBL per-session reference (20.0 ± 5.7). Adding adaptive control reduces slope from the no-control level into the animal's distribution, at the cost of evidence sensitivity.
+> **(d)** Chronometric slope. Dashed line marks the literature target (≈ −36 ms / unit |stimulus|). All adaptive conditions land near the target.
 
-Interpretation:
+---
 
-- Full control reliably increases retry after weak-evidence failure.
-- Persistence explains most of that effect.
-- Rewarded-streak exploration failed its isolation probe.
-- The honest claim is adaptive retry/persistence, not a general exploration breakthrough.
+### Necessity test: paired deltas vs. no control
 
-**Behavioral overlay against the IBL mouse** (full control, seed 42):
+| Comparison                          | Δ retry gap | Retry positive seeds | Δ stale-switch lift | Stale-lift positive seeds |
+|-------------------------------------|------------:|---------------------:|--------------------:|--------------------------:|
+| Exploration only − no control       |      +0.035 |                  3/5 |              −0.087 |                       0/5 |
+| Persistence only − no control       |      +0.107 |                  3/5 |              −0.086 |                       0/5 |
+| Full control − no control           |      +0.109 |                  5/5 |              −0.079 |                       0/5 |
 
-![Agent vs. IBL mouse: psychometric, chronometric, and history overlay](docs/figures/agent_vs_animal_full_control_seed42.png)
+![Paired lesion deltas vs. no control](docs/figures/suite_paired_deltas.png)
 
-The psychometric curve sits inside the animal's slope. The chronometric shape tracks the mouse but at a faster absolute RT — agent RTs occupy a different magnitude regime. History effects are in the right direction; win-stay and sticky-choice still trail the mouse, lose-shift is essentially matched.
+> **Figure 3 | Paired lesion deltas vs. the no-control lesion** (n = 5 seeds, paired by seed). Each bar pair shows the per-condition mean change in retry gap (green) and stale-switch lift (purple) relative to the same seed's no-control run. Numbers above and below bars are positive-seed counts (n/N): how many of the five seeds showed an effect in the expected direction.
+> Full control produces a positive Δ retry gap in **5/5** seeds — the strongest evidence in the suite that the persistence mechanism reliably changes behavior. In contrast, Δ stale-switch lift is negative in **0/5** seeds across every adaptive condition: rewarded-streak exploration is not validated by this probe.
 
-**Suite-level summary** across all four lesion conditions:
+---
 
-![Validation summary: retry gap and stale-switch lift across lesion conditions](docs/figures/suite_validation_summary.png)
+### Interpretation
 
-Per-seed paired deltas vs. the no-control lesion:
+- Full control reliably increases retry after weak-evidence failure (Fig 1c, Fig 2a, Fig 3).
+- Persistence explains most of that effect: the persistence-only lesion already recovers ~98% of the full-control retry gap.
+- Rewarded-streak exploration fails its isolation probe in every condition (Fig 2b, Fig 3).
+- The honest claim is **uncertainty-gated adaptive retry / persistence**, not a general exploration breakthrough. The exploration mechanism needs a different probe, a different gate, or both.
 
-![Paired deltas vs. no-control across seeds](docs/figures/suite_paired_deltas.png)
-
-Full per-condition dashboards live under `runs/adaptive_control_validation_suite_phase1_exploration/` (`suite_dashboard.html`, plus a `dashboard.html` and `report.html` per seed/condition).
+Full per-condition HTML dashboards (one per seed) live under `runs/adaptive_control_validation_suite_phase1_exploration/`.
 
 ## Architecture
 

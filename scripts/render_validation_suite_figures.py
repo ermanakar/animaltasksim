@@ -1,22 +1,40 @@
 #!/usr/bin/env python
-"""Render polished suite figures from a validation_summary.json file.
+"""Render the README's Figures 2 and 3 from validation_summary.json.
 
-Produces:
-  - <run_root>/suite_validation_summary.png
-  - <run_root>/suite_paired_deltas.png
+Figure 2: 4-panel suite summary (retry gap, stale-switch lift,
+psychometric slope, chronometric slope) across the four lesion conditions.
+
+Figure 3: paired-delta bar chart for the three adaptive conditions vs.
+the no-control lesion, with positive-seed counts annotated above/below
+each bar.
+
+Both figures share the journal-style helpers in `_figure_style.py`:
+sans-serif typography, no top/right spines, no in-axes panel titles,
+and bold panel labels in the top-left.
 """
 
 from __future__ import annotations
 
 import json
+import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import tyro
+
+from _figure_style import (  # noqa: E402
+    CONDITION_COLORS,
+    DELTA_COLOR_RETRY,
+    DELTA_COLOR_STALE,
+    add_panel_label,
+    apply_journal_style,
+)
 
 CONDITION_ORDER = [
     "true_no_control",
@@ -26,15 +44,9 @@ CONDITION_ORDER = [
 ]
 CONDITION_LABELS = {
     "true_no_control": "No control",
-    "exploration_only": "Exploration only",
-    "persistence_only": "Persistence only",
-    "full_control": "Full control",
-}
-CONDITION_COLORS = {
-    "true_no_control": "#6c757d",
-    "exploration_only": "#c2185b",
-    "persistence_only": "#2e7d32",
-    "full_control": "#1565c0",
+    "exploration_only": "Exploration\nonly",
+    "persistence_only": "Persistence\nonly",
+    "full_control": "Full\ncontrol",
 }
 
 DELTA_COMPARISONS = [
@@ -47,30 +59,15 @@ IBL_PSYCH_REF_MEAN = 20.0
 IBL_PSYCH_REF_STD = 5.7
 IBL_CHRONO_LITERATURE = -36.0
 
-TEXT_COLOR = "#2b2b2b"
-GRID_KW = dict(color="#d9d9d9", linewidth=0.7, alpha=0.9)
-ERRORBAR_KW = dict(ecolor="#333333", elinewidth=1.0, capsize=4, capthick=1.0)
-
-
-def _apply_axes_style(ax: plt.Axes) -> None:
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
-    ax.spines["left"].set_color("#888888")
-    ax.spines["bottom"].set_color("#888888")
-    ax.tick_params(colors=TEXT_COLOR, labelsize=9)
-    ax.yaxis.grid(True, **GRID_KW)
-    ax.set_axisbelow(True)
+ERRORBAR_KW = dict(ecolor="#333333", elinewidth=0.9, capsize=3.0, capthick=0.9)
 
 
 def _bar_panel(
-    ax: plt.Axes,
+    ax,
     aggregate: dict[str, dict],
     mean_key: str,
     std_key: str,
-    title: str,
     ylabel: str,
-    *,
-    invert_y: bool = False,
 ) -> None:
     means = [aggregate[c][mean_key] for c in CONDITION_ORDER]
     stds = [aggregate[c][std_key] for c in CONDITION_ORDER]
@@ -78,35 +75,26 @@ def _bar_panel(
     labels = [CONDITION_LABELS[c] for c in CONDITION_ORDER]
 
     xs = list(range(len(CONDITION_ORDER)))
-    bars = ax.bar(
-        xs,
-        means,
+    ax.bar(
+        xs, means,
         yerr=stds,
         color=colors,
         edgecolor="white",
-        linewidth=1.2,
-        width=0.68,
+        linewidth=1.0,
+        width=0.66,
         error_kw=ERRORBAR_KW,
     )
-    _ = bars  # silence unused
     ax.set_xticks(xs)
-    ax.set_xticklabels(labels, rotation=15, ha="right", color=TEXT_COLOR)
-    ax.set_title(title, fontsize=11, color=TEXT_COLOR, pad=10)
-    ax.set_ylabel(ylabel, fontsize=9.5, color=TEXT_COLOR)
-    ax.axhline(0, color="#888888", linewidth=0.8)
-    if invert_y:
-        ax.invert_yaxis()
-    _apply_axes_style(ax)
+    ax.set_xticklabels(labels)
+    ax.set_ylabel(ylabel)
+    ax.axhline(0.0, color="#888888", linewidth=0.6, zorder=0)
 
 
 def render_summary(summary: dict, output: Path) -> Path:
     aggregate = {row["condition"]: row for row in summary["aggregate"]}
-    fig, axes = plt.subplots(2, 2, figsize=(11.5, 7.6), constrained_layout=True)
-    fig.suptitle(
-        "Adaptive Control Validation Suite — Phase 1",
-        fontsize=14,
-        color=TEXT_COLOR,
-        weight="bold",
+    fig, axes = plt.subplots(2, 2, figsize=(12.0, 7.6))
+    plt.subplots_adjust(
+        wspace=0.30, hspace=0.55, left=0.07, right=0.985, top=0.95, bottom=0.10
     )
 
     _bar_panel(
@@ -114,16 +102,15 @@ def render_summary(summary: dict, output: Path) -> Path:
         aggregate,
         "retry_gap_mean",
         "retry_gap_std",
-        "Persistence readout: retry gap",
-        "P(retry | weak fail) − P(retry | strong fail)",
+        "Retry gap\nP(retry|weak fail) − P(retry|strong fail)",
     )
+
     _bar_panel(
         axes[0, 1],
         aggregate,
         "stale_switch_lift_overall_mean",
         "stale_switch_lift_overall_std",
-        "Exploration readout: stale-switch lift",
-        "P(switch | stale) − P(switch | fresh)",
+        "Stale-switch lift\nP(switch|stale) − P(switch|fresh)",
     )
 
     psych_ax = axes[1, 0]
@@ -132,18 +119,17 @@ def render_summary(summary: dict, output: Path) -> Path:
         aggregate,
         "psychometric_slope_mean",
         "psychometric_slope_std",
-        "Core fingerprint: psychometric slope",
-        "Slope (logits / contrast)",
+        "Psychometric slope\n(logits / contrast)",
     )
     psych_ax.axhspan(
         IBL_PSYCH_REF_MEAN - IBL_PSYCH_REF_STD,
         IBL_PSYCH_REF_MEAN + IBL_PSYCH_REF_STD,
-        color="#1565c0",
-        alpha=0.10,
+        color="#1565c0", alpha=0.10, zorder=0,
         label=f"IBL ref {IBL_PSYCH_REF_MEAN:.0f} ± {IBL_PSYCH_REF_STD:.1f}",
     )
-    psych_ax.axhline(IBL_PSYCH_REF_MEAN, color="#1565c0", linewidth=0.9, linestyle="--", alpha=0.7)
-    psych_ax.legend(loc="upper right", frameon=False, fontsize=8.5)
+    psych_ax.axhline(IBL_PSYCH_REF_MEAN, color="#1565c0",
+                     linewidth=0.9, linestyle="--", alpha=0.6)
+    psych_ax.legend(loc="upper right")
 
     chrono_ax = axes[1, 1]
     _bar_panel(
@@ -151,20 +137,19 @@ def render_summary(summary: dict, output: Path) -> Path:
         aggregate,
         "chronometric_slope_mean",
         "chronometric_slope_std",
-        "Core fingerprint: chronometric slope",
-        "ms per unit |stimulus|",
+        "Chronometric slope\n(ms per unit |stimulus|)",
     )
     chrono_ax.axhline(
         IBL_CHRONO_LITERATURE,
-        color="#444444",
-        linewidth=0.9,
-        linestyle="--",
-        alpha=0.8,
+        color="#444444", linewidth=0.9, linestyle="--", alpha=0.7,
         label=f"Literature target ≈ {IBL_CHRONO_LITERATURE:.0f}",
     )
-    chrono_ax.legend(loc="upper right", frameon=False, fontsize=8.5)
+    chrono_ax.legend(loc="lower right")
 
-    fig.savefig(output, dpi=180, bbox_inches="tight", facecolor="white")
+    for ax, label in zip(axes.flat, "abcd"):
+        add_panel_label(ax, label)
+
+    fig.savefig(output, bbox_inches="tight")
     plt.close(fig)
     return output
 
@@ -172,22 +157,14 @@ def render_summary(summary: dict, output: Path) -> Path:
 def render_paired_deltas(summary: dict, output: Path) -> Path:
     paired = {row["comparison"]: row for row in summary["paired_delta_summary"]}
 
-    fig, ax = plt.subplots(figsize=(10.5, 5.6), constrained_layout=True)
-    fig.suptitle(
-        "Paired lesion deltas vs. no-control",
-        fontsize=13,
-        color=TEXT_COLOR,
-        weight="bold",
-    )
+    fig, ax = plt.subplots(figsize=(10.0, 5.0))
+    plt.subplots_adjust(left=0.08, right=0.985, top=0.92, bottom=0.18)
 
-    width = 0.36
+    width = 0.34
     xs = list(range(len(DELTA_COMPARISONS)))
-    retry_means = []
-    retry_pos = []
-    stale_means = []
-    stale_pos = []
-    n_seeds = []
-    labels = []
+    retry_means, retry_pos, stale_means, stale_pos, n_seeds, labels = (
+        [], [], [], [], [], []
+    )
     for key, label in DELTA_COMPARISONS:
         row = paired[key]
         retry_means.append(row["delta_retry_gap_mean"])
@@ -199,65 +176,36 @@ def render_paired_deltas(summary: dict, output: Path) -> Path:
 
     retry_xs = [x - width / 2 for x in xs]
     stale_xs = [x + width / 2 for x in xs]
-    ax.bar(
-        retry_xs,
-        retry_means,
-        width=width,
-        color="#2e7d32",
-        edgecolor="white",
-        linewidth=1.0,
-        label="Δ retry gap",
-    )
-    ax.bar(
-        stale_xs,
-        stale_means,
-        width=width,
-        color="#c2185b",
-        edgecolor="white",
-        linewidth=1.0,
-        label="Δ stale-switch lift",
-    )
 
-    def _annotate(x: float, value: float, count: int, n: int) -> None:
-        offset = 0.006 if value >= 0 else -0.006
+    ax.bar(retry_xs, retry_means, width=width, color=DELTA_COLOR_RETRY,
+           edgecolor="white", linewidth=0.8, label="Δ retry gap")
+    ax.bar(stale_xs, stale_means, width=width, color=DELTA_COLOR_STALE,
+           edgecolor="white", linewidth=0.8, label="Δ stale-switch lift")
+
+    pad = max(abs(min(stale_means)), abs(max(retry_means))) * 0.22
+    ymin, ymax = min(stale_means) - pad, max(retry_means) + pad
+    ax.set_ylim(ymin, ymax)
+
+    label_offset = (ymax - ymin) * 0.025
+
+    def _annotate(x, value, count, n):
+        offset = label_offset if value >= 0 else -label_offset
         va = "bottom" if value >= 0 else "top"
-        ax.text(
-            x,
-            value + offset,
-            f"{count}/{n}",
-            ha="center",
-            va=va,
-            fontsize=9,
-            color=TEXT_COLOR,
-        )
+        ax.text(x, value + offset, f"{count}/{n}",
+                ha="center", va=va, fontsize=8.5, color="#222222")
 
     for x, m, c, n in zip(retry_xs, retry_means, retry_pos, n_seeds):
         _annotate(x, m, c, n)
     for x, m, c, n in zip(stale_xs, stale_means, stale_pos, n_seeds):
         _annotate(x, m, c, n)
 
-    ax.axhline(0, color="#444444", linewidth=0.9)
+    ax.axhline(0.0, color="#444444", linewidth=0.9)
     ax.set_xticks(xs)
-    ax.set_xticklabels(labels, color=TEXT_COLOR)
-    ax.set_ylabel("Paired delta vs. no-control (mean across seeds)", fontsize=10, color=TEXT_COLOR)
-    ax.legend(frameon=False, loc="lower left", fontsize=9.5)
+    ax.set_xticklabels(labels)
+    ax.set_ylabel("Paired Δ vs. no-control (mean across seeds)")
+    ax.legend(loc="lower left")
 
-    pad = max(abs(min(stale_means)), abs(max(retry_means))) * 0.18
-    ymin = min(stale_means) - pad
-    ymax = max(retry_means) + pad
-    ax.set_ylim(ymin, ymax)
-
-    _apply_axes_style(ax)
-    ax.text(
-        0.0,
-        -0.16,
-        "Labels show positive-seed counts (n/N). Effect is positive only when most seeds agree in sign.",
-        transform=ax.transAxes,
-        fontsize=8.5,
-        color="#555555",
-    )
-
-    fig.savefig(output, dpi=180, bbox_inches="tight", facecolor="white")
+    fig.savefig(output, bbox_inches="tight")
     plt.close(fig)
     return output
 
@@ -269,6 +217,7 @@ class Args:
 
 
 def main(args: Args) -> None:
+    apply_journal_style()
     summary_path = args.run_root / "validation_summary.json"
     summary = json.loads(summary_path.read_text())
     args.output_dir.mkdir(parents=True, exist_ok=True)
