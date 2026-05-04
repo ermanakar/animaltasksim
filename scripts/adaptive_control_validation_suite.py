@@ -34,6 +34,18 @@ SUMMARY_METRICS: tuple[str, ...] = (
     "switch_after_failure_weak",
     "switch_after_failure_strong",
     "switch_gap",
+    "switch_after_streak_weak",
+    "switch_after_streak_strong",
+    "switch_after_fresh_weak",
+    "switch_after_fresh_overall",
+    "switch_after_stale_overall",
+    "stale_switch_lift_weak",
+    "stale_switch_lift_overall",
+    "weak_streak_count",
+    "strong_streak_count",
+    "fresh_weak_count",
+    "fresh_count",
+    "stale_count",
     "exploration_gap",
 )
 
@@ -46,6 +58,10 @@ PAIRED_METRICS: tuple[str, ...] = (
     "sticky_choice",
     "retry_gap",
     "switch_gap",
+    "switch_after_streak_weak",
+    "switch_after_fresh_weak",
+    "stale_switch_lift_weak",
+    "stale_switch_lift_overall",
     "exploration_gap",
 )
 
@@ -92,6 +108,7 @@ class ValidationSuiteArgs:
     persistence_bias_scale: float = 1.6
     persistence_learning_rate: float = 0.8
     control_uncertainty_power: float = 2.0
+    include_exploration_only: bool = True
     include_gate_lesion: bool = False
     gate_lesion_uncertainty_power: float = 1.0
     skip_existing: bool = True
@@ -148,6 +165,11 @@ class ValidationSuiteArgs:
                 ),
             ),
             ValidationCondition(
+                label="exploration_only",
+                description="Exploration controller enabled; persistence disabled.",
+                extra_args=("--no-persistence-enabled",),
+            ),
+            ValidationCondition(
                 label="persistence_only",
                 description="Persistence controller enabled; exploration disabled.",
                 extra_args=("--no-exploration-enabled",),
@@ -165,6 +187,8 @@ class ValidationSuiteArgs:
                     control_uncertainty_power=self.gate_lesion_uncertainty_power,
                 )
             )
+        if not self.include_exploration_only:
+            conditions = [condition for condition in conditions if condition.label != "exploration_only"]
         return conditions
 
     def _build_train_command(
@@ -277,6 +301,7 @@ class ValidationSuiteArgs:
                 "drift_scale": self.drift_scale,
                 "persistence_bias_scale": self.persistence_bias_scale,
                 "control_uncertainty_power": self.control_uncertainty_power,
+                "include_exploration_only": self.include_exploration_only,
                 "include_gate_lesion": self.include_gate_lesion,
             },
             "aggregate": aggregate_rows,
@@ -295,9 +320,9 @@ class ValidationSuiteArgs:
         print(f"{'=' * 80}")
         print(
             f"{'condition':<26} | {'n':>2} | {'psych':>8} | {'chrono':>8} | "
-            f"{'retry':>7} | {'ceil':>4} | {'deg':>3}"
+            f"{'retry':>7} | {'stale':>7} | {'ceil':>4} | {'deg':>3}"
         )
-        print("-" * 80)
+        print("-" * 92)
         for row in aggregate_rows:
             print(
                 f"{str(row['condition']):<26} | "
@@ -305,19 +330,24 @@ class ValidationSuiteArgs:
                 f"{_fmt(row.get('psychometric_slope_mean')):>8} | "
                 f"{_fmt(row.get('chronometric_slope_mean')):>8} | "
                 f"{_fmt(row.get('retry_gap_mean'), decimals=3):>7} | "
+                f"{_fmt(row.get('stale_switch_lift_weak_mean'), decimals=3):>7} | "
                 f"{int(row.get('rt_ceiling_warning_count', 0)):>4} | "
                 f"{int(row.get('degenerate_count', 0)):>3}"
             )
 
         if paired_summary_rows:
-            print(f"\n{'comparison':<42} | {'d_retry':>8} | {'pos':>5} | {'d_psych':>8} | {'d_chrono':>8}")
-            print("-" * 80)
+            print(
+                f"\n{'comparison':<42} | {'d_retry':>8} | {'pos':>5} | "
+                f"{'d_stale':>8} | {'d_psych':>8} | {'d_chrono':>8}"
+            )
+            print("-" * 92)
             for row in paired_summary_rows:
                 comparison = str(row["comparison"])
                 print(
                     f"{comparison:<42} | "
                     f"{_fmt(row.get('delta_retry_gap_mean'), decimals=3):>8} | "
                     f"{int(row.get('delta_retry_gap_positive_count', 0)):>5} | "
+                    f"{_fmt(row.get('delta_stale_switch_lift_weak_mean'), decimals=3):>8} | "
                     f"{_fmt(row.get('delta_psychometric_slope_mean')):>8} | "
                     f"{_fmt(row.get('delta_chronometric_slope_mean')):>8}"
                 )
@@ -377,8 +407,16 @@ def _summarize_run(metrics: dict[str, Any]) -> dict[str, object]:
         "strong_failure_count": probe.get("strong_failure_count"),
         "switch_after_streak_weak": exploration_probe.get("switch_after_streak_weak"),
         "switch_after_streak_strong": exploration_probe.get("switch_after_streak_strong"),
+        "switch_after_fresh_weak": exploration_probe.get("switch_after_fresh_weak"),
+        "switch_after_fresh_overall": exploration_probe.get("switch_after_fresh_overall"),
+        "switch_after_stale_overall": exploration_probe.get("switch_after_stale_overall"),
+        "stale_switch_lift_weak": exploration_probe.get("stale_switch_lift_weak"),
+        "stale_switch_lift_overall": exploration_probe.get("stale_switch_lift_overall"),
         "weak_streak_count": exploration_probe.get("weak_streak_count"),
         "strong_streak_count": exploration_probe.get("strong_streak_count"),
+        "fresh_weak_count": exploration_probe.get("fresh_weak_count"),
+        "fresh_count": exploration_probe.get("fresh_count"),
+        "stale_count": exploration_probe.get("stale_count"),
         "bias_ok": quality.get("bias_ok"),
         "history_ok": quality.get("history_ok"),
         "rt_ok": quality.get("rt_ok"),

@@ -43,6 +43,17 @@ def test_validation_suite_can_include_gate_lesion(tmp_path: Path) -> None:
     assert cmd[cmd.index("--control-uncertainty-power") + 1] == "1.0"
 
 
+def test_validation_suite_builds_exploration_only_condition(tmp_path: Path) -> None:
+    args = ValidationSuiteArgs(run_root=tmp_path)
+    condition = next(condition for condition in args._conditions() if condition.label == "exploration_only")
+
+    cmd = args._build_train_command(tmp_path / "run", 42, condition)
+
+    assert "--no-persistence-enabled" in cmd
+    assert "--no-exploration-enabled" not in cmd
+    assert "--no-control-state-enabled" not in cmd
+
+
 def test_validation_suite_paired_delta_summary() -> None:
     conditions = ValidationSuiteArgs()._conditions()
     rows = [
@@ -52,6 +63,7 @@ def test_validation_suite_paired_delta_summary() -> None:
             "psychometric_slope": 25.0,
             "chronometric_slope": -40.0,
             "retry_gap": 0.10,
+            "stale_switch_lift_weak": 0.02,
             "degenerate": False,
             "chronometric_ok": True,
         },
@@ -61,6 +73,7 @@ def test_validation_suite_paired_delta_summary() -> None:
             "psychometric_slope": 27.0,
             "chronometric_slope": -42.0,
             "retry_gap": 0.12,
+            "stale_switch_lift_weak": 0.03,
             "degenerate": False,
             "chronometric_ok": True,
         },
@@ -70,6 +83,7 @@ def test_validation_suite_paired_delta_summary() -> None:
             "psychometric_slope": 22.0,
             "chronometric_slope": -36.0,
             "retry_gap": 0.16,
+            "stale_switch_lift_weak": 0.08,
             "degenerate": False,
             "chronometric_ok": True,
         },
@@ -79,6 +93,7 @@ def test_validation_suite_paired_delta_summary() -> None:
             "psychometric_slope": 23.0,
             "chronometric_slope": -35.0,
             "retry_gap": 0.17,
+            "stale_switch_lift_weak": 0.09,
             "degenerate": False,
             "chronometric_ok": True,
         },
@@ -93,6 +108,9 @@ def test_validation_suite_paired_delta_summary() -> None:
 
     assert full_control["num_seeds"] == 2
     assert full_control["retry_gap_mean"] == pytest.approx(0.165)
+    assert full_control["stale_switch_lift_weak_mean"] == pytest.approx(0.085)
     assert full_control_delta["delta_retry_gap_mean"] == pytest.approx(0.055)
     assert full_control_delta["delta_retry_gap_positive_count"] == 2
+    assert full_control_delta["delta_stale_switch_lift_weak_mean"] == pytest.approx(0.06)
+    assert full_control_delta["delta_stale_switch_lift_weak_positive_count"] == 2
     assert full_control_delta["delta_psychometric_slope_mean"] == pytest.approx(-3.5)

@@ -50,12 +50,23 @@ def _psychometric_figure(df: pd.DataFrame, metrics: dict[str, object]) -> tuple[
 
 
 def _chronometric_figure(df: pd.DataFrame) -> tuple[str, str]:
-    if "stimulus_coherence" not in df.columns or df["rt_ms"].isnull().all():
+    if "stimulus_contrast" in df.columns:
+        column = "stimulus_contrast"
+    elif "stimulus_coherence" in df.columns:
+        column = "stimulus_coherence"
+    else:
         return "Chronometric", ""
-    grouped = df.groupby("stimulus_coherence")["rt_ms"].median().reset_index()
+    if df["rt_ms"].isnull().all():
+        return "Chronometric", ""
+    data = df.copy()
+    data["difficulty"] = pd.to_numeric(data[column], errors="coerce").abs()
+    data = data[data["difficulty"].notnull()]
+    if data.empty:
+        return "Chronometric", ""
+    grouped = data.groupby("difficulty")["rt_ms"].median().reset_index()
     fig, ax = plt.subplots(figsize=(4, 3))
-    ax.plot(grouped["stimulus_coherence"], grouped["rt_ms"], marker="o")
-    ax.set_xlabel("|coherence|")
+    ax.plot(grouped["difficulty"], grouped["rt_ms"], marker="o")
+    ax.set_xlabel(f"|{column.replace('stimulus_', '')}|")
     ax.set_ylabel("Median RT (ms)")
     ax.set_title("Chronometric curve")
     return "Chronometric", _encode_figure(fig)

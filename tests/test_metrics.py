@@ -333,6 +333,10 @@ def test_exploration_probe_metrics_capture_switch_after_streak():
     assert metrics.strong_streak_count == 1
     assert metrics.switch_after_streak_weak == pytest.approx(1.0)
     assert metrics.switch_after_streak_strong == pytest.approx(0.0)
+    assert metrics.fresh_weak_count == 2
+    assert metrics.switch_after_fresh_weak == pytest.approx(0.0)
+    assert metrics.stale_switch_lift_weak == pytest.approx(1.0)
+    assert metrics.stale_switch_lift_overall == pytest.approx(0.5)
 
 
 def test_compute_all_metrics_includes_exploration_probe():
@@ -341,6 +345,8 @@ def test_compute_all_metrics_includes_exploration_probe():
     probe = metrics["exploration_probe"]
     assert probe["switch_after_streak_weak"] == pytest.approx(1.0)
     assert probe["switch_after_streak_strong"] == pytest.approx(0.0)
+    assert probe["switch_after_fresh_weak"] == pytest.approx(0.0)
+    assert probe["stale_switch_lift_weak"] == pytest.approx(1.0)
 
 
 def _make_ceiling_df() -> pd.DataFrame:

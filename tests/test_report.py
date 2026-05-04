@@ -24,4 +24,5 @@ def test_build_report_creates_html(tmp_path):
 
     html = out_path.read_text(encoding="utf-8")
     assert "Test Report" in html
+    assert "Chronometric" in html
     assert "Metrics JSON" in html

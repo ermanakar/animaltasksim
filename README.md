@@ -1,298 +1,224 @@
 # AnimalTaskSim
 
-**A three-circuit neural architecture that reproduces the full behavioral fingerprint of an IBL mouse during perceptual decision-making.**
+**A research simulator for testing animal-like decision agents against real behavioral fingerprints.**
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
-[![CI](https://github.com/ermanakar/animaltasksim/actions/workflows/ci.yml/badge.svg)](https://github.com/ermanakar/animaltasksim/actions/workflows/ci.yml)
 
----
+AnimalTaskSim recreates animal behavioral tasks, trains agents inside those tasks, writes every trial to schema-validated `.ndjson`, and evaluates behavior against animal-style fingerprints: psychometric curves, chronometric curves, history effects, lapses, and bias. Beyond standard fingerprints, the evaluation stack also runs adaptive-control probes (retry gap, stale-switch lift) used to validate the current model.
 
-## What Is This?
+The project is not a leaderboard. The scientific question is:
 
-Real mice in real labs ([International Brain Laboratory](https://www.internationalbrainlab.com/)) make thousands of decisions under uncertainty — and they do it with a distinctive signature: they hesitate when the evidence is weak, repeat choices that were just rewarded, and occasionally zone out on easy trials. This project puts AI agents into faithful recreations of those same experiments and asks whether they can **learn** to produce the same signature — not by being told how a mouse behaves, but by developing the same patterns through training. [Read more &rarr;](docs/THEORY_AND_CONCEPTS.md)
+> What computational structures are necessary to produce the specific decision patterns observed in biological brains?
 
----
+## Current Model
 
-## Abstract
+The current research path is the **adaptive-control agent**. It is a biologically inspired computational analogy, not a literal brain model.
 
-Animals make decisions with characteristic patterns of accuracy, speed, history dependence, and error that together form a **behavioral fingerprint**. Reproducing this fingerprint in a computational model is substantially harder than maximizing task reward, because the model must simultaneously capture how stimulus difficulty modulates choice accuracy (psychometric curve), how it modulates reaction time (chronometric curve), how previous outcomes bias future choices (win-stay/lose-shift), and how attentional lapses produce occasional errors on trivial trials.
+The agent combines:
 
-We present a hybrid Drift-Diffusion Model (DDM) + LSTM architecture with three functionally independent circuits — evidence accumulation, asymmetric history processing, and stochastic lapse — trained end-to-end through a differentiable Euler-Maruyama DDM simulator. On the International Brain Laboratory mouse two-alternative forced choice task, all five behavioral metrics fall within the per-session reference distribution derived from 10 sessions (8,406 trials):
+1. **Evidence core**: stimulus-driven evidence accumulation for choice and reaction time.
+2. **Outcome state**: fast memory of recent actions, rewards, failures, and uncertainty.
+3. **Persistence controller**: increases retry pressure after weak-evidence failures.
+4. **Exploration controller**: intended to sample alternatives under stale or uncertain conditions.
+5. **Arbitration layer**: bounds the control signal so it cannot overwrite strong sensory evidence.
 
-| Metric | Agent (5-seed mean ± std) | IBL Mouse (per-session mean ± std) |
-|--------|--------------------------|-----------------------------------|
-| Psychometric slope | **17.84 ± 2.08** | 20.0 ± 5.7 |
-| Chronometric slope | **-37.7 ± 2.4 ms/unit** | -51 ± 64 ms/unit |
-| Win-stay | **0.734 ± 0.022** | 0.72 ± 0.08 |
-| Lose-shift | **0.444 ± 0.017** | 0.47 ± 0.10 |
-| Lapse rate | **0.086 ± 0.049** | 0.08 ± 0.07 |
+The supported result is narrow but real: **uncertainty-gated adaptive retry/persistence**. The exploration component is not yet independently validated.
 
-This result required 70+ experiments across five agent architectures. The path to this result — including 12 critical failure modes, a co-evolution training requirement, and a protocol fidelity correction that improved psychometric slope by 44% — is documented in full in [FINDINGS.md](FINDINGS.md).
+### Scope of the current claim
 
-<p align="center">
-  <img src="docs/figures/behavioral_fingerprint.png" alt="Behavioral fingerprint comparison" width="100%">
-</p>
+> **Supported.** Uncertainty-gated adaptive retry / persistence is validated in-simulator: the full-control agent reliably retries the same choice after a weak-evidence failure, and the effect survives a paired comparison against a clean no-control lesion across 5 seeds.
 
-**Figure 1.** Agent (blue) vs IBL mouse (gray) behavioral fingerprint. **(a)** Psychometric curve: probability of rightward choice as a function of signed contrast. **(b)** Chronometric curve: median reaction time decreases with stimulus strength (negative slope = evidence accumulation). **(c)** History effects: win-stay and lose-shift rates above chance (0.5 dashed line). Shaded regions and error bars show ± SEM across 5 random seeds.
+> **Not yet supported.** Rewarded-streak exploration is not independently validated; its isolation probe failed (0/5 positive seeds on stale-switch lift). No anatomical claim is made — the model is a computational analogy.
 
----
+> **Why this matters.** The same lesion-and-probe pipeline can ask, for any candidate control circuit, whether it is *necessary* to produce a behavioral signature observed in animals. The architecture is a hypothesis; the probe is the test.
 
-## Motivation
+## Current Validation
 
-Most computational models of decision-making either maximize reward (producing unrealistic step-function psychometric curves) or fit parameters to aggregate statistics (losing trial-by-trial dynamics). Neither approach answers the question this project addresses:
+Latest matched validation run:
 
-> [!NOTE]
-> **What computational structures are necessary to produce the specific decision patterns observed in biological brains?**
+```text
+runs/adaptive_control_validation_suite_phase1_exploration/
+```
 
-If a model reproduces an animal's behavioral fingerprint through its architecture rather than parameter fitting, that architecture becomes a testable theory of how the underlying neural circuits work. The model's components make predictions — about what happens when you lesion specific pathways, about how circuits interact during development, about which behaviors are computationally coupled — that can be verified against real neural recordings.
+### How to read the numbers
 
-AnimalTaskSim provides the experimental framework for this approach: faithful recreations of neuroscience tasks, schema-validated trial logging, and a metrics stack that computes psychometric, chronometric, and history statistics directly comparable to published animal data.
+- **Retry gap** = P(retry | weak-evidence failure) − P(retry | strong-evidence failure). A positive gap means the agent specifically retries when the prior failure was *not* clearly disambiguated by the stimulus — the signature of uncertainty-gated persistence.
+- **Stale-switch lift** = P(switch | stale fresh-pair) − P(switch | fresh fresh-pair). A positive lift means the agent samples alternatives more often when its recent action history has gone stale — the signature of rewarded-streak exploration.
+- **Paired delta** = condition − no-control, computed seed-by-seed. Positive-seed counts (e.g. `5/5`) show how consistently the effect reproduces, not just whether the mean has the right sign.
+- **Lesion conditions.** *True no-control* disables all adaptive-control machinery; *persistence-only* and *exploration-only* enable one controller at a time; *full control* enables both. The arbitration layer is uncertainty-gated so that none of these can overwrite strong sensory evidence.
 
----
+| Condition | Psych slope | Chrono slope | Retry gap | Stale-switch lift | RT ceiling warnings | Degenerate |
+|-----------|-------------|--------------|-----------|-------------------|---------------------|------------|
+| True no-control | 27.71 | -48.54 | 0.057 | -0.073 | 0/5 | 0/5 |
+| Exploration-only | 24.00 | -38.83 | 0.092 | -0.160 | 0/5 | 0/5 |
+| Persistence-only | 21.75 | -33.47 | 0.164 | -0.159 | 1/5 | 0/5 |
+| Full control | 22.26 | -33.97 | 0.165 | -0.152 | 0/5 | 0/5 |
+
+Paired deltas versus the clean no-control lesion:
+
+| Comparison | Delta retry gap | Retry positive seeds | Delta stale-switch lift | Stale-lift positive seeds |
+|------------|-----------------|----------------------|-------------------------|---------------------------|
+| Exploration-only - no-control | +0.035 | 3/5 | -0.087 | 0/5 |
+| Persistence-only - no-control | +0.107 | 3/5 | -0.086 | 0/5 |
+| Full control - no-control | +0.109 | 5/5 | -0.079 | 0/5 |
+
+Interpretation:
+
+- Full control reliably increases retry after weak-evidence failure.
+- Persistence explains most of that effect.
+- Rewarded-streak exploration failed its isolation probe.
+- The honest claim is adaptive retry/persistence, not a general exploration breakthrough.
+
+**Behavioral overlay against the IBL mouse** (full control, seed 42):
+
+![Agent vs. IBL mouse: psychometric, chronometric, and history overlay](docs/figures/agent_vs_animal_full_control_seed42.png)
+
+The psychometric curve sits inside the animal's slope. The chronometric shape tracks the mouse but at a faster absolute RT — agent RTs occupy a different magnitude regime. History effects are in the right direction; win-stay and sticky-choice still trail the mouse, lose-shift is essentially matched.
+
+**Suite-level summary** across all four lesion conditions:
+
+![Validation summary: retry gap and stale-switch lift across lesion conditions](docs/figures/suite_validation_summary.png)
+
+Per-seed paired deltas vs. the no-control lesion:
+
+![Paired deltas vs. no-control across seeds](docs/figures/suite_paired_deltas.png)
+
+Full per-condition dashboards live under `runs/adaptive_control_validation_suite_phase1_exploration/` (`suite_dashboard.html`, plus a `dashboard.html` and `report.html` per seed/condition).
 
 ## Architecture
 
-The model decomposes perceptual decision-making into three independent circuits that mirror known brain organization:
+AnimalTaskSim separates task fidelity, agent behavior, and evaluation. The diagram below is the conceptual model — a biologically inspired computational analogy, not an anatomical claim.
 
 ```mermaid
 flowchart TB
-    subgraph inputs [" "]
-        S["Stimulus features"]
-        P["Previous trial outcome"]
-    end
+    T["Task Environment<br/>IBL 2AFC / RDM"] --> S["Current Stimulus<br/>contrast / coherence"]
+    T --> H["Previous Trial State<br/>action, reward, correctness, uncertainty"]
 
-    subgraph C1 ["Circuit 1: Evidence Accumulation"]
-        LSTM["LSTM (12 → 64)"]
-        HEADS["DDM parameter heads<br/><i>drift, bound, bias, noise, ndt</i>"]
-    end
+    S --> E["Evidence Core<br/>stimulus-driven DDM-style decision process"]
+    H --> V["Outcome / Value State<br/>fast memory of recent outcomes"]
 
-    subgraph C2 ["Circuit 2: History Processing"]
-        WIN["Win MLP (2→8→1)"]
-        LOSE["Lose MLP (2→8→1)"]
-        GATE["Attention gate<br/><i>gate = 1 − |stimulus|</i>"]
-    end
+    V --> P["Persistence Controller<br/>retry pressure after weak-evidence failure"]
+    V --> X["Exploration Controller<br/>alternative-sampling pressure under stale / uncertain state"]
 
-    S --> LSTM --> HEADS
-    P -->|"prev_reward > 0.5"| WIN
-    P -->|"prev_reward ≤ 0.5"| LOSE
-    WIN & LOSE --> GATE
+    E --> A["Arbitration Layer<br/>bounded control residuals gated by uncertainty"]
+    P --> A
+    X --> A
 
-    HEADS --> DDM["Differentiable DDM<br/>Euler-Maruyama · 120 steps"]
-    GATE -->|"drift bias"| DDM
+    A --> D["Decision Policy<br/>choice + reaction time"]
+    D --> L["NDJSONTrialLogger<br/>schema-validated trial record"]
+    L --> M["Evaluation Stack<br/>psychometric, chronometric, history, retry, exploration probes"]
 
-    DDM --> LAPSE["Circuit 3: Lapse (5%)<br/><i>Bernoulli → random choice</i>"]
-    LAPSE --> OUT(["Choice + RT"])
+    M --> R["Scientific Claim<br/>what survives lesion tests?"]
 
-    style C1 fill:#dbe9f6,stroke:#2166ac
-    style C2 fill:#fdebd0,stroke:#e6850e
-    style LAPSE fill:#f5b7b1,stroke:#c0392b
-    style DDM fill:#f0f0f0,stroke:#333
-    style OUT fill:#fff,stroke:#333
+    style T fill:#eef2ff,stroke:#3b5bdb
+    style E fill:#dbeafe,stroke:#2563eb
+    style V fill:#fef3c7,stroke:#d97706
+    style P fill:#dcfce7,stroke:#16a34a
+    style X fill:#fce7f3,stroke:#db2777
+    style A fill:#ede9fe,stroke:#7c3aed
+    style D fill:#f1f5f9,stroke:#475569
+    style L fill:#fff7ed,stroke:#ea580c
+    style M fill:#ecfeff,stroke:#0891b2
+    style R fill:#f8fafc,stroke:#334155
 ```
 
-**Circuit 1 — Evidence accumulation.** An LSTM processes stimulus features and outputs DDM parameters (drift rate, decision bound, starting-point bias, noise, non-decision time). The DDM simulator then accumulates stochastic evidence over 120 Euler-Maruyama steps, producing both a choice and a reaction time. This is what generates the chronometric curve: harder stimuli require more evidence accumulation steps, producing longer reaction times.
+Repository layout:
 
-**Circuit 2 — History processing.** Two separate MLPs process the previous trial's outcome through independent win and lose pathways, outputting a scalar stay tendency that biases the DDM's drift rate. The asymmetry between pathways (win-stay rate >> lose-shift rate) mirrors the dopaminergic separation between reward and punishment processing in the basal ganglia. An attention gate (`1 - |stimulus|`) suppresses history influence when sensory evidence is strong, preventing mode collapse during joint training.
+```text
+envs/           Gymnasium tasks: IBL 2AFC and macaque RDM
+agents/         Adaptive-control agent plus comparison baselines
+eval/           Schema validation, behavioral metrics, adaptive-control probes
+scripts/        CLI entrypoints for training, evaluation, reports, and validation suites
+animaltasksim/  Shared config, logging, seeding, registry, and path utilities
+data/           Reference animal datasets
+tests/          Unit and integration tests for the pipeline
+```
 
-**Circuit 3 — Attentional lapse.** On approximately 5% of trials, a stochastic Bernoulli gate causes the agent to disengage from evidence accumulation and guess randomly. This is implemented as a fixed parameter applied only during behavioral rollout, not during supervised training (the reference data already contains the animal's own lapse). A learnable lapse parameter was tested and rejected: the optimizer exploited it to ~15%, using random guessing as a shortcut to reduce loss on hard trials.
+The environment owns logging. Agents never write trial logs directly.
 
-### Why a differentiable DDM simulator?
+```text
+Agent -> Env -> NDJSONTrialLogger -> trials.ndjson -> evaluate_agent.py -> metrics.json
+```
 
-Early experiments used analytical DDM equations for gradient computation. This created an exploitable gradient landscape: the agent could push decision bounds toward infinity and drift toward zero, zeroing the reaction-time gradient while maintaining reasonable choice accuracy through the `tanh(κ)` formula. The Euler-Maruyama simulator eliminates this exploit by unrolling evidence accumulation as a sequence of stochastic steps through PyTorch's autograd, forcing the agent to learn genuine evidence accumulation dynamics.
+Every trial log is validated against the Pydantic schema in `eval/schema_validator.py`. Unexpected schema keys are forbidden.
 
----
-
-## Key Findings
-
-### Co-evolution of evidence and history circuits
-
-Evidence circuits trained without history effects cannot accommodate history injection post-hoc. When a model was calibrated at `drift_magnitude_target=6.0` without history, adding history injection degraded psychometric slope from 12.76 to 10.1. Co-evolution training — where both circuits learn simultaneously from initialization — recovers performance at `drift_magnitude_target=9.0`. The evidence circuit compensates for history interference by learning stronger drift sensitivity.
-
-This parallels a prediction from developmental neuroscience: sensory processing circuits and reward-history circuits must mature together for optimal function.
-
-### Protocol fidelity as a first-order concern
-
-> [!IMPORTANT]
-> The IBL biased-blocks protocol uses five contrast levels: {0, 0.0625, 0.125, 0.25, 1.0}. Our environment incorrectly included a sixth level (0.5) that does not exist in the experimental protocol. Removing this single stimulus level — with no changes to the model — improved psychometric slope by 44% (12.38 → 17.84) and win-stay rate by 4% (0.706 → 0.734). The spurious contrast diluted the psychometric fit and masked the model's true discriminability.
->
-> This is a cautionary result for computational neuroscience: a simulation environment that does not exactly match the experimental protocol can systematically bias all downstream metrics.
-
-### Twelve failure modes documented
-
-Over 70+ experiments, we identified 12 critical failure modes that blocked progress, each requiring specific architectural or training solutions. Selected examples:
-
-| Failure | Root cause | Solution |
-|---------|-----------|----------|
-| Psychometric slope collapse to ~9.5 | 7-phase WFPT curriculum pushes model into high-noise regime | Simpler 3-phase curriculum |
-| History effects stuck at chance | `prev_reward` was always 0.0 due to phase-step timing bug | Fix: `phase_step == 1` (not `== 0`) |
-| Win-stay/psych trade-off ceiling | Attention gate leaks history into medium-contrast trials | Architectural limitation (documented) |
-| Lapse exploitation to ~15% | Optimizer uses random guessing to reduce hard-trial loss | Fixed lapse (non-learnable) |
-| Six months optimizing non-existent targets | Macaque RDM data has no history effects (overtrained animal) | Switched to IBL mouse data |
-| History proxy losses converge but produce no behavioral effect | Sigmoid proxy is a different transfer function from DDM | Both loss variants abandoned |
-
-The complete experimental narrative is in [FINDINGS.md](FINDINGS.md).
-
----
-
-## Limitations
-
-> [!WARNING]
-> **The best validated history effects are still injection-assisted.** The flagship 5-seed result uses injected win/lose tendencies (`inject_win_tendency=0.30`, `inject_lose_tendency=0.15`) during co-evolution training. March 2026 plastic-history experiments added online reward-prediction-error updates, asymmetric positive/negative plasticity, and explicit lose-shift semantics, but none of those variants matched the injected-history baseline on win-stay. The architecture can *express* animal-like history effects; fully *learning* them remains open.
-
-1. **Single task validation.** Results are validated on IBL mouse 2AFC only. The macaque RDM task produces correct intra-trial dynamics (chronometric slope) but lacks the history effects that are the primary focus of this work (consistent with the overtrained animal in the Roitman & Shadlen dataset). PRL and DMS tasks are not yet implemented.
-
-2. **Lapse variance across seeds.** Lapse rates range from 0.043 to 0.156 across the five validation seeds (mean 0.086 ± 0.049), suggesting the lapse mechanism interacts with training dynamics in ways not fully understood.
-
-3. **Reference target uncertainty.** Per-session chronometric slopes in the IBL data have enormous variance (range: -2 to -202 ms/unit, std ± 64). Any single-number target for this metric should be interpreted cautiously.
-
----
-
-## Getting Started
+## Quickstart
 
 ```bash
-# Install
+python --version  # use Python 3.11+
 pip install -e ".[dev]"
+pytest
+```
 
-# Run the interactive experiment wizard
-python scripts/run_experiment.py
+Train one adaptive-control run:
 
-# Or train the flagship agent directly
-python scripts/train_hybrid_curriculum.py \
-    --task ibl_2afc --seed 42 --episodes 20 \
-    --drift-scale 10.0 --drift-magnitude-target 9.0 \
-    --lapse-rate 0.05 \
-    --history-bias-scale 2.0 --history-drift-scale 0.3 \
-    --inject-win-tendency 0.30 --inject-lose-tendency 0.15 \
-    --no-use-default-curriculum --no-allow-early-stopping \
-    --phase1-epochs 15 --phase2-epochs 10 --phase3-epochs 10
+```bash
+python scripts/train_adaptive_control.py \
+  --output-dir runs/adaptive_control_demo \
+  --task ibl_2afc \
+  --seed 42 --episodes 5 --epochs 3 \
+  --max-sessions 20 --max-trials-per-session 128
+```
 
-# Evaluate
-python scripts/evaluate_agent.py --run runs/<run_dir>
+Evaluate it:
 
-# Compare agent vs animal behavior
+```bash
+python scripts/evaluate_agent.py --run runs/adaptive_control_demo
+```
+
+Run the matched validation suite:
+
+```bash
+python scripts/adaptive_control_validation_suite.py \
+  --run-root runs/adaptive_control_validation_suite_phase1_exploration
+```
+
+Build an agent-vs-animal dashboard:
+
+```bash
 python scripts/make_dashboard.py \
-    --opts.agent-log runs/<run_dir>/trials.ndjson \
-    --opts.reference-log data/ibl/reference.ndjson \
-    --opts.output runs/<run_dir>/dashboard.html
+  --opts.agent-log runs/adaptive_control_demo/trials.ndjson \
+  --opts.reference-log data/ibl/reference.ndjson \
+  --opts.output runs/adaptive_control_demo/dashboard.html
 ```
 
-> [!TIP]
-> Training runs on CPU in under 20 minutes with less than 4 GB RAM.
+## Reference Tasks And Data
 
-### Experiment Lifecycle
+| Dataset | Trials | Use |
+|---------|--------|-----|
+| IBL mouse 2AFC | 8,406 trials, 10 sessions | Main perceptual decision-making reference |
+| Macaque RDM | 2,611 trials | Random-dot-motion decision dynamics |
 
-Every experiment follows four stages, each producing artifacts consumed by the next:
+IBL contrasts are `{0, 0.0625, 0.125, 0.25, 1.0}`. A previous extra `0.5` contrast was removed after it distorted psychometric fits. Macaque RDM data should not be treated as a history-effect target; the reference animal is overtrained and shows weak sequential effects.
 
-```mermaid
-flowchart LR
-    T["Train"]:::stage -->|"trials.ndjson\nmodel.pt"| E["Evaluate"]:::stage
-    E -->|"metrics.json"| V["Visualize"]:::stage
-    V -->|"dashboard.html"| R["Register"]:::stage
-    R -->|"registry.json"| DB[("Run Archive")]:::store
+## Scientific Guardrails
 
-    classDef stage fill:#2166ac,color:#fff,stroke:#1a1a2e
-    classDef store fill:#f0f0f0,stroke:#333
-```
+- Optimize for behavioral fingerprints, not reward alone.
+- Treat protocol fidelity as part of the science.
+- Keep `.ndjson` logs schema-validated and reproducible.
+- Report negative results; they narrow the hypothesis space.
+- Do not overclaim: adaptive control here is a computational analogy, not an anatomy claim.
 
-The interactive wizard (`python scripts/run_experiment.py`) chains all four stages automatically.
+## Roadmap
 
----
+Near-term work:
 
-## Project Structure
-
-```
-envs/              Gymnasium environments (IBL 2AFC, macaque RDM)
-agents/            Agent implementations (Sticky-Q, Bayes, PPO, DDM, Hybrid DDM+LSTM, R-DDM)
-  hybrid_model.py  Three-circuit architecture (LSTM + DDM heads + asymmetric history MLPs)
-  hybrid_trainer.py  Curriculum training + Euler-Maruyama rollout
-  losses.py        Multi-objective loss (choice, RT, WFPT, history, drift magnitude)
-  wfpt_loss.py     Wiener First Passage Time log-likelihood
-eval/              Psychometric, chronometric, and history metrics; schema validation
-scripts/           CLI entrypoints (all use tyro.cli with dataclass configs)
-data/              Reference animal data (IBL: 8,406 trials; macaque: 2,611 trials)
-tests/             104 tests (environments, agents, metrics, schema, WFPT)
-```
-
-**Data flow:** The environment owns all trial logging — agents never write `.ndjson` directly.
-
-```mermaid
-flowchart LR
-    A["Agent"] -->|action| ENV["Env"]
-    ENV -->|obs, reward| A
-    ENV -->|validate + write| LOG["NDJSONTrialLogger"]
-    LOG --> NJ["trials.ndjson"]
-    NJ --> EVAL["evaluate_agent.py"]
-    EVAL --> MET["metrics.json"]
-    MET --> DASH["dashboard.html"]
-
-    style ENV fill:#dbe9f6,stroke:#2166ac
-    style LOG fill:#fdebd0,stroke:#e6850e
-```
-
----
-
-## Reference Data
-
-| Dataset | Source | Trials | Sessions | Protocol |
-|---------|--------|--------|----------|----------|
-| IBL Mouse 2AFC | International Brain Laboratory (2021) | 8,406 | 10 | Biased-blocks contrast discrimination |
-| Macaque RDM | Roitman & Shadlen (2002) | 2,611 | — | Random-dot motion coherence |
-
----
+1. Build a better exploration probe around unrewarded or volatile streaks.
+2. Test whether adaptive control transfers to Probabilistic Reversal Learning and Delayed Match-to-Sample.
+3. Expand lesion tests for control state, arbitration, evidence preservation, and gate shape.
+4. Keep all new tasks compatible with the shared `.ndjson` comparison pipeline.
 
 ## Documentation
 
 | Document | Contents |
 |----------|----------|
-| [FINDINGS.md](FINDINGS.md) | 70+ experiments, failure modes, architectural evolution, calibration narrative |
-| [Adaptive Control Agent Design](docs/adaptive_control_agent_design.md) | Proposed next-generation agent: evidence + value + persistence + exploration |
-| [Theory & Concepts](docs/THEORY_AND_CONCEPTS.md) | Accessible introduction to tasks, fingerprints, and the hybrid model |
-| [CHANGELOG.md](CHANGELOG.md) | Version history and corrections |
+| [FINDINGS.md](FINDINGS.md) | Experimental narrative, failures, corrections, and current claims |
+| [Adaptive Control Agent Design](docs/adaptive_control_agent_design.md) | Current adaptive-control architecture and validation status |
+| [Theory & Concepts](docs/THEORY_AND_CONCEPTS.md) | Accessible background on tasks, metrics, and model ideas |
+| [CHANGELOG.md](CHANGELOG.md) | Version history |
 
----
+## Built With
 
-## Current Research Direction
-
-The immediate frontier is no longer just "learned history" in the narrow sense of a better stay/shift head. March 2026 experiments showed that:
-
-- annealed teacher forcing and history distillation improve training mechanics but do not reliably teach the model to discover the fingerprint on its own
-- online plastic history rules can become strongly active internally without producing the right win-stay / lose-shift asymmetry in behavior
-- simply making the plastic pathway stronger turns it into a generic recent-history bias, not an animal-like control system
-
-The next architecture should therefore move from **history bias** to **adaptive control**:
-
-- an evidence circuit for current stimulus processing
-- a value / critic circuit for better-than-expected vs worse-than-expected outcomes
-- a persistence controller that decides when to keep trying despite failure
-- an exploration / novelty controller that samples alternatives when the world is uncertain, stale, or uninformative
-- an arbitration mechanism that combines evidence, value, persistence, and exploration
-
-This is closer to the biological story suggested by mouse, monkey, and human behavior: after failure, the brain does not only "shift" or "stay". It can persist because the evidence was weak, switch because the action seems wrong, or explore because the environment may have changed. The next implementation target is an evidence + value + persistence + exploration agent family, with lesion experiments following once that controller exists.
-
-The concrete repo-level design for that next step is in [Adaptive Control Agent Design](docs/adaptive_control_agent_design.md).
-
----
-
-## Citation
-
-```bibtex
-@software{akar2026animaltasksim,
-  author = {Akar, Erman},
-  title = {AnimalTaskSim: A Three-Circuit Architecture for Reproducing Animal Decision-Making Behavior},
-  year = {2026},
-  url = {https://github.com/ermanakar/animaltasksim},
-  version = {0.2.1}
-}
-```
-
----
-
-## Acknowledgements
-
-Developed by Erman Akar with contributions from AI coding assistants (Claude, Codex, Gemini).
-
-**Scientific foundation:** Ratcliff & McKoon (2008); International Brain Laboratory (2021); Britten et al. (1992); Urai et al. (2019); Navarro & Fuss (2009). See [`CITATION.cff`](CITATION.cff) for full references.
-
-**Built with:** PyTorch, Gymnasium, Pydantic, Stable-Baselines3, and the Scientific Python ecosystem.
+Developed with assistance from AI coding tools. Built on PyTorch, Gymnasium, Pydantic, Stable-Baselines3, and the Scientific Python ecosystem.

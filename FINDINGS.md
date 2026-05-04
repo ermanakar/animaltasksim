@@ -1799,6 +1799,35 @@ Paired deltas versus no-control:
 
 **Interpretation:** the nonlinear gate is not strictly necessary for calibrated behavior. The more honest claim is that sharpened uncertainty gating makes the adaptive retry effect stronger and more reliable. The broader mechanism appears to be uncertainty-gated adaptive control, not the exact exponent value.
 
+### Exploration/staleness follow-up
+
+The validation suite now includes an `exploration_only` condition by default. This lesion disables persistence while leaving control state and exploration enabled, giving a cleaner readout of the exploration component.
+
+The suite also reports a stronger stale-state probe:
+
+- `switch_after_streak_weak`: switching on weak-evidence trials after a rewarded same-action streak.
+- `switch_after_fresh_weak`: switching on weak-evidence trials without a stale rewarded streak.
+- `stale_switch_lift_weak`: the primary exploration probe, computed as `switch_after_streak_weak - switch_after_fresh_weak`.
+
+Run: `runs/adaptive_control_validation_suite_phase1_exploration/`
+
+| Condition | Psych slope | Chrono slope | Retry gap | Stale-switch lift | RT ceiling warnings | Degenerate |
+|-----------|-------------|--------------|-----------|-------------------|---------------------|------------|
+| true no-control | 27.71 | -48.54 | 0.057 | -0.073 | 0/5 | 0/5 |
+| exploration-only | 24.00 | -38.83 | 0.092 | -0.160 | 0/5 | 0/5 |
+| persistence-only | 21.75 | -33.47 | 0.164 | -0.159 | 1/5 | 0/5 |
+| full control | 22.26 | -33.97 | 0.165 | -0.152 | 0/5 | 0/5 |
+
+Paired deltas versus the clean no-control lesion:
+
+| Comparison | Delta retry gap | Retry positive seeds | Delta stale-switch lift | Stale-lift positive seeds |
+|------------|-----------------|----------------------|-------------------------|---------------------------|
+| exploration-only - no-control | +0.035 | 3/5 | -0.087 | 0/5 |
+| persistence-only - no-control | +0.107 | 3/5 | -0.086 | 0/5 |
+| full control - no-control | +0.109 | 5/5 | -0.079 | 0/5 |
+
+**Interpretation:** this was a valuable negative result. The weak-failure retry signature still holds, especially in full control, but the rewarded-streak exploration claim is not supported. All adaptive-control conditions made stale-switch lift more negative than the no-control baseline. In simple terms: after repeated rewarded choices, the agent becomes more exploitative, not more exploratory. That may be appropriate for stable IBL 2AFC behavior, but it means exploration is not independently validated by this probe.
+
 ### What this achieved
 
 This is a legitimate controlled computational result:

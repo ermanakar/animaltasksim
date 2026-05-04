@@ -59,6 +59,14 @@ class ExplorationProbeMetrics:
     switch_after_streak_strong: float
     weak_streak_count: int
     strong_streak_count: int
+    switch_after_fresh_weak: float = float("nan")
+    switch_after_fresh_overall: float = float("nan")
+    switch_after_stale_overall: float = float("nan")
+    stale_switch_lift_weak: float = float("nan")
+    stale_switch_lift_overall: float = float("nan")
+    fresh_weak_count: int = 0
+    fresh_count: int = 0
+    stale_count: int = 0
 
 
 def load_trials(path: str | Path) -> pd.DataFrame:
@@ -357,7 +365,7 @@ def compute_adaptive_control_probe_metrics(df: pd.DataFrame) -> AdaptiveControlP
 
 
 def compute_exploration_probe_metrics(df: pd.DataFrame, streak_length: int = 3) -> ExplorationProbeMetrics:
-    """Measure switching after repeated rewarded action streaks split by evidence strength."""
+    """Measure switching after repeated rewarded action streaks."""
     if df.empty:
         return ExplorationProbeMetrics(np.nan, np.nan, 0, 0)
 
@@ -396,10 +404,9 @@ def compute_exploration_probe_metrics(df: pd.DataFrame, streak_length: int = 3) 
             current_action = None
 
     data["previous_correct_streak"] = run_lengths
-    data = data[data["previous_correct_streak"] >= streak_length].copy()
+    data = data[data["prev_action"].isin(["left", "right"])].copy()
     if data.empty:
         return ExplorationProbeMetrics(np.nan, np.nan, 0, 0)
-
     data["same_as_prev"] = (data["action"] == data["prev_action"]).astype(float)
     data["difficulty_abs"] = pd.to_numeric(data[stimulus_key], errors="coerce").abs()
     data = data[data["difficulty_abs"].notnull()].copy()
@@ -408,8 +415,14 @@ def compute_exploration_probe_metrics(df: pd.DataFrame, streak_length: int = 3) 
 
     difficulty_levels = np.sort(data["difficulty_abs"].unique().astype(float))
     split_threshold = float(np.median(difficulty_levels))
-    weak_streak = data[data["difficulty_abs"] <= split_threshold].copy()
-    strong_streak = data[data["difficulty_abs"] > split_threshold].copy()
+    data["is_weak_evidence"] = data["difficulty_abs"] <= split_threshold
+    data["is_stale_streak"] = data["previous_correct_streak"] >= streak_length
+
+    stale = data[data["is_stale_streak"]].copy()
+    fresh = data[~data["is_stale_streak"]].copy()
+    weak_streak = stale[stale["is_weak_evidence"]].copy()
+    strong_streak = stale[~stale["is_weak_evidence"]].copy()
+    fresh_weak = fresh[fresh["is_weak_evidence"]].copy()
 
     def _ratio(values: pd.Series, transform: Callable[[pd.Series], pd.Series] | None = None) -> float:
         if values.empty:
@@ -417,11 +430,30 @@ def compute_exploration_probe_metrics(df: pd.DataFrame, streak_length: int = 3) 
         data_series = transform(values) if transform is not None else values
         return float(np.nanmean(data_series))
 
+    def _difference(high: float, low: float) -> float:
+        if not math.isfinite(high) or not math.isfinite(low):
+            return float("nan")
+        return high - low
+
+    switch_after_streak_weak = _ratio(weak_streak["same_as_prev"], lambda x: 1.0 - x)
+    switch_after_streak_strong = _ratio(strong_streak["same_as_prev"], lambda x: 1.0 - x)
+    switch_after_fresh_weak = _ratio(fresh_weak["same_as_prev"], lambda x: 1.0 - x)
+    switch_after_fresh_overall = _ratio(fresh["same_as_prev"], lambda x: 1.0 - x)
+    switch_after_stale_overall = _ratio(stale["same_as_prev"], lambda x: 1.0 - x)
+
     return ExplorationProbeMetrics(
-        switch_after_streak_weak=_ratio(weak_streak["same_as_prev"], lambda x: 1.0 - x),
-        switch_after_streak_strong=_ratio(strong_streak["same_as_prev"], lambda x: 1.0 - x),
+        switch_after_streak_weak=switch_after_streak_weak,
+        switch_after_streak_strong=switch_after_streak_strong,
         weak_streak_count=int(len(weak_streak)),
         strong_streak_count=int(len(strong_streak)),
+        switch_after_fresh_weak=switch_after_fresh_weak,
+        switch_after_fresh_overall=switch_after_fresh_overall,
+        switch_after_stale_overall=switch_after_stale_overall,
+        stale_switch_lift_weak=_difference(switch_after_streak_weak, switch_after_fresh_weak),
+        stale_switch_lift_overall=_difference(switch_after_stale_overall, switch_after_fresh_overall),
+        fresh_weak_count=int(len(fresh_weak)),
+        fresh_count=int(len(fresh)),
+        stale_count=int(len(stale)),
     )
 
 

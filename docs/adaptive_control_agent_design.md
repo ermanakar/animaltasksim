@@ -346,7 +346,24 @@ Add analysis utilities for:
 
 The existing evaluation pipeline can remain authoritative for psychometric, chronometric, and standard history metrics. The new metrics can be added as optional analysis outputs first.
 
-Use `scripts/adaptive_control_validation_suite.py` for the matched validation run. It trains the clean no-control lesion, persistence-only condition, and full-control condition across seeds, then writes per-run summaries, aggregate summaries, and paired deltas against the no-control lesion.
+Use `scripts/adaptive_control_validation_suite.py` for the matched validation run. It trains the clean no-control lesion, exploration-only condition, persistence-only condition, and full-control condition across seeds, then writes per-run summaries, aggregate summaries, and paired deltas against the no-control lesion.
+
+The suite now reports a first-class stale-exploration probe:
+
+- `switch_after_streak_weak`: switch rate on weak-evidence trials after a rewarded same-action streak.
+- `switch_after_fresh_weak`: switch rate on weak-evidence trials without a stale rewarded streak.
+- `stale_switch_lift_weak`: `switch_after_streak_weak - switch_after_fresh_weak`; this is the primary exploration readout.
+- `exploration_gap`: older secondary readout comparing weak-streak switching against strong-streak switching.
+
+The `exploration_only` lesion disables persistence but leaves the exploration controller and control state enabled. This makes the exploration claim cleaner: the expected result is not just “full control changed behavior,” but “stale-state exploration specifically increases weak-evidence switching above the fresh weak-evidence baseline.”
+
+The first 5-seed exploration run did **not** support that expected result. In `runs/adaptive_control_validation_suite_phase1_exploration/`, `stale_switch_lift_weak` was negative in every condition and became more negative relative to no-control:
+
+- exploration-only minus no-control: `-0.087`, positive in `0/5` seeds
+- persistence-only minus no-control: `-0.086`, positive in `0/5` seeds
+- full-control minus no-control: `-0.079`, positive in `0/5` seeds
+
+So the supported phase-1 claim remains persistence/adaptive retry after weak-evidence failure. Rewarded-streak exploration is not validated. The next exploration work should either define a better probe around unrewarded or volatile streaks, or defer the exploration claim to PRL/DMS where environmental change is task-relevant.
 
 ## 9. Minimal experiment sequence
 
