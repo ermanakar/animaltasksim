@@ -1752,6 +1752,8 @@ Several guardrails turned out to be scientifically important:
 
 ### Phase-1 calibrated defaults
 
+The recommended/default adaptive-control profile is now `persistence_only`: control state and persistence are enabled, exploration is disabled. Full control remains available for comparison and lesion accounting, but it should not be treated as the clean default claim because the exploration probe below was negative.
+
 | Parameter | Value | Reason |
 |-----------|-------|--------|
 | `drift_scale` | `6.0` | Calibrates psychometric/chronometric behavior after the long-response fix |
@@ -1777,7 +1779,7 @@ Paired deltas versus the clean no-control lesion:
 | full control - no-control | +0.109 +/- 0.086 | 5/5 | -5.45 +/- 3.79 | +14.57 +/- 8.96 |
 | persistence-only - no-control | +0.107 +/- 0.136 | 3/5 | -5.96 +/- 2.22 | +15.07 +/- 7.01 |
 
-**Interpretation:** the full adaptive-control system gives the cleanest phase-1 result. It increases retry after weak-evidence failures in 5/5 seeds while preserving calibrated psychometric/chronometric behavior and avoiding RT-ceiling warnings.
+**Interpretation:** the clean scientific claim is persistence/adaptive retry. Full control gives the most consistent phase-1 retry lift (5/5 seeds) while preserving calibrated psychometric/chronometric behavior and avoiding RT-ceiling warnings, but it bundles the exploration controller. Persistence-only recovers almost the same retry-gap mean (`0.164` vs `0.165`) with exploration disabled, so it is the recommended/default profile for new runs that are meant to represent the validated claim.
 
 ### Gate lesion
 
@@ -1826,14 +1828,14 @@ Paired deltas versus the clean no-control lesion:
 | persistence-only - no-control | +0.107 | 3/5 | -0.086 | 0/5 |
 | full control - no-control | +0.109 | 5/5 | -0.079 | 0/5 |
 
-**Interpretation:** this was a valuable negative result. The weak-failure retry signature still holds, especially in full control, but the rewarded-streak exploration claim is not supported. All adaptive-control conditions made stale-switch lift more negative than the no-control baseline. In simple terms: after repeated rewarded choices, the agent becomes more exploitative, not more exploratory. That may be appropriate for stable IBL 2AFC behavior, but it means exploration is not independently validated by this probe.
+**Interpretation:** this was a valuable negative result. The weak-failure retry signature still holds, especially in full control, but the rewarded-streak exploration claim is not supported. All adaptive-control conditions made stale-switch lift more negative than the no-control baseline. In simple terms: after repeated rewarded choices, the agent becomes more exploitative, not more exploratory. That may be appropriate for stable IBL 2AFC behavior, but it means exploration is not independently validated by this probe and should stay out of the recommended/default profile.
 
 ### What this achieved
 
 This is a legitimate controlled computational result:
 
 1. The effect is lesion-tested against a clean no-control baseline.
-2. The key behavior is reproducible across 5 seeds in the full-control condition.
+2. The persistence-only condition recovers almost the same retry-gap mean as full control while keeping exploration disabled.
 3. Core psychometric and chronometric behavior remain in the calibrated neighborhood.
 4. The result has an explicit caveat: it is a computational analogy, not brain anatomy.
 
@@ -1853,7 +1855,56 @@ The current status is best described as a **strong internal milestone**: a repro
 - Validation CLI: `scripts/adaptive_control_validation_suite.py`
 - Main 5-seed validation: `runs/adaptive_control_validation_suite_phase1/`
 - Gate-lesion validation: `runs/adaptive_control_validation_suite_phase1_gate/`
+- Exploration-probe validation (default suite): `runs/adaptive_control_validation_suite_phase1_exploration/`
+- Persistence sweeps (April–May calibration): `runs/adaptive_control_persistence_sweep/`, `runs/adaptive_control_persistence_sweep_v1/`, `runs/adaptive_control_persistence_sweep_v2/`
+- Candidate comparisons: `runs/adaptive_control_candidate_compare/`, `runs/adaptive_control_candidate_compare_v1/`
+- Single-seed probes (with/without persistence, with/without exploration): `runs/adaptive_control_seed42/`, `runs/adaptive_control_seed42_no_persistence/`, `runs/adaptive_control_exploration_seed42/`, `runs/adaptive_control_exploration_seed42_no_exploration/`
 - Earlier calibration sweeps: `runs/adaptive_control_phase1/`
+
+## Reporting & Figures Pass — May 2026
+
+After the adaptive-control science settled, the focus shifted to making the validated claim legible to outside readers without overstating it. Three commits on the `main` branch covered this:
+
+- `64e43d1` (May 1) — adaptive-control persistence sweep + initial validation scripts
+- `3096bdb` (May 3) — adaptive-control validation suite (5-seed × 4 lesion conditions, paired Δ summary)
+- `d51ac3a` (May 4) — README refocus around adaptive control + reproducible validation figures
+- `273e25c` (May 4) — journal-style figure pipeline
+- `785bef8` (May 5) — experiment-script cleanup + CI badge restored
+
+### README refocus
+
+The README was rewritten to lead with the validated claim ("uncertainty-gated retry / persistence") instead of the older history-bias narrative. Three additions worth flagging:
+
+- A "Scope of the current claim" block that separates **supported** (weak-failure retry lift, 5/5 seeds, calibrated psych/chrono preserved) from **not yet validated** (rewarded-streak exploration; the stale-switch lift went *more negative* under all adaptive conditions, which is the honest negative result).
+- A "How to read the numbers" key for the metrics so retry gap, stale-switch lift, psychometric slope and chronometric slope are defined in plain language.
+- Mermaid architecture diagram of the four-component agent (evidence core, persistence controller, exploration controller, arbitration).
+
+### Journal-style figure pipeline
+
+Three figures live under `docs/figures/` (committed; `runs/` is gitignored so the older one-off plots there could not render on GitHub):
+
+| Figure | Script | What it shows |
+|--------|--------|---------------|
+| Fig 1 — agent vs. IBL mouse | `scripts/render_agent_vs_animal_figure.py` | Psychometric, chronometric (median RT with SE-of-median), and history bars for `full_control_seed42` against the 8 406-trial IBL reference. |
+| Fig 2 — suite summary | `scripts/render_validation_suite_figures.py` (`render_summary`) | 4-panel bars across the four lesion conditions: retry gap, stale-switch lift, psychometric slope (with IBL 20.0 ± 5.7 band), chronometric slope (with literature ≈ −36 line). |
+| Fig 3 — paired Δ vs. no-control | `scripts/render_validation_suite_figures.py` (`render_paired_deltas`) | Δ retry gap and Δ stale-switch lift for the three adaptive conditions versus the clean no-control baseline, with positive-seed counts annotated above/below each bar. |
+
+A shared style helper (`scripts/_figure_style.py`) enforces sans-serif typography, hidden top/right spines, outward ticks, no in-axes panel titles, and bold a/b/c panel labels. Captions live in the README in Nature-style "Figure N | Title." form.
+
+### What this caught
+
+- The original chronometric panel used **mean** RT, which the IBL reference data inflates with rare outliers (max = 60 000 ms, mean = 1 294 ms vs. median = 378 ms). Switching to median RT with SE-of-median (factor 1.2533 × σ/√n) shrank the apparent agent–mouse RT gap and forced a small README correction (the "agent occupies a different RT regime" line was removed).
+- Render scripts are now self-bootstrapping (`sys.path.insert(0, …)`) so they don't require `PYTHONPATH=scripts:` on the command line.
+
+### Repo cleanup (`785bef8`)
+
+- Removed dead one-off experiment scripts that were superseded by the validation suite CLI.
+- CI badge restored on the README.
+- All 134 tests + `ruff check .` green at the time of the May 5 push.
+
+### What this is not
+
+This pass is documentation and figures, not new science. The validated claim is unchanged from the May 3 suite results: uncertainty-gated retry / persistence is supported across 5 seeds; rewarded-streak exploration is not.
 
 ### Artifacts
 
@@ -1874,6 +1925,6 @@ The current status is best described as a **strong internal milestone**: a repro
 ```text
 AnimalTaskSim: A Benchmark for Evaluating Behavioral Replication in AI Agents
 https://github.com/ermanakar/animaltasksim
-October 2025 – February 2026
-Registry: 70+ experiments spanning Sticky-Q, PPO, Bayes Observer, Hybrid DDM+LSTM, and R-DDM agents
+October 2025 – May 2026
+Registry: 80+ experiments spanning Sticky-Q, PPO, Bayes Observer, Hybrid DDM+LSTM, R-DDM, and Adaptive-Control agents
 ```
