@@ -9,10 +9,17 @@ import torch
 
 pytest.importorskip("torch")
 
-from agents.adaptive_control_agent import AdaptiveControlConfig, AdaptiveControlModel, train_adaptive_control
+from agents.adaptive_control_agent import (
+    RECOMMENDED_ADAPTIVE_CONTROL_PROFILE,
+    AdaptiveControlConfig,
+    AdaptiveControlModel,
+    adaptive_control_profile_flags,
+    train_adaptive_control,
+)
 from agents.adaptive_control_trainer import AdaptiveControlTrainer
 from agents.losses import LossWeights
 from eval.schema_validator import validate_file
+from scripts.train_adaptive_control import TrainAdaptiveControlArgs
 
 
 def test_adaptive_control_training_smoke(tmp_path: Path) -> None:
@@ -45,6 +52,11 @@ def test_adaptive_control_training_smoke(tmp_path: Path) -> None:
     assert first["task"] == "ibl_2afc"
     assert first["agent"]["name"] == "adaptive_control"
 
+    config_payload = json.loads(Path(paths["config"]).read_text(encoding="utf-8"))
+    assert config_payload["active_control_profile"] == "persistence_only"
+    assert config_payload["recommended_control_profile"] == "persistence_only"
+    assert config_payload["exploration_enabled"] is False
+
     metrics_path = Path(paths["metrics"])
     payload = json.loads(metrics_path.read_text(encoding="utf-8"))
     assert "training" in payload
@@ -58,6 +70,50 @@ def test_adaptive_control_defaults_match_ibl_calibration() -> None:
     assert config.drift_scale == 6.0
     assert config.persistence_bias_scale == 1.6
     assert config.control_uncertainty_power == 2.0
+    assert RECOMMENDED_ADAPTIVE_CONTROL_PROFILE == "persistence_only"
+    assert config.active_control_profile == "persistence_only"
+    assert config.persistence_enabled is True
+    assert config.exploration_enabled is False
+
+
+def test_adaptive_control_named_profiles_are_explicit() -> None:
+    assert adaptive_control_profile_flags("persistence_only") == {
+        "control_state_enabled": True,
+        "persistence_enabled": True,
+        "exploration_enabled": False,
+    }
+    assert adaptive_control_profile_flags("full_control") == {
+        "control_state_enabled": True,
+        "persistence_enabled": True,
+        "exploration_enabled": True,
+    }
+
+    config = AdaptiveControlConfig.for_control_profile("exploration_only")
+
+    assert config.active_control_profile == "exploration_only"
+    assert config.persistence_enabled is False
+    assert config.exploration_enabled is True
+
+
+def test_train_args_resolve_default_to_recommended_persistence_only() -> None:
+    args = TrainAdaptiveControlArgs()
+
+    resolved = args.resolve_control_profile()
+
+    assert resolved.control_profile == "persistence_only"
+    assert resolved.active_control_profile == "persistence_only"
+    assert resolved.exploration_enabled is False
+
+
+def test_train_args_keep_full_control_available_as_comparison() -> None:
+    args = TrainAdaptiveControlArgs(control_profile="full_control")
+
+    resolved = args.resolve_control_profile()
+
+    assert resolved.control_profile == "full_control"
+    assert resolved.active_control_profile == "full_control"
+    assert resolved.persistence_enabled is True
+    assert resolved.exploration_enabled is True
 
 
 def test_low_confidence_failure_increases_retry_pressure() -> None:

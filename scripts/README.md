@@ -15,6 +15,10 @@ the current schema, CLI contracts, and experiment registry workflow.
 
 Do not rename flags or output paths for these without explicit approval.
 
+`train_adaptive_control.py` defaults to the recommended `persistence_only`
+profile. Use `--control-profile full_control` only for explicitly labeled
+comparison runs because exploration is experimental/unvalidated.
+
 ## Sweep And Validation Scripts
 
 Sweep scripts may encode a specific scientific hypothesis, but shared mechanics

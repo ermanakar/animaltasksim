@@ -1,12 +1,19 @@
 """Trainer and rollout entrypoints for the adaptive control agent."""
 from __future__ import annotations
 
+import json
+from dataclasses import asdict
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 import torch
 
-from agents.adaptive_control_config import AdaptiveControlConfig
+from agents.adaptive_control_config import (
+    RECOMMENDED_ADAPTIVE_CONTROL_PROFILE,
+    AdaptiveControlConfig,
+    AdaptiveControlPaths,
+)
 from agents.adaptive_control_model import AdaptiveControlModel
 from agents.hybrid_trainer import HybridDDMTrainer
 from animaltasksim.seeding import seed_everything
@@ -220,6 +227,27 @@ class AdaptiveControlTrainer(HybridDDMTrainer):
             "mean_reward": float(np.mean(metrics["cumulative_reward"])) if metrics["cumulative_reward"] else 0.0,
             "mean_rt_ms": float(np.mean(metrics["mean_rt_ms"])) if metrics["mean_rt_ms"] else 0.0,
         }
+
+    def save(
+        self,
+        paths: AdaptiveControlPaths,
+        training_metrics: dict[str, list[float]],
+        rollout_stats: dict[str, float],
+    ) -> None:
+        """Persist model artifacts with explicit adaptive-control profile metadata."""
+        config_payload = asdict(self.config)
+        for key, value in list(config_payload.items()):
+            if isinstance(value, Path):
+                config_payload[key] = str(value)
+        config_payload["output_dir"] = str(self.config.output_dir)
+        config_payload["active_control_profile"] = self.config.active_control_profile
+        config_payload["recommended_control_profile"] = RECOMMENDED_ADAPTIVE_CONTROL_PROFILE
+        paths.config.write_text(json.dumps(config_payload, indent=2), encoding="utf-8")
+        paths.metrics.write_text(
+            json.dumps({"training": training_metrics, "rollout": rollout_stats}, indent=2),
+            encoding="utf-8",
+        )
+        torch.save(self.model.state_dict(), paths.model)
 
 
 def train_adaptive_control(config: AdaptiveControlConfig) -> dict[str, Any]:

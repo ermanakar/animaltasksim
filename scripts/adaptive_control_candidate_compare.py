@@ -243,6 +243,8 @@ class CandidateCompareArgs:
             str(self.hidden_size),
             "--learning-rate",
             str(self.learning_rate),
+            "--control-profile",
+            "persistence_only" if persistence_enabled else "no_control",
             "--max-sessions",
             str(self.max_sessions),
             "--max-trials-per-session",
@@ -266,8 +268,6 @@ class CandidateCompareArgs:
             "--control-uncertainty-power",
             str(self.control_uncertainty_power),
         ]
-        if not persistence_enabled:
-            cmd.extend(["--no-control-state-enabled", "--no-persistence-enabled"])
         return cmd
 
     @staticmethod

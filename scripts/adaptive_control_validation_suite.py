@@ -14,6 +14,11 @@ from typing import Any, Literal, Sequence
 
 import tyro
 
+from agents.adaptive_control_agent import (
+    RECOMMENDED_ADAPTIVE_CONTROL_PROFILE,
+    AdaptiveControlProfile,
+)
+
 
 SUMMARY_METRICS: tuple[str, ...] = (
     "p_right_committed",
@@ -81,6 +86,7 @@ class ValidationCondition:
 
     label: str
     description: str
+    control_profile: AdaptiveControlProfile
     extra_args: tuple[str, ...] = ()
     control_uncertainty_power: float | None = None
 
@@ -158,25 +164,22 @@ class ValidationSuiteArgs:
             ValidationCondition(
                 label="true_no_control",
                 description="Clean lesion: disables all adaptive-control fast state and overlays.",
-                extra_args=(
-                    "--no-control-state-enabled",
-                    "--no-persistence-enabled",
-                    "--no-exploration-enabled",
-                ),
+                control_profile="no_control",
             ),
             ValidationCondition(
                 label="exploration_only",
-                description="Exploration controller enabled; persistence disabled.",
-                extra_args=("--no-persistence-enabled",),
+                description="Experimental exploration lesion; persistence disabled and exploration unvalidated.",
+                control_profile="exploration_only",
             ),
             ValidationCondition(
                 label="persistence_only",
-                description="Persistence controller enabled; exploration disabled.",
-                extra_args=("--no-exploration-enabled",),
+                description="Recommended validated claim: persistence/retry enabled; exploration disabled.",
+                control_profile="persistence_only",
             ),
             ValidationCondition(
                 label="full_control",
-                description="Persistence and exploration controllers enabled.",
+                description="Comparison condition: persistence plus experimental exploration.",
+                control_profile="full_control",
             ),
         ]
         if self.include_gate_lesion:
@@ -184,6 +187,7 @@ class ValidationSuiteArgs:
                 ValidationCondition(
                     label="linear_gate_full_control",
                     description="Gate lesion: weakens nonlinear uncertainty gating while leaving control enabled.",
+                    control_profile="full_control",
                     control_uncertainty_power=self.gate_lesion_uncertainty_power,
                 )
             )
@@ -216,6 +220,8 @@ class ValidationSuiteArgs:
             str(self.hidden_size),
             "--learning-rate",
             str(self.learning_rate),
+            "--control-profile",
+            condition.control_profile,
             "--max-sessions",
             str(self.max_sessions),
             "--max-trials-per-session",
@@ -301,6 +307,7 @@ class ValidationSuiteArgs:
                 "drift_scale": self.drift_scale,
                 "persistence_bias_scale": self.persistence_bias_scale,
                 "control_uncertainty_power": self.control_uncertainty_power,
+                "recommended_control_profile": RECOMMENDED_ADAPTIVE_CONTROL_PROFILE,
                 "include_exploration_only": self.include_exploration_only,
                 "include_gate_lesion": self.include_gate_lesion,
             },

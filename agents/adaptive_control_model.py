@@ -21,7 +21,7 @@ class AdaptiveControlModel(HybridDDMModel):
         history_drift_scale: float = 0.3,
         control_state_enabled: bool = True,
         persistence_enabled: bool = True,
-        exploration_enabled: bool = True,
+        exploration_enabled: bool = False,
         persistence_learning_rate: float = 0.8,
         switch_learning_rate: float = 0.8,
         reward_learning_rate: float = 0.6,

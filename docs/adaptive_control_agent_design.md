@@ -10,7 +10,7 @@
 
 The phase-1 validation suite now supports a narrow but useful claim:
 
-> The full adaptive-control model preserves calibrated psychometric/chronometric behavior while increasing weak-failure retry relative to a clean no-control lesion.
+> The recommended/default `persistence_only` profile preserves calibrated psychometric/chronometric behavior while expressing the validated weak-failure retry mechanism. Full control remains available as a comparison condition, but it includes exploration, which is not independently validated.
 
 Main validation: `runs/adaptive_control_validation_suite_phase1/`
 
@@ -20,7 +20,7 @@ Main validation: `runs/adaptive_control_validation_suite_phase1/`
 | persistence-only | 21.75 +/- 2.69 | -33.47 +/- 4.49 | 0.164 +/- 0.108 | 1/5 | 0/5 |
 | full control | 22.26 +/- 1.80 | -33.97 +/- 4.02 | 0.165 +/- 0.045 | 0/5 | 0/5 |
 
-Paired against the clean no-control lesion, full control increased retry gap by `+0.109 +/- 0.086`, positive in 5/5 seeds.
+Paired against the clean no-control lesion, full control increased retry gap by `+0.109 +/- 0.086`, positive in 5/5 seeds. Persistence-only recovered almost the same retry-gap mean (`0.164` vs `0.165`) with exploration disabled, so new default/recommended runs should use the `persistence_only` profile unless the purpose is an explicit lesion or full-control comparison.
 
 Gate-lesion validation: `runs/adaptive_control_validation_suite_phase1_gate/`
 
@@ -326,7 +326,7 @@ Required ablation:
 - Adaptive-control state updates use explicit outcome valence: positive reward reinforces the chosen action, while zero/negative reward teaches persistence under uncertainty or switching under confidence. The critic prediction error remains available for value learning and diagnostics, but it must not silence failure teaching when the critic is poorly calibrated.
 - Arbitration is gated by current evidence confidence, and training tracks an evidence-preservation penalty on control residuals during high-evidence trials. The adaptive controller should explain ambiguous-trial history effects without rewriting the evidence pathway on easy trials. The expression gate is nonlinear (`control_uncertainty_power`) so control remains available near zero contrast but falls quickly as sensory evidence becomes informative.
 - IBL rollout must use the configured DDM response window, not the environment's short default response phase. Otherwise weak-evidence trials saturate at 300 ms and the chronometric warning measures a rollout ceiling rather than agent dynamics.
-- Current IBL calibration uses `drift_scale=6.0`, `control_uncertainty_power=2.0`, and `persistence_bias_scale=1.6`. In the phase-1 5-seed validation suite, full control retained calibrated behavior (`psychometric_slope=22.26 +/- 1.80`, `chronometric_slope=-33.97 +/- 4.02`) while increasing weak-failure retry relative to the matched no-control lesion (`delta_retry_gap=+0.109 +/- 0.086`, positive in 5/5 seeds). No full-control runs were degenerate or RT-ceiling flagged.
+- Current IBL calibration uses `drift_scale=6.0`, `control_uncertainty_power=2.0`, and `persistence_bias_scale=1.6`. The recommended/default profile is `persistence_only`: it keeps exploration disabled while retaining the validated weak-failure retry mechanism (`retry_gap=0.164` vs `0.057` in the clean no-control lesion). Full control retained calibrated behavior (`psychometric_slope=22.26 +/- 1.80`, `chronometric_slope=-33.97 +/- 4.02`) and produced the most consistent paired retry lift (`delta_retry_gap=+0.109 +/- 0.086`, positive in 5/5 seeds), but it should be labeled as a comparison condition because exploration is not validated. No full-control runs were degenerate or RT-ceiling flagged.
 - Gate-lesion validation showed that a linear uncertainty gate still produces some adaptive retry behavior (`delta_retry_gap=+0.087 +/- 0.130`) but less reliably (3/5 positive seeds). Do not claim the nonlinear exponent is necessary; claim it improves robustness.
 
 Success criterion:
@@ -346,7 +346,7 @@ Add analysis utilities for:
 
 The existing evaluation pipeline can remain authoritative for psychometric, chronometric, and standard history metrics. The new metrics can be added as optional analysis outputs first.
 
-Use `scripts/adaptive_control_validation_suite.py` for the matched validation run. It trains the clean no-control lesion, exploration-only condition, persistence-only condition, and full-control condition across seeds, then writes per-run summaries, aggregate summaries, and paired deltas against the no-control lesion.
+Use `scripts/adaptive_control_validation_suite.py` for the matched validation run. It trains the clean no-control lesion, exploration-only condition, persistence-only recommended condition, and full-control comparison condition across seeds, then writes per-run summaries, aggregate summaries, and paired deltas against the no-control lesion.
 
 The suite now reports a first-class stale-exploration probe:
 
@@ -363,7 +363,7 @@ The first 5-seed exploration run did **not** support that expected result. In `r
 - persistence-only minus no-control: `-0.086`, positive in `0/5` seeds
 - full-control minus no-control: `-0.079`, positive in `0/5` seeds
 
-So the supported phase-1 claim remains persistence/adaptive retry after weak-evidence failure. Rewarded-streak exploration is not validated. The next exploration work should either define a better probe around unrewarded or volatile streaks, or defer the exploration claim to PRL/DMS where environmental change is task-relevant.
+So the supported phase-1 claim remains persistence/adaptive retry after weak-evidence failure. Rewarded-streak exploration is not validated and is disabled in the recommended/default training profile. The next exploration work should either define a better probe around unrewarded or volatile streaks, or defer the exploration claim to PRL/DMS where environmental change is task-relevant.
 
 ## 9. Minimal experiment sequence
 

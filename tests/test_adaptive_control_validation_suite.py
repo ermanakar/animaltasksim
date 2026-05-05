@@ -19,9 +19,7 @@ def test_validation_suite_builds_clean_no_control_lesion_command(tmp_path: Path)
     cmd = args._build_train_command(tmp_path / "run", 42, condition)
 
     assert condition.label == "true_no_control"
-    assert "--no-control-state-enabled" in cmd
-    assert "--no-persistence-enabled" in cmd
-    assert "--no-exploration-enabled" in cmd
+    assert cmd[cmd.index("--control-profile") + 1] == "no_control"
     assert cmd[cmd.index("--drift-scale") + 1] == "6.0"
     assert cmd[cmd.index("--persistence-bias-scale") + 1] == "1.6"
     assert cmd[cmd.index("--control-uncertainty-power") + 1] == "2.0"
@@ -39,6 +37,7 @@ def test_validation_suite_can_include_gate_lesion(tmp_path: Path) -> None:
     cmd = args._build_train_command(tmp_path / "run", 42, gate_lesion)
 
     assert gate_lesion.label == "linear_gate_full_control"
+    assert cmd[cmd.index("--control-profile") + 1] == "full_control"
     assert cmd.count("--control-uncertainty-power") == 1
     assert cmd[cmd.index("--control-uncertainty-power") + 1] == "1.0"
 
@@ -49,9 +48,27 @@ def test_validation_suite_builds_exploration_only_condition(tmp_path: Path) -> N
 
     cmd = args._build_train_command(tmp_path / "run", 42, condition)
 
-    assert "--no-persistence-enabled" in cmd
-    assert "--no-exploration-enabled" not in cmd
-    assert "--no-control-state-enabled" not in cmd
+    assert cmd[cmd.index("--control-profile") + 1] == "exploration_only"
+
+
+def test_validation_suite_keeps_all_four_primary_conditions(tmp_path: Path) -> None:
+    args = ValidationSuiteArgs(run_root=tmp_path)
+
+    labels = [condition.label for condition in args._conditions()]
+    profiles = [condition.control_profile for condition in args._conditions()]
+
+    assert labels == [
+        "true_no_control",
+        "exploration_only",
+        "persistence_only",
+        "full_control",
+    ]
+    assert profiles == [
+        "no_control",
+        "exploration_only",
+        "persistence_only",
+        "full_control",
+    ]
 
 
 def test_validation_suite_paired_delta_summary() -> None:

@@ -22,14 +22,14 @@ The agent combines:
 1. **Evidence core**: stimulus-driven evidence accumulation for choice and reaction time.
 2. **Outcome state**: fast memory of recent actions, rewards, failures, and uncertainty.
 3. **Persistence controller**: increases retry pressure after weak-evidence failures.
-4. **Exploration controller**: intended to sample alternatives under stale or uncertain conditions.
+4. **Exploration controller**: intended to sample alternatives under stale or uncertain conditions; off by default because it is not independently validated.
 5. **Arbitration layer**: bounds the control signal so it cannot overwrite strong sensory evidence.
 
-The supported result is narrow but real: **uncertainty-gated adaptive retry/persistence**. The exploration component is not yet independently validated.
+The supported result is narrow but real: **uncertainty-gated adaptive retry/persistence**. The recommended/default adaptive-control profile is `persistence_only`; the exploration component is experimental.
 
 ### Scope of the current claim
 
-> **Supported.** Uncertainty-gated adaptive retry / persistence is validated in-simulator: the full-control agent reliably retries the same choice after a weak-evidence failure, and the effect survives a paired comparison against a clean no-control lesion across 5 seeds.
+> **Supported.** Uncertainty-gated adaptive retry / persistence is validated in-simulator: the persistence-only lesion recovers almost all of the full-control retry-gap mean while keeping exploration disabled. Full-control remains useful as a comparison condition, not as the clean default claim.
 
 > **Not yet supported.** Rewarded-streak exploration is not independently validated; its isolation probe failed (0/5 positive seeds on stale-switch lift). No anatomical claim is made — the model is a computational analogy.
 
@@ -48,7 +48,7 @@ runs/adaptive_control_validation_suite_phase1_exploration/
 - **Retry gap** = P(retry | weak-evidence failure) − P(retry | strong-evidence failure). A positive gap means the agent specifically retries when the prior failure was *not* clearly disambiguated by the stimulus — the signature of uncertainty-gated persistence.
 - **Stale-switch lift** = P(switch | stale state) − P(switch | fresh state). A positive lift means the agent samples alternatives more often when its recent action history has gone stale — the signature of rewarded-streak exploration.
 - **Paired Δ** = condition − no-control, computed seed-by-seed. Positive-seed counts (e.g. `5/5`) show how consistently the effect reproduces, not just whether the mean has the right sign.
-- **Lesion conditions.** *No control* disables all adaptive-control machinery; *persistence only* and *exploration only* enable one controller at a time; *full control* enables both. The arbitration layer is uncertainty-gated so that none of these can overwrite strong sensory evidence.
+- **Lesion conditions.** *No control* disables all adaptive-control machinery; *persistence only* is the recommended/default validated profile; *exploration only* isolates the experimental exploration controller; *full control* enables both for comparison. The arbitration layer is uncertainty-gated so that none of these can overwrite strong sensory evidence.
 
 ---
 
@@ -56,10 +56,10 @@ runs/adaptive_control_validation_suite_phase1_exploration/
 
 ![Adaptive-control agent vs. IBL mouse: psychometric, chronometric, and history](docs/figures/agent_vs_animal_full_control_seed42.png)
 
-> **Figure 1 | The full-control agent reproduces the IBL mouse's choice psychometric, tracks its chronometric shape, and shows directionally correct history effects.**
+> **Figure 1 | Full-control comparison run against the IBL mouse.**
 > **(a)** Psychometric curve, P(rightward choice) vs. signed stimulus contrast. Filled circles, agent (full-control, seed 42); open squares, IBL mouse aggregate (10 sessions, n = 8,406 trials). Solid blue and dashed gray curves are sigmoid fits with separate lapse parameters per side. The agent's slope (22.3 logits/contrast) sits inside the per-session IBL distribution (20.0 ± 5.7).
 > **(b)** Chronometric curve. Median reaction time vs. |stimulus contrast|, with error bars showing the standard error of the median. Both agent and mouse decline monotonically with stimulus strength; the agent matches the mouse at low contrast and commits faster than the mouse at the highest contrast.
-> **(c)** History effects (win-stay, lose-shift, sticky-choice). Hollow bars, mouse; filled blue bars, agent. Lose-shift is matched. Win-stay and sticky-choice are directionally correct (above 0.5) but trail the mouse by roughly 0.13 in this seed; this gap is the agent's main remaining behavioral deficit.
+> **(c)** History effects (win-stay, lose-shift, sticky-choice). Hollow bars, mouse; filled blue bars, agent. Lose-shift is matched. Win-stay and sticky-choice are directionally correct (above 0.5) but trail the mouse by roughly 0.13 in this seed; this gap is the agent's main remaining behavioral deficit. This figure is a comparison view; the clean default claim remains persistence/retry.
 
 ---
 
@@ -99,8 +99,8 @@ runs/adaptive_control_validation_suite_phase1_exploration/
 
 ### Interpretation
 
-- Full control reliably increases retry after weak-evidence failure (Fig 1c, Fig 2a, Fig 3).
-- Persistence explains most of that effect: the persistence-only lesion already recovers ~98% of the full-control retry gap.
+- The validated claim is persistence/retry: the persistence-only lesion already recovers ~98% of the full-control retry gap.
+- Full control is retained as a comparison condition and shows the most consistent paired retry lift, but it also includes the unvalidated exploration controller.
 - Rewarded-streak exploration fails its isolation probe in every condition (Fig 2b, Fig 3).
 - The honest claim is **uncertainty-gated adaptive retry / persistence**, not a general exploration breakthrough. The exploration mechanism needs a different probe, a different gate, or both.
 
@@ -171,11 +171,23 @@ pip install -e ".[dev]"
 pytest
 ```
 
-Train one adaptive-control run:
+Train one recommended adaptive-control run. `persistence_only` is also the default, but the explicit profile makes the claim boundary visible in saved configs:
 
 ```bash
 python scripts/train_adaptive_control.py \
+  --control-profile persistence_only \
   --output-dir runs/adaptive_control_demo \
+  --task ibl_2afc \
+  --seed 42 --episodes 5 --epochs 3 \
+  --max-sessions 20 --max-trials-per-session 128
+```
+
+Run a full-control comparison only when you want the experimental exploration controller enabled:
+
+```bash
+python scripts/train_adaptive_control.py \
+  --control-profile full_control \
+  --output-dir runs/adaptive_control_full_control_demo \
   --task ibl_2afc \
   --seed 42 --episodes 5 --epochs 3 \
   --max-sessions 20 --max-trials-per-session 128
