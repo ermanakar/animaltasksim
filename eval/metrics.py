@@ -67,6 +67,16 @@ class ExplorationProbeMetrics:
     fresh_weak_count: int = 0
     fresh_count: int = 0
     stale_count: int = 0
+    switch_after_unrewarded_streak_weak: float = float("nan")
+    switch_after_unrewarded_fresh_weak: float = float("nan")
+    unrewarded_switch_lift_weak: float = float("nan")
+    unrewarded_streak_weak_count: int = 0
+    unrewarded_fresh_weak_count: int = 0
+    switch_after_volatile_weak: float = float("nan")
+    switch_after_stable_weak: float = float("nan")
+    volatile_switch_lift_weak: float = float("nan")
+    volatile_weak_count: int = 0
+    stable_weak_count: int = 0
 
 
 def load_trials(path: str | Path) -> pd.DataFrame:
@@ -364,8 +374,12 @@ def compute_adaptive_control_probe_metrics(df: pd.DataFrame) -> AdaptiveControlP
     )
 
 
-def compute_exploration_probe_metrics(df: pd.DataFrame, streak_length: int = 3) -> ExplorationProbeMetrics:
-    """Measure switching after repeated rewarded action streaks."""
+def compute_exploration_probe_metrics(
+    df: pd.DataFrame,
+    streak_length: int = 3,
+    volatility_window: int = 4,
+) -> ExplorationProbeMetrics:
+    """Measure structured switching after stale, unrewarded, or volatile history."""
     if df.empty:
         return ExplorationProbeMetrics(np.nan, np.nan, 0, 0)
 
@@ -385,29 +399,6 @@ def compute_exploration_probe_metrics(df: pd.DataFrame, streak_length: int = 3) 
     data = data[data["action"].isin(["left", "right"])].copy()
     if data.empty:
         return ExplorationProbeMetrics(np.nan, np.nan, 0, 0)
-
-    run_lengths: list[int] = []
-    current_streak = 0
-    current_action: str | None = None
-    for _, row in data.iterrows():
-        action = row.get("action")
-        correct = bool(row.get("correct", False))
-        run_lengths.append(current_streak)
-        if action in {"left", "right"} and correct:
-            if current_action == action and current_streak > 0:
-                current_streak += 1
-            else:
-                current_streak = 1
-            current_action = action
-        else:
-            current_streak = 0
-            current_action = None
-
-    data["previous_correct_streak"] = run_lengths
-    data = data[data["prev_action"].isin(["left", "right"])].copy()
-    if data.empty:
-        return ExplorationProbeMetrics(np.nan, np.nan, 0, 0)
-    data["same_as_prev"] = (data["action"] == data["prev_action"]).astype(float)
     data["difficulty_abs"] = pd.to_numeric(data[stimulus_key], errors="coerce").abs()
     data = data[data["difficulty_abs"].notnull()].copy()
     if data.empty:
@@ -416,13 +407,78 @@ def compute_exploration_probe_metrics(df: pd.DataFrame, streak_length: int = 3) 
     difficulty_levels = np.sort(data["difficulty_abs"].unique().astype(float))
     split_threshold = float(np.median(difficulty_levels))
     data["is_weak_evidence"] = data["difficulty_abs"] <= split_threshold
+    sort_columns = [column for column in ("session_id", "trial_index") if column in data.columns]
+    if sort_columns:
+        data = data.sort_values(sort_columns).copy()
+
+    run_lengths: list[int] = []
+    failure_run_lengths: list[int] = []
+    volatility_flags: list[bool] = []
+    groupby_key = "session_id" if "session_id" in data.columns else None
+    grouped_rows = data.groupby(groupby_key, sort=False) if groupby_key is not None else [(None, data)]
+    for _, session_rows in grouped_rows:
+        current_rewarded_streak = 0
+        current_rewarded_action: str | None = None
+        current_failure_streak = 0
+        current_failure_action: str | None = None
+        previous_outcomes: list[float] = []
+        for _, row in session_rows.iterrows():
+            action = row.get("action")
+            run_lengths.append(current_rewarded_streak)
+            failure_run_lengths.append(current_failure_streak)
+            recent = previous_outcomes[-volatility_window:]
+            volatility_flags.append(
+                len(recent) >= volatility_window
+                and any(outcome > 0.5 for outcome in recent)
+                and any(outcome <= 0.5 for outcome in recent)
+            )
+
+            success = _trial_success(row)
+            if action in {"left", "right"} and success:
+                if current_rewarded_action == action and current_rewarded_streak > 0:
+                    current_rewarded_streak += 1
+                else:
+                    current_rewarded_streak = 1
+                current_rewarded_action = action
+            else:
+                current_rewarded_streak = 0
+                current_rewarded_action = None
+
+            is_weak_failure = (
+                action in {"left", "right"}
+                and not success
+                and bool(row.get("is_weak_evidence", False))
+            )
+            if is_weak_failure:
+                if current_failure_action == action and current_failure_streak > 0:
+                    current_failure_streak += 1
+                else:
+                    current_failure_streak = 1
+                current_failure_action = action
+            else:
+                current_failure_streak = 0
+                current_failure_action = None
+            previous_outcomes.append(1.0 if success else 0.0)
+
+    data["previous_correct_streak"] = run_lengths
+    data["previous_weak_failure_streak"] = failure_run_lengths
+    data["previous_outcome_volatility"] = volatility_flags
+    data = data[data["prev_action"].isin(["left", "right"])].copy()
+    if data.empty:
+        return ExplorationProbeMetrics(np.nan, np.nan, 0, 0)
+    data["same_as_prev"] = (data["action"] == data["prev_action"]).astype(float)
     data["is_stale_streak"] = data["previous_correct_streak"] >= streak_length
+    data["is_unrewarded_streak"] = data["previous_weak_failure_streak"] >= streak_length
 
     stale = data[data["is_stale_streak"]].copy()
     fresh = data[~data["is_stale_streak"]].copy()
     weak_streak = stale[stale["is_weak_evidence"]].copy()
     strong_streak = stale[~stale["is_weak_evidence"]].copy()
     fresh_weak = fresh[fresh["is_weak_evidence"]].copy()
+    weak_unrewarded_streak = data[data["is_weak_evidence"] & data["is_unrewarded_streak"]].copy()
+    weak_unrewarded_fresh = data[data["is_weak_evidence"] & ~data["is_unrewarded_streak"]].copy()
+    weak_volatile = data[data["is_weak_evidence"] & data["previous_outcome_volatility"]].copy()
+    weak_stable = data[data["is_weak_evidence"] & ~data["previous_outcome_volatility"]].copy()
 
     def _ratio(values: pd.Series, transform: Callable[[pd.Series], pd.Series] | None = None) -> float:
         if values.empty:
@@ -440,6 +496,16 @@ def compute_exploration_probe_metrics(df: pd.DataFrame, streak_length: int = 3) 
     switch_after_fresh_weak = _ratio(fresh_weak["same_as_prev"], lambda x: 1.0 - x)
     switch_after_fresh_overall = _ratio(fresh["same_as_prev"], lambda x: 1.0 - x)
     switch_after_stale_overall = _ratio(stale["same_as_prev"], lambda x: 1.0 - x)
+    switch_after_unrewarded_streak_weak = _ratio(
+        weak_unrewarded_streak["same_as_prev"],
+        lambda x: 1.0 - x,
+    )
+    switch_after_unrewarded_fresh_weak = _ratio(
+        weak_unrewarded_fresh["same_as_prev"],
+        lambda x: 1.0 - x,
+    )
+    switch_after_volatile_weak = _ratio(weak_volatile["same_as_prev"], lambda x: 1.0 - x)
+    switch_after_stable_weak = _ratio(weak_stable["same_as_prev"], lambda x: 1.0 - x)
 
     return ExplorationProbeMetrics(
         switch_after_streak_weak=switch_after_streak_weak,
@@ -454,7 +520,31 @@ def compute_exploration_probe_metrics(df: pd.DataFrame, streak_length: int = 3) 
         fresh_weak_count=int(len(fresh_weak)),
         fresh_count=int(len(fresh)),
         stale_count=int(len(stale)),
+        switch_after_unrewarded_streak_weak=switch_after_unrewarded_streak_weak,
+        switch_after_unrewarded_fresh_weak=switch_after_unrewarded_fresh_weak,
+        unrewarded_switch_lift_weak=_difference(
+            switch_after_unrewarded_streak_weak,
+            switch_after_unrewarded_fresh_weak,
+        ),
+        unrewarded_streak_weak_count=int(len(weak_unrewarded_streak)),
+        unrewarded_fresh_weak_count=int(len(weak_unrewarded_fresh)),
+        switch_after_volatile_weak=switch_after_volatile_weak,
+        switch_after_stable_weak=switch_after_stable_weak,
+        volatile_switch_lift_weak=_difference(switch_after_volatile_weak, switch_after_stable_weak),
+        volatile_weak_count=int(len(weak_volatile)),
+        stable_weak_count=int(len(weak_stable)),
     )
+
+
+def _trial_success(row: pd.Series) -> bool:
+    """Return trial success from `correct` when present, falling back to reward."""
+    correct = row.get("correct")
+    if correct is not None and pd.notna(correct):
+        return bool(correct)
+    reward = row.get("reward", 0.0)
+    if reward is None or pd.isna(reward):
+        return False
+    return float(reward) > 0.0
 
 
 def _sanitize(obj: object) -> object:

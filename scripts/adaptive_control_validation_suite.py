@@ -46,6 +46,16 @@ SUMMARY_METRICS: tuple[str, ...] = (
     "switch_after_stale_overall",
     "stale_switch_lift_weak",
     "stale_switch_lift_overall",
+    "switch_after_unrewarded_streak_weak",
+    "switch_after_unrewarded_fresh_weak",
+    "unrewarded_switch_lift_weak",
+    "unrewarded_streak_weak_count",
+    "unrewarded_fresh_weak_count",
+    "switch_after_volatile_weak",
+    "switch_after_stable_weak",
+    "volatile_switch_lift_weak",
+    "volatile_weak_count",
+    "stable_weak_count",
     "weak_streak_count",
     "strong_streak_count",
     "fresh_weak_count",
@@ -67,6 +77,12 @@ PAIRED_METRICS: tuple[str, ...] = (
     "switch_after_fresh_weak",
     "stale_switch_lift_weak",
     "stale_switch_lift_overall",
+    "unrewarded_switch_lift_weak",
+    "volatile_switch_lift_weak",
+    "switch_after_unrewarded_streak_weak",
+    "switch_after_unrewarded_fresh_weak",
+    "switch_after_volatile_weak",
+    "switch_after_stable_weak",
     "exploration_gap",
 )
 
@@ -359,6 +375,21 @@ class ValidationSuiteArgs:
                     f"{_fmt(row.get('delta_chronometric_slope_mean')):>8}"
                 )
 
+            print(
+                f"\n{'comparison':<42} | {'d_unrew':>8} | {'pos':>5} | "
+                f"{'d_vol':>8} | {'pos':>5}"
+            )
+            print("-" * 76)
+            for row in paired_summary_rows:
+                comparison = str(row["comparison"])
+                print(
+                    f"{comparison:<42} | "
+                    f"{_fmt(row.get('delta_unrewarded_switch_lift_weak_mean'), decimals=3):>8} | "
+                    f"{int(row.get('delta_unrewarded_switch_lift_weak_positive_count', 0)):>5} | "
+                    f"{_fmt(row.get('delta_volatile_switch_lift_weak_mean'), decimals=3):>8} | "
+                    f"{int(row.get('delta_volatile_switch_lift_weak_positive_count', 0)):>5}"
+                )
+
         print(f"\nPer-run summary saved to {self.run_root / 'per_run_comparison.csv'}")
         print(f"Aggregate summary saved to {self.run_root / 'aggregate_summary.csv'}")
         print(f"Paired deltas saved to {self.run_root / 'paired_deltas.csv'}")
@@ -419,6 +450,16 @@ def _summarize_run(metrics: dict[str, Any]) -> dict[str, object]:
         "switch_after_stale_overall": exploration_probe.get("switch_after_stale_overall"),
         "stale_switch_lift_weak": exploration_probe.get("stale_switch_lift_weak"),
         "stale_switch_lift_overall": exploration_probe.get("stale_switch_lift_overall"),
+        "switch_after_unrewarded_streak_weak": exploration_probe.get("switch_after_unrewarded_streak_weak"),
+        "switch_after_unrewarded_fresh_weak": exploration_probe.get("switch_after_unrewarded_fresh_weak"),
+        "unrewarded_switch_lift_weak": exploration_probe.get("unrewarded_switch_lift_weak"),
+        "unrewarded_streak_weak_count": exploration_probe.get("unrewarded_streak_weak_count"),
+        "unrewarded_fresh_weak_count": exploration_probe.get("unrewarded_fresh_weak_count"),
+        "switch_after_volatile_weak": exploration_probe.get("switch_after_volatile_weak"),
+        "switch_after_stable_weak": exploration_probe.get("switch_after_stable_weak"),
+        "volatile_switch_lift_weak": exploration_probe.get("volatile_switch_lift_weak"),
+        "volatile_weak_count": exploration_probe.get("volatile_weak_count"),
+        "stable_weak_count": exploration_probe.get("stable_weak_count"),
         "weak_streak_count": exploration_probe.get("weak_streak_count"),
         "strong_streak_count": exploration_probe.get("strong_streak_count"),
         "fresh_weak_count": exploration_probe.get("fresh_weak_count"),

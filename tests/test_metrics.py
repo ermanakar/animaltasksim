@@ -283,6 +283,90 @@ def _make_exploration_probe_df() -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _make_unrewarded_volatile_exploration_df() -> pd.DataFrame:
+    rows = [
+        {
+            "task": "ibl_2afc",
+            "session_id": "s6",
+            "trial_index": 0,
+            "stimulus_contrast": 0.0,
+            "action": "right",
+            "correct": False,
+            "reward": 0.0,
+            "rt_ms": 500.0,
+            "prev_action": None,
+            "prev_reward": None,
+            "prev_correct": None,
+        },
+        {
+            "task": "ibl_2afc",
+            "session_id": "s6",
+            "trial_index": 1,
+            "stimulus_contrast": 0.0,
+            "action": "right",
+            "correct": False,
+            "reward": 0.0,
+            "rt_ms": 510.0,
+            "prev_action": "right",
+            "prev_reward": 0.0,
+            "prev_correct": 0.0,
+        },
+        {
+            "task": "ibl_2afc",
+            "session_id": "s6",
+            "trial_index": 2,
+            "stimulus_contrast": 0.0,
+            "action": "left",
+            "correct": True,
+            "reward": 1.0,
+            "rt_ms": 520.0,
+            "prev_action": "right",
+            "prev_reward": 0.0,
+            "prev_correct": 0.0,
+        },
+        {
+            "task": "ibl_2afc",
+            "session_id": "s6",
+            "trial_index": 3,
+            "stimulus_contrast": 0.0,
+            "action": "right",
+            "correct": False,
+            "reward": 0.0,
+            "rt_ms": 500.0,
+            "prev_action": "left",
+            "prev_reward": 1.0,
+            "prev_correct": 1.0,
+        },
+        {
+            "task": "ibl_2afc",
+            "session_id": "s6",
+            "trial_index": 4,
+            "stimulus_contrast": 0.0,
+            "action": "left",
+            "correct": True,
+            "reward": 1.0,
+            "rt_ms": 530.0,
+            "prev_action": "right",
+            "prev_reward": 0.0,
+            "prev_correct": 0.0,
+        },
+        {
+            "task": "ibl_2afc",
+            "session_id": "s6",
+            "trial_index": 5,
+            "stimulus_contrast": 0.0,
+            "action": "left",
+            "correct": True,
+            "reward": 1.0,
+            "rt_ms": 510.0,
+            "prev_action": "left",
+            "prev_reward": 1.0,
+            "prev_correct": 1.0,
+        },
+    ]
+    return pd.DataFrame(rows)
+
+
 def test_psychometric_fit_returns_positive_slope():
     df = _make_psychometric_df()
     metrics = compute_psychometric(df, stimulus_key="contrast")
@@ -347,6 +431,37 @@ def test_compute_all_metrics_includes_exploration_probe():
     assert probe["switch_after_streak_strong"] == pytest.approx(0.0)
     assert probe["switch_after_fresh_weak"] == pytest.approx(0.0)
     assert probe["stale_switch_lift_weak"] == pytest.approx(1.0)
+
+
+def test_exploration_probe_metrics_capture_unrewarded_streak_switching():
+    df = _make_unrewarded_volatile_exploration_df()
+    metrics = compute_exploration_probe_metrics(df, streak_length=2)
+
+    assert metrics.unrewarded_streak_weak_count == 1
+    assert metrics.unrewarded_fresh_weak_count == 4
+    assert metrics.switch_after_unrewarded_streak_weak == pytest.approx(1.0)
+    assert metrics.switch_after_unrewarded_fresh_weak == pytest.approx(0.5)
+    assert metrics.unrewarded_switch_lift_weak == pytest.approx(0.5)
+
+
+def test_exploration_probe_metrics_capture_local_volatility_switching():
+    df = _make_unrewarded_volatile_exploration_df()
+    metrics = compute_exploration_probe_metrics(df, volatility_window=2)
+
+    assert metrics.volatile_weak_count == 3
+    assert metrics.stable_weak_count == 2
+    assert metrics.switch_after_volatile_weak == pytest.approx(2.0 / 3.0)
+    assert metrics.switch_after_stable_weak == pytest.approx(0.5)
+    assert metrics.volatile_switch_lift_weak == pytest.approx(1.0 / 6.0)
+
+
+def test_compute_all_metrics_includes_new_exploration_probes():
+    df = _make_unrewarded_volatile_exploration_df()
+    metrics = compute_all_metrics(df, task="ibl_2afc")
+    probe = metrics["exploration_probe"]
+
+    assert "unrewarded_switch_lift_weak" in probe
+    assert "volatile_switch_lift_weak" in probe
 
 
 def _make_ceiling_df() -> pd.DataFrame:

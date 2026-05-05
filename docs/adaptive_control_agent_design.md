@@ -355,6 +355,13 @@ The suite now reports a first-class stale-exploration probe:
 - `stale_switch_lift_weak`: `switch_after_streak_weak - switch_after_fresh_weak`; this is the primary exploration readout.
 - `exploration_gap`: older secondary readout comparing weak-streak switching against strong-streak switching.
 
+The evaluator also includes two metric-first follow-up probes for the next exploration screen:
+
+- `unrewarded_switch_lift_weak`: switching after repeated weak failures minus matched weak-fresh switching.
+- `volatile_switch_lift_weak`: switching after locally mixed success/failure outcomes minus matched stable-history switching.
+
+These are documented in [Adaptive Control Exploration Probe Design](adaptive_control_exploration_probe_design.md). They should be read as falsification probes, not as claims that exploration has already been validated.
+
 The `exploration_only` lesion disables persistence but leaves the exploration controller and control state enabled. This makes the exploration claim cleaner: the expected result is not just “full control changed behavior,” but “stale-state exploration specifically increases weak-evidence switching above the fresh weak-evidence baseline.”
 
 The first 5-seed exploration run did **not** support that expected result. In `runs/adaptive_control_validation_suite_phase1_exploration/`, `stale_switch_lift_weak` was negative in every condition and became more negative relative to no-control:

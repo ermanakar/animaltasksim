@@ -81,6 +81,8 @@ def test_validation_suite_paired_delta_summary() -> None:
             "chronometric_slope": -40.0,
             "retry_gap": 0.10,
             "stale_switch_lift_weak": 0.02,
+            "unrewarded_switch_lift_weak": 0.01,
+            "volatile_switch_lift_weak": 0.02,
             "degenerate": False,
             "chronometric_ok": True,
         },
@@ -91,6 +93,8 @@ def test_validation_suite_paired_delta_summary() -> None:
             "chronometric_slope": -42.0,
             "retry_gap": 0.12,
             "stale_switch_lift_weak": 0.03,
+            "unrewarded_switch_lift_weak": 0.02,
+            "volatile_switch_lift_weak": 0.03,
             "degenerate": False,
             "chronometric_ok": True,
         },
@@ -101,6 +105,8 @@ def test_validation_suite_paired_delta_summary() -> None:
             "chronometric_slope": -36.0,
             "retry_gap": 0.16,
             "stale_switch_lift_weak": 0.08,
+            "unrewarded_switch_lift_weak": 0.06,
+            "volatile_switch_lift_weak": 0.01,
             "degenerate": False,
             "chronometric_ok": True,
         },
@@ -111,6 +117,8 @@ def test_validation_suite_paired_delta_summary() -> None:
             "chronometric_slope": -35.0,
             "retry_gap": 0.17,
             "stale_switch_lift_weak": 0.09,
+            "unrewarded_switch_lift_weak": 0.08,
+            "volatile_switch_lift_weak": 0.05,
             "degenerate": False,
             "chronometric_ok": True,
         },
@@ -126,8 +134,11 @@ def test_validation_suite_paired_delta_summary() -> None:
     assert full_control["num_seeds"] == 2
     assert full_control["retry_gap_mean"] == pytest.approx(0.165)
     assert full_control["stale_switch_lift_weak_mean"] == pytest.approx(0.085)
+    assert full_control["unrewarded_switch_lift_weak_mean"] == pytest.approx(0.07)
     assert full_control_delta["delta_retry_gap_mean"] == pytest.approx(0.055)
     assert full_control_delta["delta_retry_gap_positive_count"] == 2
     assert full_control_delta["delta_stale_switch_lift_weak_mean"] == pytest.approx(0.06)
     assert full_control_delta["delta_stale_switch_lift_weak_positive_count"] == 2
+    assert full_control_delta["delta_unrewarded_switch_lift_weak_mean"] == pytest.approx(0.055)
+    assert full_control_delta["delta_volatile_switch_lift_weak_mean"] == pytest.approx(0.005)
     assert full_control_delta["delta_psychometric_slope_mean"] == pytest.approx(-3.5)

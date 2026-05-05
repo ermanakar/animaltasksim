@@ -236,7 +236,7 @@ IBL contrasts are `{0, 0.0625, 0.125, 0.25, 1.0}`. A previous extra `0.5` contra
 
 Near-term work:
 
-1. Build a better exploration probe around unrewarded or volatile streaks.
+1. Run the new unrewarded/volatile exploration probes across the matched lesion suite.
 2. Test whether adaptive control transfers to Probabilistic Reversal Learning and Delayed Match-to-Sample.
 3. Expand lesion tests for control state, arbitration, evidence preservation, and gate shape.
 4. Keep all new tasks compatible with the shared `.ndjson` comparison pipeline.
@@ -247,6 +247,7 @@ Near-term work:
 |----------|----------|
 | [FINDINGS.md](FINDINGS.md) | Experimental narrative, failures, corrections, and current claims |
 | [Adaptive Control Agent Design](docs/adaptive_control_agent_design.md) | Current adaptive-control architecture and validation status |
+| [Adaptive Control Exploration Probe Design](docs/adaptive_control_exploration_probe_design.md) | Metric-first follow-up probe for unrewarded and volatile exploration |
 | [Theory & Concepts](docs/THEORY_AND_CONCEPTS.md) | Accessible background on tasks, metrics, and model ideas |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
 
