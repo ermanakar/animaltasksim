@@ -1,7 +1,9 @@
 # AnimalTaskSim Findings
 
 **Benchmarking reinforcement learning agents against rodent and primate decision-making fingerprints**  
-*October 2025 · Version 0.1.0 — Updated February 2026*
+*October 2025 · Version 0.1.0 — Updated May 2026*
+
+> **How to read this document.** Two "Methodological Note" sections are pinned at the top because they reframe numbers further down (target provenance, RT-ceiling saturation). Everything after them runs chronologically, oldest first: Sept/Oct 2025 → Feb 2026 phases → March 2026 (plastic history) → May 2026 (adaptive control + reporting pass).
 
 ---
 
