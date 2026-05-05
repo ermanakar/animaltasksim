@@ -7,6 +7,15 @@ import torch.nn as nn
 from agents.hybrid_model import HybridDDMModel
 
 
+def _zero_linear_layer(module: nn.Module) -> None:
+    """Zero-initialize a Linear layer after narrowing Sequential members."""
+    if not isinstance(module, nn.Linear):
+        raise TypeError(f"Expected nn.Linear, got {type(module).__name__}")
+    nn.init.zeros_(module.weight)
+    if module.bias is not None:
+        nn.init.zeros_(module.bias)
+
+
 class AdaptiveControlModel(HybridDDMModel):
     """Hybrid evidence core augmented with adaptive control pressures."""
 
@@ -74,10 +83,8 @@ class AdaptiveControlModel(HybridDDMModel):
         self.persistence_bias_scale = nn.Parameter(torch.tensor(persistence_bias_scale, dtype=torch.float32))
         self.exploration_bias_scale = nn.Parameter(torch.tensor(exploration_bias_scale, dtype=torch.float32))
 
-        nn.init.zeros_(self.persistence_head[-1].weight)
-        nn.init.zeros_(self.persistence_head[-1].bias)
-        nn.init.zeros_(self.exploration_head[-1].weight)
-        nn.init.zeros_(self.exploration_head[-1].bias)
+        _zero_linear_layer(self.persistence_head[-1])
+        _zero_linear_layer(self.exploration_head[-1])
         nn.init.zeros_(self.arbitration_head.weight)
         nn.init.zeros_(self.arbitration_head.bias)
 
