@@ -4,14 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
-def _zero_linear_layer(module: nn.Module) -> None:
-    """Zero-initialize a Linear layer after narrowing Sequential members."""
-    if not isinstance(module, nn.Linear):
-        raise TypeError(f"Expected nn.Linear, got {type(module).__name__}")
-    nn.init.zeros_(module.weight)
-    if module.bias is not None:
-        nn.init.zeros_(module.bias)
+from agents._init_utils import zero_linear_layer
 
 
 class HybridDDMModel(nn.Module):
@@ -73,8 +66,8 @@ class HybridDDMModel(nn.Module):
             nn.ReLU(),
             nn.Linear(8, 1),   # 8 → scalar lose_shift_tendency
         )
-        _zero_linear_layer(self.win_history_network[2])
-        _zero_linear_layer(self.lose_history_network[2])
+        zero_linear_layer(self.win_history_network[2])
+        zero_linear_layer(self.lose_history_network[2])
         nn.init.zeros_(self.critic_head.weight)
         nn.init.zeros_(self.critic_head.bias)
 
