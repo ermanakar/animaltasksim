@@ -4,6 +4,7 @@ from __future__ import annotations
 import torch
 import torch.nn as nn
 
+from agents._init_utils import zero_linear_layer
 from agents.hybrid_model import HybridDDMModel
 
 
@@ -74,10 +75,8 @@ class AdaptiveControlModel(HybridDDMModel):
         self.persistence_bias_scale = nn.Parameter(torch.tensor(persistence_bias_scale, dtype=torch.float32))
         self.exploration_bias_scale = nn.Parameter(torch.tensor(exploration_bias_scale, dtype=torch.float32))
 
-        nn.init.zeros_(self.persistence_head[-1].weight)
-        nn.init.zeros_(self.persistence_head[-1].bias)
-        nn.init.zeros_(self.exploration_head[-1].weight)
-        nn.init.zeros_(self.exploration_head[-1].bias)
+        zero_linear_layer(self.persistence_head[-1])
+        zero_linear_layer(self.exploration_head[-1])
         nn.init.zeros_(self.arbitration_head.weight)
         nn.init.zeros_(self.arbitration_head.bias)
 

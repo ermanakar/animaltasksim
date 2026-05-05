@@ -17,16 +17,20 @@ Phase 2 (validation): 3 seeds around best combos from Phase 1
 
 from __future__ import annotations
 
-import csv
 import itertools
-import json
-import statistics
-import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import tyro
+
+from scripts._sweep_utils import (
+    format_mean_std,
+    run_command,
+    slug,
+    summarise_behavior_metrics,
+    write_csv,
+)
 
 
 @dataclass(slots=True)
@@ -65,50 +69,6 @@ class HistoryScaleArgs:
     """Print commands without executing."""
 
 
-def run_command(cmd: list[str], *, dry_run: bool) -> int:
-    """Run a command, returning the exit code."""
-    print("[CMD]", " ".join(cmd))
-    if dry_run:
-        return 0
-    result = subprocess.run(cmd, check=False)
-    return result.returncode
-
-
-def load_json(path: Path) -> dict | None:
-    """Load JSON file, returning None if missing."""
-    if not path.exists():
-        return None
-    with path.open("r", encoding="utf-8") as fh:
-        return json.load(fh)
-
-
-def summarise_run(run_dir: Path) -> dict[str, object]:
-    """Extract key metrics from a completed run."""
-    summary: dict[str, object] = {}
-
-    metrics = load_json(run_dir / "metrics.json")
-    if metrics and "metrics" in metrics:
-        data = metrics["metrics"]
-        summary.update(
-            {
-                "psych_slope": data.get("psychometric", {}).get("slope"),
-                "psych_bias": data.get("psychometric", {}).get("bias"),
-                "lapse_low": data.get("psychometric", {}).get("lapse_low"),
-                "lapse_high": data.get("psychometric", {}).get("lapse_high"),
-                "chrono_slope": data.get("chronometric", {}).get("slope_ms_per_unit"),
-                "chrono_r2": data.get("chronometric", {}).get("r_squared"),
-                "win_stay": data.get("history", {}).get("win_stay"),
-                "lose_shift": data.get("history", {}).get("lose_shift"),
-                "sticky_choice": data.get("history", {}).get("sticky_choice"),
-                "commit_rate": data.get("basic", {}).get("commit_rate"),
-                "chrono_ok": data.get("quality", {}).get("chronometric_ok"),
-                "chrono_overshoot": data.get("quality", {}).get("chrono_overshoot"),
-                "degenerate": data.get("quality", {}).get("degenerate"),
-            }
-        )
-    return summary
-
-
 def main(args: HistoryScaleArgs) -> None:
     """Run the history scale hyperparameter sweep."""
     args.run_root.mkdir(parents=True, exist_ok=True)
@@ -136,7 +96,7 @@ def main(args: HistoryScaleArgs) -> None:
     print(f"{'='*70}\n")
 
     for i, (hb_scale, hd_scale, seed) in enumerate(combos, 1):
-        run_name = f"hb{hb_scale}_hd{hd_scale}_seed{seed}".replace(".", "p")
+        run_name = f"hb{slug(hb_scale)}_hd{slug(hd_scale)}_seed{seed}"
         run_dir = args.run_root / run_name
 
         print(f"\n{'='*70}")
@@ -209,7 +169,13 @@ def main(args: HistoryScaleArgs) -> None:
                 "history_drift_scale": hd_scale,
                 "seed": seed,
             }
-            row.update(summarise_run(run_dir))
+            row.update(
+                summarise_behavior_metrics(
+                    run_dir,
+                    include_sticky=True,
+                    include_chrono_overshoot=True,
+                )
+            )
             summaries.append(row)
 
             # Print key metrics inline
@@ -225,12 +191,7 @@ def main(args: HistoryScaleArgs) -> None:
     # Write CSV summary
     if summaries and not args.dry_run:
         csv_path = args.run_root / "sweep_summary.csv"
-        fieldnames = list(summaries[0].keys())
-        with csv_path.open("w", newline="", encoding="utf-8") as fh:
-            writer = csv.DictWriter(fh, fieldnames=fieldnames)
-            writer.writeheader()
-            for row in summaries:
-                writer.writerow(row)
+        write_csv(csv_path, summaries)
         print(f"\n[INFO] Summary saved to {csv_path}")
 
         # Print aggregated results by (hb_scale, hd_scale)
@@ -275,17 +236,12 @@ def main(args: HistoryScaleArgs) -> None:
                     if r.get("lose_shift") is not None
                 ]
 
-                def _fmt(vals: list) -> str:
-                    if not vals:
-                        return "N/A"
-                    m = statistics.mean(vals)
-                    s = statistics.stdev(vals) if len(vals) > 1 else 0.0
-                    return f"{m:.2f} +/- {s:.2f}"
-
                 print(
                     f"{hb_scale:>10.1f} | {hd_scale:>10.1f} | "
-                    f"{_fmt(ps_vals):>14} | {_fmt(cs_vals):>14} | "
-                    f"{_fmt(ws_vals):>10} | {_fmt(ls_vals):>10}"
+                    f"{format_mean_std(ps_vals):>14} | "
+                    f"{format_mean_std(cs_vals):>14} | "
+                    f"{format_mean_std(ws_vals):>10} | "
+                    f"{format_mean_std(ls_vals):>10}"
                 )
 
         print(

@@ -4,6 +4,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from agents._init_utils import zero_linear_layer
+
+
 class HybridDDMModel(nn.Module):
     """Controller that maps history-aware features to DDM parameters."""
 
@@ -63,10 +66,8 @@ class HybridDDMModel(nn.Module):
             nn.ReLU(),
             nn.Linear(8, 1),   # 8 → scalar lose_shift_tendency
         )
-        nn.init.zeros_(self.win_history_network[2].weight)
-        nn.init.zeros_(self.win_history_network[2].bias)
-        nn.init.zeros_(self.lose_history_network[2].weight)
-        nn.init.zeros_(self.lose_history_network[2].bias)
+        zero_linear_layer(self.win_history_network[2])
+        zero_linear_layer(self.lose_history_network[2])
         nn.init.zeros_(self.critic_head.weight)
         nn.init.zeros_(self.critic_head.bias)
 
