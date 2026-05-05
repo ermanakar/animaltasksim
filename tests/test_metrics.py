@@ -435,7 +435,7 @@ def test_compute_all_metrics_includes_exploration_probe():
 
 def test_exploration_probe_metrics_capture_unrewarded_streak_switching():
     df = _make_unrewarded_volatile_exploration_df()
-    metrics = compute_exploration_probe_metrics(df, streak_length=2)
+    metrics = compute_exploration_probe_metrics(df, unrewarded_streak_length=2)
 
     assert metrics.unrewarded_streak_weak_count == 1
     assert metrics.unrewarded_fresh_weak_count == 4

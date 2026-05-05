@@ -16,10 +16,10 @@ Repeated unrewarded choices under weak evidence are the cleanest place to look f
 
 Primary readouts in `exploration_probe`:
 
-- `switch_after_unrewarded_streak_weak`: switch rate on weak-evidence trials after a streak of weak-evidence failures.
+- `switch_after_unrewarded_streak_weak`: switch rate on weak-evidence trials after at least two consecutive weak-evidence failures.
 - `switch_after_unrewarded_fresh_weak`: matched weak-evidence switch rate without that failure streak.
 - `unrewarded_switch_lift_weak`: streak switch rate minus fresh switch rate.
-- `unrewarded_streak_weak_count` and `unrewarded_fresh_weak_count`: event counts; low counts make the lift descriptive only.
+- `unrewarded_streak_weak_count` and `unrewarded_fresh_weak_count`: event counts; low counts make the lift descriptive only. A two-failure threshold is used because three-failure streaks were effectively absent in the one-seed count screen.
 
 Expected exploratory signature:
 

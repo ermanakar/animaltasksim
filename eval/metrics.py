@@ -377,6 +377,7 @@ def compute_adaptive_control_probe_metrics(df: pd.DataFrame) -> AdaptiveControlP
 def compute_exploration_probe_metrics(
     df: pd.DataFrame,
     streak_length: int = 3,
+    unrewarded_streak_length: int = 2,
     volatility_window: int = 4,
 ) -> ExplorationProbeMetrics:
     """Measure structured switching after stale, unrewarded, or volatile history."""
@@ -468,7 +469,7 @@ def compute_exploration_probe_metrics(
         return ExplorationProbeMetrics(np.nan, np.nan, 0, 0)
     data["same_as_prev"] = (data["action"] == data["prev_action"]).astype(float)
     data["is_stale_streak"] = data["previous_correct_streak"] >= streak_length
-    data["is_unrewarded_streak"] = data["previous_weak_failure_streak"] >= streak_length
+    data["is_unrewarded_streak"] = data["previous_weak_failure_streak"] >= unrewarded_streak_length
 
     stale = data[data["is_stale_streak"]].copy()
     fresh = data[~data["is_stale_streak"]].copy()
