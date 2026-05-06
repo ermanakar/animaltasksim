@@ -31,13 +31,13 @@ The supported result is narrow but real: **uncertainty-gated adaptive retry/pers
 
 > **Supported.** Uncertainty-gated adaptive retry / persistence is validated in-simulator: the persistence-only lesion recovers almost all of the full-control retry-gap mean while keeping exploration disabled. Full-control remains useful as a comparison condition, not as the clean default claim.
 
-> **Not yet supported.** Rewarded-streak exploration is not independently validated; its isolation probe failed (0/5 positive seeds on stale-switch lift). No anatomical claim is made — the model is a computational analogy.
+> **Not yet supported.** Exploration is not independently validated. The rewarded-streak isolation probe failed (0/5 positive seeds on stale-switch lift), and the follow-up unrewarded/volatile screen found only directionally useful proxies, not a clean exploration-specific effect. No anatomical claim is made — the model is a computational analogy.
 
 > **Why this matters.** The same lesion-and-probe pipeline can ask, for any candidate control circuit, whether it is *necessary* to produce a behavioral signature observed in animals. The architecture is a hypothesis; the probe is the test.
 
 ## Current Validation
 
-The latest matched validation suite spans 4 lesion conditions × 5 seeds × 1 task (IBL mouse 2AFC), for 20 independent runs. Every run produces a schema-validated trial log; metrics, dashboards, and per-seed reports live alongside the logs:
+The main phase-1 matched validation suite spans 4 lesion conditions × 5 seeds × 1 task (IBL mouse 2AFC), for 20 independent runs. Every run produces a schema-validated trial log; metrics, dashboards, and per-seed reports live alongside the logs:
 
 ```text
 runs/adaptive_control_validation_suite_phase1_exploration/
@@ -47,6 +47,8 @@ runs/adaptive_control_validation_suite_phase1_exploration/
 
 - **Retry gap** = P(retry | weak-evidence failure) − P(retry | strong-evidence failure). A positive gap means the agent specifically retries when the prior failure was *not* clearly disambiguated by the stimulus — the signature of uncertainty-gated persistence.
 - **Stale-switch lift** = P(switch | stale state) − P(switch | fresh state). A positive lift means the agent samples alternatives more often when its recent action history has gone stale — the signature of rewarded-streak exploration.
+- **Unrewarded-switch lift** = P(switch | repeated weak failures) − P(switch | fresh weak evidence). This is a thin-count probe for failure-driven switching, not a claim by itself.
+- **Volatile-switch lift** = P(switch | locally mixed recent outcomes) − P(switch | locally stable recent outcomes). This is the more promising follow-up readout, but it must beat the persistence-only lesion to validate exploration.
 - **Paired Δ** = condition − no-control, computed seed-by-seed. Positive-seed counts (e.g. `5/5`) show how consistently the effect reproduces, not just whether the mean has the right sign.
 - **Lesion conditions.** *No control* disables all adaptive-control machinery; *persistence only* is the recommended/default validated profile; *exploration only* isolates the experimental exploration controller; *full control* enables both for comparison. The arbitration layer is uncertainty-gated so that none of these can overwrite strong sensory evidence.
 
@@ -105,6 +107,26 @@ runs/adaptive_control_validation_suite_phase1_exploration/
 - The honest claim is **uncertainty-gated adaptive retry / persistence**, not a general exploration breakthrough. The exploration mechanism needs a different probe, a different gate, or both.
 
 Full per-condition HTML dashboards (one per seed) live under `runs/adaptive_control_validation_suite_phase1_exploration/`.
+
+### Follow-up exploration probe screen
+
+A May 6, 2026 falsification screen tested the newer unrewarded-failure and local-volatility probes across the same four lesion conditions:
+
+```text
+runs/adaptive_control_exploration_probe_5seed/
+```
+
+This run used a lightweight budget (`episodes=3`, `epochs=1`) to check counts and directionality before spending a larger validation budget. All four conditions remained usable: 0/5 degenerate runs and 0/5 RT-ceiling warnings.
+
+| Comparison | Delta retry gap | Retry positive seeds | Delta unrewarded-switch lift | Unrewarded positive seeds | Delta volatile-switch lift | Volatile positive seeds |
+|------------|-----------------|----------------------|------------------------------|---------------------------|----------------------------|-------------------------|
+| Exploration only - no control | +0.038 | 3/5 | +0.037 | 4/5 | +0.054 | 3/5 |
+| Persistence only - no control | +0.082 | 5/5 | -0.143 | 2/5 | +0.040 | 3/5 |
+| Full control - no control | +0.082 | 5/5 | -0.008 | 4/5 | +0.071 | 4/5 |
+| Exploration only - persistence only | -0.044 | 2/5 | +0.180 | 4/5 | +0.014 | 3/5 |
+| Full control - persistence only | -0.000 | 2/5 | +0.135 | 4/5 | +0.032 | 4/5 |
+
+Interpretation: the unrewarded-failure probe has too few streak events to carry the claim. The local-volatility probe is more viable, but persistence-only also shows a positive volatility lift versus no-control, so the effect is not cleanly attributable to exploration. Exploration therefore remains experimental; the recommended/default profile stays `persistence_only`.
 
 ## Architecture
 
@@ -236,7 +258,7 @@ IBL contrasts are `{0, 0.0625, 0.125, 0.25, 1.0}`. A previous extra `0.5` contra
 
 Near-term work:
 
-1. Run the new unrewarded/volatile exploration probes across the matched lesion suite.
+1. Isolate the local-volatility signal against the persistence-only lesion, or move the exploration claim to tasks where environmental change is explicit.
 2. Test whether adaptive control transfers to Probabilistic Reversal Learning and Delayed Match-to-Sample.
 3. Expand lesion tests for control state, arbitration, evidence preservation, and gate shape.
 4. Keep all new tasks compatible with the shared `.ndjson` comparison pipeline.
@@ -247,7 +269,7 @@ Near-term work:
 |----------|----------|
 | [FINDINGS.md](FINDINGS.md) | Experimental narrative, failures, corrections, and current claims |
 | [Adaptive Control Agent Design](docs/adaptive_control_agent_design.md) | Current adaptive-control architecture and validation status |
-| [Adaptive Control Exploration Probe Design](docs/adaptive_control_exploration_probe_design.md) | Metric-first follow-up probe for unrewarded and volatile exploration |
+| [Adaptive Control Exploration Probe Design](docs/adaptive_control_exploration_probe_design.md) | Follow-up probe design and May 6 falsification screen for unrewarded/volatile exploration |
 | [Theory & Concepts](docs/THEORY_AND_CONCEPTS.md) | Accessible background on tasks, metrics, and model ideas |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
 

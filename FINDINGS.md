@@ -1832,6 +1832,41 @@ Paired deltas versus the clean no-control lesion:
 
 **Interpretation:** this was a valuable negative result. The weak-failure retry signature still holds, especially in full control, but the rewarded-streak exploration claim is not supported. All adaptive-control conditions made stale-switch lift more negative than the no-control baseline. In simple terms: after repeated rewarded choices, the agent becomes more exploitative, not more exploratory. That may be appropriate for stable IBL 2AFC behavior, but it means exploration is not independently validated by this probe and should stay out of the recommended/default profile.
 
+### Unrewarded/volatility exploration-probe screen
+
+Run: `runs/adaptive_control_exploration_probe_5seed/`
+
+After the stale-state negative result, the evaluator added two sharper probes:
+
+- `unrewarded_switch_lift_weak`: switching after repeated weak-evidence failures minus matched fresh weak-evidence switching.
+- `volatile_switch_lift_weak`: switching after locally mixed recent outcomes minus matched locally stable outcomes.
+
+The May 6 screen ran the same four lesion conditions across 5 paired seeds with a lightweight budget (`episodes=3`, `epochs=1`) to check counts and directionality before spending a larger validation budget. Quality checks were clean: every condition had 0/5 degenerate runs and 0/5 RT-ceiling warnings.
+
+| Condition | Psych slope | Chrono slope | Retry gap | Unrewarded-switch lift | Volatile-switch lift | RT ceiling warnings | Degenerate |
+|-----------|-------------|--------------|-----------|------------------------|----------------------|---------------------|------------|
+| true no-control | 30.61 | -81.92 | 0.039 | 0.094 | -0.002 | 0/5 | 0/5 |
+| exploration-only | 29.85 | -61.93 | 0.077 | 0.131 | 0.052 | 0/5 | 0/5 |
+| persistence-only | 30.27 | -61.14 | 0.121 | -0.049 | 0.037 | 0/5 | 0/5 |
+| full control | 29.66 | -60.87 | 0.121 | 0.086 | 0.069 | 0/5 | 0/5 |
+
+Paired deltas versus the clean no-control lesion:
+
+| Comparison | Delta retry gap | Retry positive seeds | Delta unrewarded-switch lift | Unrewarded positive seeds | Delta volatile-switch lift | Volatile positive seeds |
+|------------|-----------------|----------------------|------------------------------|---------------------------|----------------------------|-------------------------|
+| exploration-only - no-control | +0.038 | 3/5 | +0.037 | 4/5 | +0.054 | 3/5 |
+| persistence-only - no-control | +0.082 | 5/5 | -0.143 | 2/5 | +0.040 | 3/5 |
+| full-control - no-control | +0.082 | 5/5 | -0.008 | 4/5 | +0.071 | 4/5 |
+
+Paired deltas versus persistence-only:
+
+| Comparison | Delta retry gap | Retry positive seeds | Delta unrewarded-switch lift | Unrewarded positive seeds | Delta volatile-switch lift | Volatile positive seeds |
+|------------|-----------------|----------------------|------------------------------|---------------------------|----------------------------|-------------------------|
+| exploration-only - persistence-only | -0.044 | 2/5 | +0.180 | 4/5 | +0.014 | 3/5 |
+| full-control - persistence-only | -0.000 | 2/5 | +0.135 | 4/5 | +0.032 | 4/5 |
+
+**Interpretation:** this screen does not validate exploration. The retry result is still cleaner than the exploration result: persistence-only and full-control both increase retry gap by about `+0.082` versus no-control, positive in 5/5 seeds. The unrewarded probe points in the right direction against persistence-only, but its repeated-failure event counts are too small to carry a claim. The local-volatility probe is the better future readout because it has hundreds of matched events per run and is strongest in full control, but persistence-only also shows a positive volatility lift versus no-control. The next claim-bearing step is therefore either a sharper volatility-specific lesion/gate that beats persistence-only, or a PRL/DMS transfer test where exploration is task-relevant rather than inferred from stable IBL behavior.
+
 ### What this achieved
 
 This is a legitimate controlled computational result:
@@ -1858,6 +1893,7 @@ The current status is best described as a **strong internal milestone**: a repro
 - Main 5-seed validation: `runs/adaptive_control_validation_suite_phase1/`
 - Gate-lesion validation: `runs/adaptive_control_validation_suite_phase1_gate/`
 - Exploration-probe validation (default suite): `runs/adaptive_control_validation_suite_phase1_exploration/`
+- Unrewarded/volatility exploration-probe screen: `runs/adaptive_control_exploration_probe_5seed/`
 - Persistence sweeps (April–May calibration): `runs/adaptive_control_persistence_sweep/`, `runs/adaptive_control_persistence_sweep_v1/`, `runs/adaptive_control_persistence_sweep_v2/`
 - Candidate comparisons: `runs/adaptive_control_candidate_compare/`, `runs/adaptive_control_candidate_compare_v1/`
 - Single-seed probes (with/without persistence, with/without exploration): `runs/adaptive_control_seed42/`, `runs/adaptive_control_seed42_no_persistence/`, `runs/adaptive_control_exploration_seed42/`, `runs/adaptive_control_exploration_seed42_no_exploration/`

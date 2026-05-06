@@ -1,6 +1,6 @@
 # Adaptive Control Exploration Probe Design
 
-> Status: metric-first probe scaffold, May 2026.
+> Status: first 5-seed falsification screen complete, May 2026.
 
 ## Goal
 
@@ -54,6 +54,36 @@ This probe should be allowed to fail. It does not validate exploration if:
 - full-control passes but `exploration_only` does not, unless a documented interaction explains why
 - psychometric/chronometric quality collapses
 
+## May 6, 2026 Screen Result
+
+Run: `runs/adaptive_control_exploration_probe_5seed/`
+
+This was a lightweight matched screen across `true_no_control`, `persistence_only`, `exploration_only`, and `full_control` (5 seeds, 3 episodes, 1 epoch). It was designed to answer whether the new probes have enough event support and whether either one separates exploration from persistence before spending a larger validation budget.
+
+Quality checks were clean: all four conditions had 0/5 degenerate runs and 0/5 RT-ceiling warnings.
+
+Paired deltas versus no-control:
+
+| Comparison | Delta retry gap | Retry positive seeds | Delta unrewarded-switch lift | Unrewarded positive seeds | Delta volatile-switch lift | Volatile positive seeds |
+|------------|-----------------|----------------------|------------------------------|---------------------------|----------------------------|-------------------------|
+| exploration-only - no-control | +0.038 | 3/5 | +0.037 | 4/5 | +0.054 | 3/5 |
+| persistence-only - no-control | +0.082 | 5/5 | -0.143 | 2/5 | +0.040 | 3/5 |
+| full-control - no-control | +0.082 | 5/5 | -0.008 | 4/5 | +0.071 | 4/5 |
+
+Paired deltas versus persistence-only:
+
+| Comparison | Delta retry gap | Retry positive seeds | Delta unrewarded-switch lift | Unrewarded positive seeds | Delta volatile-switch lift | Volatile positive seeds |
+|------------|-----------------|----------------------|------------------------------|---------------------------|----------------------------|-------------------------|
+| exploration-only - persistence-only | -0.044 | 2/5 | +0.180 | 4/5 | +0.014 | 3/5 |
+| full-control - persistence-only | -0.000 | 2/5 | +0.135 | 4/5 | +0.032 | 4/5 |
+
+Interpretation:
+
+- The validated retry effect remains a persistence/control-state result. Persistence-only and full-control both increased retry gap by about `+0.082` versus no-control, positive in 5/5 seeds.
+- The unrewarded-failure lift is too thin to carry a claim. Streak counts averaged about 9-12 events per run, so the positive exploration-vs-persistence deltas should be treated as descriptive.
+- The local-volatility lift is the better candidate readout because it has hundreds of events per run and is positive for full-control versus no-control (`+0.071`, 4/5 seeds). It is not yet exploration-specific because persistence-only also moves positively versus no-control (`+0.040`, 3/5 seeds).
+- Exploration remains experimental/unvalidated. A future claim needs positive paired deltas versus both no-control and persistence-only, with enough event counts and no psychometric/chronometric degradation.
+
 ## Next Experiment Shape
 
 Use the existing four-condition matched validation suite:
@@ -63,4 +93,4 @@ Use the existing four-condition matched validation suite:
 3. `exploration_only`
 4. `full_control`
 
-Read the new lifts alongside the existing retry and stale-switch metrics. Do not tune agent parameters against a single-seed positive result; treat the first pass as a falsification screen.
+Read the new lifts alongside the existing retry and stale-switch metrics. Do not tune agent parameters against a single-seed positive result. The next useful branch is either a sharper volatility-specific lesion/gate that beats persistence-only, or a transfer test in PRL/DMS where exploration is task-relevant rather than inferred from a stable perceptual task.

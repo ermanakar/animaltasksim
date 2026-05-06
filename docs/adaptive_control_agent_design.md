@@ -370,7 +370,16 @@ The first 5-seed exploration run did **not** support that expected result. In `r
 - persistence-only minus no-control: `-0.086`, positive in `0/5` seeds
 - full-control minus no-control: `-0.079`, positive in `0/5` seeds
 
-So the supported phase-1 claim remains persistence/adaptive retry after weak-evidence failure. Rewarded-streak exploration is not validated and is disabled in the recommended/default training profile. The next exploration work should either define a better probe around unrewarded or volatile streaks, or defer the exploration claim to PRL/DMS where environmental change is task-relevant.
+So the supported phase-1 claim remains persistence/adaptive retry after weak-evidence failure. Rewarded-streak exploration is not validated and is disabled in the recommended/default training profile. That result motivated a better probe around unrewarded or volatile streaks before deferring the exploration claim to PRL/DMS where environmental change is task-relevant.
+
+A follow-up 5-seed screen tested exactly those unrewarded/volatile probes in `runs/adaptive_control_exploration_probe_5seed/`. It was useful but still not a validation of exploration:
+
+- Quality checks were clean: all four conditions had 0/5 degenerate runs and 0/5 RT-ceiling warnings.
+- Persistence-only and full-control both increased retry gap by about `+0.082` versus no-control, positive in 5/5 seeds. That keeps the validated mechanism claim on persistence/control state.
+- Unrewarded weak-failure switching was positive for exploration-only versus persistence-only (`+0.180`, 4/5 seeds), but repeated-failure event counts were very small, averaging roughly 9-12 events per run.
+- Local-volatility switching was more count-supported and directionally positive: full-control minus no-control was `+0.071` (4/5 seeds). However, persistence-only also increased volatility lift versus no-control (`+0.040`, 3/5 seeds), so the signal is not cleanly exploration-specific.
+
+Result: the volatility probe is viable as a future readout, but exploration remains experimental. A stronger claim needs paired improvement over both no-control and persistence-only.
 
 ## 9. Minimal experiment sequence
 
@@ -399,7 +408,7 @@ So the supported phase-1 claim remains persistence/adaptive retry after weak-evi
 
 The scaffold and phase-1 validation are complete. The next scientific steps are:
 
-1. isolate the exploration component with an exploration-disabled lesion and stronger stale-state probes
+1. isolate the local-volatility signal against persistence-only, or move the exploration claim to PRL/DMS-style tasks where environmental change is explicit
 2. test whether the adaptive-control idea transfers to PRL/DMS-style tasks
 3. keep the claim narrow: biologically inspired control mechanism, not exact anatomy
 4. avoid spending more budget on the nonlinear gate unless a task-transfer result makes it decisive
