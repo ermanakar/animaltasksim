@@ -94,3 +94,11 @@ Use the existing four-condition matched validation suite:
 4. `full_control`
 
 Read the new lifts alongside the existing retry and stale-switch metrics. Do not tune agent parameters against a single-seed positive result. The next useful branch is the new `block_switch_probe`, which uses uncued IBL block reversals as a bridge to PRL/DMS: exploration should help the agent move toward a new hidden prior without merely increasing random switching.
+
+## Block-Switch Follow-Up Result
+
+Run: `runs/adaptive_control_block_switch_focus_v1/`
+
+The block-switch-focused suite increased rollout support to 30 biased block reversals per run. Exploration-only improved block-switch adaptation versus no-control (`+0.103`, positive in 5/5 seeds) and versus persistence-only (`+0.037`, positive in 4/5 seeds). This is the first strong lead for an exploration-specific behavioral role.
+
+Caveat: full-control did not inherit that advantage over persistence-only (`-0.015`, positive in 0/5 seeds). The next experiment should therefore isolate the arbitration/interaction between persistence and exploration, not simply declare full-control validated.

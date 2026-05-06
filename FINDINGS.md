@@ -1885,6 +1885,31 @@ A retrospective readout on the IBL reference and `runs/adaptive_control_validati
 
 **Interpretation:** this is a bridge metric, not a success claim. The reference animals show slow adaptation: early choices still partly follow the old prior, then late choices move toward the new prior. Current adaptive-control conditions introduce some delayed adaptation relative to no-control, but the effect is smaller than the reference and is not cleanly exploration-specific. The next experiment should spend budget on a block-switch-focused matched suite before building the full PRL/DMS transfer claim.
 
+### Block-switch-focused matched suite
+
+Run: `runs/adaptive_control_block_switch_focus_v1/`
+
+This suite spent the next validation budget on hidden-prior reversals: 5 paired seeds, four lesion conditions, 6 episodes, 800 trials per episode, 1 training epoch, and 30 biased block switches per run. The goal was narrow: determine whether the exploration controller improves adaptation after uncued block reversals beyond no-control and persistence-only.
+
+| Condition | Psych slope | Chrono slope | Retry gap | Block-switch lift | Early new-prior choice | Late new-prior choice | RT ceiling warnings | Degenerate |
+|-----------|-------------|--------------|-----------|-------------------|------------------------|-----------------------|---------------------|------------|
+| true no-control | 34.30 | -80.01 | 0.068 | +0.033 | 0.711 | 0.744 | 0/5 | 0/5 |
+| exploration-only | 28.46 | -56.86 | 0.031 | +0.136 | 0.655 | 0.791 | 0/5 | 0/5 |
+| persistence-only | 27.38 | -57.40 | 0.091 | +0.099 | 0.669 | 0.768 | 0/5 | 0/5 |
+| full-control | 28.83 | -55.21 | 0.067 | +0.084 | 0.677 | 0.761 | 0/5 | 0/5 |
+
+Paired deltas:
+
+| Comparison | Delta block-switch lift | Positive seeds | Delta early new-prior choice | Delta late new-prior choice |
+|------------|-------------------------|----------------|------------------------------|-----------------------------|
+| exploration-only - no-control | +0.103 | 5/5 | -0.056 | +0.047 |
+| persistence-only - no-control | +0.065 | 5/5 | -0.041 | +0.024 |
+| full-control - no-control | +0.051 | 5/5 | -0.033 | +0.017 |
+| exploration-only - persistence-only | +0.037 | 4/5 | -0.015 | +0.023 |
+| full-control - persistence-only | -0.015 | 0/5 | +0.008 | -0.007 |
+
+**Interpretation:** this is the first genuinely promising exploration-specific result. Exploration-only improved hidden block-switch adaptation versus no-control in 5/5 seeds and versus persistence-only in 4/5 seeds. The shape is also animal-like in one important way: early post-switch choices are more perseverative, then later choices move toward the new prior. However, this does not yet validate full-control exploration. Full-control did not beat persistence-only on block-switch lift, and the older stale-switch probe remained negative. The next experiment should isolate the interaction: why does the exploration controller help when persistence is disabled, but not when both controllers are enabled?
+
 ### What this achieved
 
 This is a legitimate controlled computational result:
@@ -1912,6 +1937,7 @@ The current status is best described as a **strong internal milestone**: a repro
 - Gate-lesion validation: `runs/adaptive_control_validation_suite_phase1_gate/`
 - Exploration-probe validation (default suite): `runs/adaptive_control_validation_suite_phase1_exploration/`
 - Unrewarded/volatility exploration-probe screen: `runs/adaptive_control_exploration_probe_5seed/`
+- Block-switch-focused exploration screen: `runs/adaptive_control_block_switch_focus_v1/`
 - Persistence sweeps (April–May calibration): `runs/adaptive_control_persistence_sweep/`, `runs/adaptive_control_persistence_sweep_v1/`, `runs/adaptive_control_persistence_sweep_v2/`
 - Candidate comparisons: `runs/adaptive_control_candidate_compare/`, `runs/adaptive_control_candidate_compare_v1/`
 - Single-seed probes (with/without persistence, with/without exploration): `runs/adaptive_control_seed42/`, `runs/adaptive_control_seed42_no_persistence/`, `runs/adaptive_control_exploration_seed42/`, `runs/adaptive_control_exploration_seed42_no_exploration/`

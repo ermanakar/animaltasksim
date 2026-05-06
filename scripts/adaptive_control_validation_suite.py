@@ -403,6 +403,21 @@ class ValidationSuiteArgs:
                     f"{int(row.get('delta_volatile_switch_lift_weak_positive_count', 0)):>5}"
                 )
 
+            print(
+                f"\n{'comparison':<42} | {'d_block':>8} | {'pos':>5} | "
+                f"{'d_early':>8} | {'d_late':>8}"
+            )
+            print("-" * 83)
+            for row in paired_summary_rows:
+                comparison = str(row["comparison"])
+                print(
+                    f"{comparison:<42} | "
+                    f"{_fmt(row.get('delta_block_switch_adaptation_lift_mean'), decimals=3):>8} | "
+                    f"{int(row.get('delta_block_switch_adaptation_lift_positive_count', 0)):>5} | "
+                    f"{_fmt(row.get('delta_block_switch_early_new_prior_choice_rate_mean'), decimals=3):>8} | "
+                    f"{_fmt(row.get('delta_block_switch_late_new_prior_choice_rate_mean'), decimals=3):>8}"
+                )
+
         print(f"\nPer-run summary saved to {self.run_root / 'per_run_comparison.csv'}")
         print(f"Aggregate summary saved to {self.run_root / 'aggregate_summary.csv'}")
         print(f"Paired deltas saved to {self.run_root / 'paired_deltas.csv'}")

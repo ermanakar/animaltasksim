@@ -394,6 +394,17 @@ A retrospective block-switch readout on `runs/adaptive_control_validation_suite_
 
 This is not a validation result yet. It says the existing suite has a measurable block-switch phenotype, and adaptive-control conditions introduce some delayed adaptation relative to no-control, but they remain below the reference lift and do not isolate exploration. The next claim-bearing run should therefore be a block-switch-focused matched suite, followed by PRL/DMS transfer if the effect survives.
 
+The block-switch-focused matched suite was run in `runs/adaptive_control_block_switch_focus_v1/` with 30 biased block reversals per run. It produced the clearest exploration-specific lead so far:
+
+| Condition | Block-switch adaptation lift | Early new-prior choice | Late new-prior choice | Retry gap |
+|-----------|------------------------------|------------------------|-----------------------|-----------|
+| true no-control | +0.033 | 0.711 | 0.744 | 0.068 |
+| exploration-only | +0.136 | 0.655 | 0.791 | 0.031 |
+| persistence-only | +0.099 | 0.669 | 0.768 | 0.091 |
+| full-control | +0.084 | 0.677 | 0.761 | 0.067 |
+
+Paired deltas showed `exploration_only - no_control = +0.103` (positive in 5/5 seeds) and `exploration_only - persistence_only = +0.037` (positive in 4/5 seeds). The mechanism is not random global switching: early post-switch choices become more perseverative, then late choices move toward the new prior. The important caveat is that full-control did not beat persistence-only (`-0.015`, positive in 0/5 seeds), so the interaction between persistence and exploration needs a targeted lesion before making a full-control exploration claim.
+
 ## 9. Minimal experiment sequence
 
 1. Build scaffold and smoke test
@@ -421,7 +432,7 @@ This is not a validation result yet. It says the existing suite has a measurable
 
 The scaffold and phase-1 validation are complete. The next scientific steps are:
 
-1. run a block-switch-focused matched suite using `block_switch_probe` as the bridge between stable IBL and PRL/DMS
+1. isolate why exploration-only improves block-switch adaptation while full-control does not beat persistence-only
 2. test whether the adaptive-control idea transfers to PRL/DMS-style tasks
 3. keep the claim narrow: biologically inspired control mechanism, not exact anatomy
 4. avoid spending more budget on the nonlinear gate unless a task-transfer result makes it decisive

@@ -31,7 +31,7 @@ The supported result is narrow but real: **uncertainty-gated adaptive retry/pers
 
 > **Supported.** Uncertainty-gated adaptive retry / persistence is validated in-simulator: the persistence-only lesion recovers almost all of the full-control retry-gap mean while keeping exploration disabled. Full-control remains useful as a comparison condition, not as the clean default claim.
 
-> **Not yet supported.** Exploration is not independently validated. The rewarded-streak isolation probe failed (0/5 positive seeds on stale-switch lift), and the follow-up unrewarded/volatile screen found only directionally useful proxies, not a clean exploration-specific effect. No anatomical claim is made — the model is a computational analogy.
+> **Not yet supported.** Exploration is not independently validated in the recommended/full-control agent. The rewarded-streak isolation probe failed (0/5 positive seeds on stale-switch lift), and the unrewarded/volatile screen found only directional proxies. A later block-switch screen gives a promising exploration-only lead, but full-control does not yet preserve it over persistence-only. No anatomical claim is made — the model is a computational analogy.
 
 > **Why this matters.** The same lesion-and-probe pipeline can ask, for any candidate control circuit, whether it is *necessary* to produce a behavioral signature observed in animals. The architecture is a hypothesis; the probe is the test.
 
@@ -128,6 +128,23 @@ This run used a lightweight budget (`episodes=3`, `epochs=1`) to check counts an
 | Full control - persistence only | -0.000 | 2/5 | +0.135 | 4/5 | +0.032 | 4/5 |
 
 Interpretation: the unrewarded-failure probe has too few streak events to carry the claim. The local-volatility probe is more viable, but persistence-only also shows a positive volatility lift versus no-control, so the effect is not cleanly attributable to exploration. Exploration therefore remains experimental; the recommended/default profile stays `persistence_only`.
+
+### Block-switch adaptation screen
+
+A block-switch-focused suite then increased the rollout budget to 6 episodes x 800 trials per run, giving 30 biased block reversals per run:
+
+```text
+runs/adaptive_control_block_switch_focus_v1/
+```
+
+| Condition | Block-switch adaptation lift | Early new-prior choice | Late new-prior choice | Degenerate |
+|-----------|------------------------------|------------------------|-----------------------|------------|
+| No control | +0.033 | 0.711 | 0.744 | 0/5 |
+| Exploration only | +0.136 | 0.655 | 0.791 | 0/5 |
+| Persistence only | +0.099 | 0.669 | 0.768 | 0/5 |
+| Full control | +0.084 | 0.677 | 0.761 | 0/5 |
+
+Paired against no-control, exploration-only increased block-switch adaptation by `+0.103` in 5/5 seeds. Paired against persistence-only, exploration-only still improved adaptation by `+0.037` in 4/5 seeds. Full-control did not preserve the effect versus persistence-only (`-0.015`, 0/5 seeds), so this is a promising exploration-specific lead, not yet a clean full-control success.
 
 ## Architecture
 
@@ -259,7 +276,7 @@ IBL contrasts are `{0, 0.0625, 0.125, 0.25, 1.0}`. A previous extra `0.5` contra
 
 Near-term work:
 
-1. Use the new block-switch probe to test hidden-prior adaptation before moving the exploration claim to full PRL/DMS tasks.
+1. Explain why exploration-only improves block-switch adaptation but full-control does not beat persistence-only.
 2. Test whether adaptive control transfers to Probabilistic Reversal Learning and Delayed Match-to-Sample.
 3. Expand lesion tests for control state, arbitration, evidence preservation, and gate shape.
 4. Keep all new tasks compatible with the shared `.ndjson` comparison pipeline.
