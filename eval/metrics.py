@@ -79,6 +79,22 @@ class ExplorationProbeMetrics:
     stable_weak_count: int = 0
 
 
+@dataclass(slots=True)
+class BlockSwitchProbeMetrics:
+    switch_count: int
+    post_switch_trial_count: int
+    early_trial_count: int
+    late_trial_count: int
+    early_new_prior_choice_rate: float
+    late_new_prior_choice_rate: float
+    adaptation_lift: float
+    early_perseverative_choice_rate: float
+    low_contrast_trial_count: int
+    low_contrast_new_prior_choice_rate: float
+    zero_contrast_trial_count: int
+    zero_contrast_new_prior_choice_rate: float
+
+
 def load_trials(path: str | Path) -> pd.DataFrame:
     """Load a validated `.ndjson` log into a DataFrame."""
 
@@ -537,6 +553,148 @@ def compute_exploration_probe_metrics(
     )
 
 
+def compute_block_switch_probe_metrics(
+    df: pd.DataFrame,
+    post_switch_window: int = 10,
+    early_window: int = 5,
+    low_contrast_threshold: float = 0.125,
+) -> BlockSwitchProbeMetrics:
+    """Measure adaptation after hidden IBL block-prior reversals."""
+    if df.empty or "block_prior" not in df.columns:
+        return _empty_block_switch_metrics()
+
+    data = df.copy()
+    data = data[data["action"].isin(["left", "right"])].copy()
+    if data.empty:
+        return _empty_block_switch_metrics()
+
+    data["block_p_right"] = data["block_prior"].apply(_block_prior_p_right)
+    data = data[data["block_p_right"].notnull()].copy()
+    if data.empty:
+        return _empty_block_switch_metrics()
+
+    stimulus_key = "stimulus_contrast" if "stimulus_contrast" in data.columns else None
+    if stimulus_key is not None:
+        data["difficulty_abs"] = pd.to_numeric(data[stimulus_key], errors="coerce").abs()
+    else:
+        data["difficulty_abs"] = np.nan
+
+    sort_columns = [column for column in ("session_id", "trial_index") if column in data.columns]
+    if sort_columns:
+        data = data.sort_values(sort_columns).copy()
+
+    event_rows: list[dict[str, object]] = []
+    groupby_key = "session_id" if "session_id" in data.columns else None
+    grouped_rows = data.groupby(groupby_key, sort=False) if groupby_key is not None else [(None, data)]
+    switch_count = 0
+    for _, session_rows in grouped_rows:
+        session_rows = session_rows.reset_index(drop=True)
+        priors = session_rows["block_p_right"].to_numpy(dtype=float)
+        previous_prior = priors[0] if len(priors) else np.nan
+        for position in range(1, len(session_rows)):
+            new_prior = priors[position]
+            if not math.isfinite(previous_prior) or not math.isfinite(new_prior):
+                previous_prior = new_prior
+                continue
+            old_direction = _prior_direction(previous_prior)
+            new_direction = _prior_direction(new_prior)
+            if old_direction is None or new_direction is None or old_direction == new_direction:
+                previous_prior = new_prior
+                continue
+
+            switch_count += 1
+            window = session_rows.iloc[position : position + post_switch_window].copy()
+            window["offset_after_switch"] = np.arange(1, len(window) + 1)
+            for _, row in window.iterrows():
+                row_prior_direction = _prior_direction(float(row["block_p_right"]))
+                if row_prior_direction != new_direction:
+                    break
+                action = row["action"]
+                if action not in {"left", "right"}:
+                    continue
+                event_rows.append(
+                    {
+                        "offset_after_switch": int(row["offset_after_switch"]),
+                        "new_prior_choice": action == new_direction,
+                        "old_prior_choice": action == old_direction,
+                        "difficulty_abs": row.get("difficulty_abs"),
+                    }
+                )
+            previous_prior = new_prior
+
+    if not event_rows:
+        return _empty_block_switch_metrics(switch_count=switch_count)
+
+    events = pd.DataFrame.from_records(event_rows)
+    events["new_prior_choice"] = events["new_prior_choice"].astype(float)
+    events["old_prior_choice"] = events["old_prior_choice"].astype(float)
+    early = events[events["offset_after_switch"] <= early_window]
+    late = events[events["offset_after_switch"] > early_window]
+    low_contrast = events[events["difficulty_abs"].notnull() & (events["difficulty_abs"] <= low_contrast_threshold)]
+    zero_contrast = events[events["difficulty_abs"].notnull() & np.isclose(events["difficulty_abs"], 0.0)]
+
+    early_rate = _mean_or_nan(early["new_prior_choice"])
+    late_rate = _mean_or_nan(late["new_prior_choice"])
+    adaptation_lift = late_rate - early_rate if math.isfinite(early_rate) and math.isfinite(late_rate) else np.nan
+
+    return BlockSwitchProbeMetrics(
+        switch_count=switch_count,
+        post_switch_trial_count=int(len(events)),
+        early_trial_count=int(len(early)),
+        late_trial_count=int(len(late)),
+        early_new_prior_choice_rate=early_rate,
+        late_new_prior_choice_rate=late_rate,
+        adaptation_lift=float(adaptation_lift),
+        early_perseverative_choice_rate=_mean_or_nan(early["old_prior_choice"]),
+        low_contrast_trial_count=int(len(low_contrast)),
+        low_contrast_new_prior_choice_rate=_mean_or_nan(low_contrast["new_prior_choice"]),
+        zero_contrast_trial_count=int(len(zero_contrast)),
+        zero_contrast_new_prior_choice_rate=_mean_or_nan(zero_contrast["new_prior_choice"]),
+    )
+
+
+def _empty_block_switch_metrics(switch_count: int = 0) -> BlockSwitchProbeMetrics:
+    return BlockSwitchProbeMetrics(
+        switch_count=switch_count,
+        post_switch_trial_count=0,
+        early_trial_count=0,
+        late_trial_count=0,
+        early_new_prior_choice_rate=np.nan,
+        late_new_prior_choice_rate=np.nan,
+        adaptation_lift=np.nan,
+        early_perseverative_choice_rate=np.nan,
+        low_contrast_trial_count=0,
+        low_contrast_new_prior_choice_rate=np.nan,
+        zero_contrast_trial_count=0,
+        zero_contrast_new_prior_choice_rate=np.nan,
+    )
+
+
+def _block_prior_p_right(value: object) -> float:
+    """Extract p(right) from a schema block-prior payload."""
+    if isinstance(value, dict):
+        value = value.get("p_right")
+    if value is None or (isinstance(value, float) and math.isnan(value)):
+        return float("nan")
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return float("nan")
+
+
+def _prior_direction(p_right: float) -> str | None:
+    """Return the action favored by a biased block prior."""
+    if not math.isfinite(p_right) or math.isclose(p_right, 0.5):
+        return None
+    return "right" if p_right > 0.5 else "left"
+
+
+def _mean_or_nan(values: pd.Series) -> float:
+    if values.empty:
+        return float("nan")
+    return float(np.nanmean(values.astype(float)))
+
+
 def _trial_success(row: pd.Series) -> bool:
     """Return trial success from `correct` when present, falling back to reward."""
     correct = row.get("correct")
@@ -674,6 +832,7 @@ def compute_all_metrics(df: pd.DataFrame, task: str, is_choice_only: bool = Fals
         metrics["history"] = _sanitize(asdict(compute_history_metrics(df)))
     metrics["adaptive_control_probe"] = _sanitize(asdict(compute_adaptive_control_probe_metrics(df)))
     metrics["exploration_probe"] = _sanitize(asdict(compute_exploration_probe_metrics(df)))
+    metrics["block_switch_probe"] = _sanitize(asdict(compute_block_switch_probe_metrics(df)))
     metrics["quality"] = _quality_flags(metrics, task, is_choice_only)
     return _sanitize(metrics)  # type: ignore[return-value]
 
@@ -688,12 +847,14 @@ def load_and_compute(path: str | Path, is_choice_only: bool = False) -> dict[str
 
 __all__ = [
     "AdaptiveControlProbeMetrics",
+    "BlockSwitchProbeMetrics",
     "ChronometricMetrics",
     "ExplorationProbeMetrics",
     "HistoryMetrics",
     "PsychometricMetrics",
     "compute_adaptive_control_probe_metrics",
     "compute_all_metrics",
+    "compute_block_switch_probe_metrics",
     "compute_chronometric",
     "compute_exploration_probe_metrics",
     "compute_history_metrics",

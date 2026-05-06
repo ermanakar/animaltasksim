@@ -93,4 +93,4 @@ Use the existing four-condition matched validation suite:
 3. `exploration_only`
 4. `full_control`
 
-Read the new lifts alongside the existing retry and stale-switch metrics. Do not tune agent parameters against a single-seed positive result. The next useful branch is either a sharper volatility-specific lesion/gate that beats persistence-only, or a transfer test in PRL/DMS where exploration is task-relevant rather than inferred from a stable perceptual task.
+Read the new lifts alongside the existing retry and stale-switch metrics. Do not tune agent parameters against a single-seed positive result. The next useful branch is the new `block_switch_probe`, which uses uncued IBL block reversals as a bridge to PRL/DMS: exploration should help the agent move toward a new hidden prior without merely increasing random switching.

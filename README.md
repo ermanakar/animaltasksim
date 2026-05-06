@@ -49,6 +49,7 @@ runs/adaptive_control_validation_suite_phase1_exploration/
 - **Stale-switch lift** = P(switch | stale state) − P(switch | fresh state). A positive lift means the agent samples alternatives more often when its recent action history has gone stale — the signature of rewarded-streak exploration.
 - **Unrewarded-switch lift** = P(switch | repeated weak failures) − P(switch | fresh weak evidence). This is a thin-count probe for failure-driven switching, not a claim by itself.
 - **Volatile-switch lift** = P(switch | locally mixed recent outcomes) − P(switch | locally stable recent outcomes). This is the more promising follow-up readout, but it must beat the persistence-only lesion to validate exploration.
+- **Block-switch adaptation lift** = P(choice follows the new hidden prior on trials 6-10 after a block switch) − P(choice follows the new hidden prior on trials 1-5). This bridges the stable IBL task to true reversal learning.
 - **Paired Δ** = condition − no-control, computed seed-by-seed. Positive-seed counts (e.g. `5/5`) show how consistently the effect reproduces, not just whether the mean has the right sign.
 - **Lesion conditions.** *No control* disables all adaptive-control machinery; *persistence only* is the recommended/default validated profile; *exploration only* isolates the experimental exploration controller; *full control* enables both for comparison. The arbitration layer is uncertainty-gated so that none of these can overwrite strong sensory evidence.
 
@@ -258,7 +259,7 @@ IBL contrasts are `{0, 0.0625, 0.125, 0.25, 1.0}`. A previous extra `0.5` contra
 
 Near-term work:
 
-1. Isolate the local-volatility signal against the persistence-only lesion, or move the exploration claim to tasks where environmental change is explicit.
+1. Use the new block-switch probe to test hidden-prior adaptation before moving the exploration claim to full PRL/DMS tasks.
 2. Test whether adaptive control transfers to Probabilistic Reversal Learning and Delayed Match-to-Sample.
 3. Expand lesion tests for control state, arbitration, evidence preservation, and gate shape.
 4. Keep all new tasks compatible with the shared `.ndjson` comparison pipeline.

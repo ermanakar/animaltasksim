@@ -56,6 +56,13 @@ SUMMARY_METRICS: tuple[str, ...] = (
     "volatile_switch_lift_weak",
     "volatile_weak_count",
     "stable_weak_count",
+    "block_switch_count",
+    "block_switch_adaptation_lift",
+    "block_switch_early_new_prior_choice_rate",
+    "block_switch_late_new_prior_choice_rate",
+    "block_switch_early_perseverative_choice_rate",
+    "block_switch_low_contrast_new_prior_choice_rate",
+    "block_switch_zero_contrast_new_prior_choice_rate",
     "weak_streak_count",
     "strong_streak_count",
     "fresh_weak_count",
@@ -83,6 +90,12 @@ PAIRED_METRICS: tuple[str, ...] = (
     "switch_after_unrewarded_fresh_weak",
     "switch_after_volatile_weak",
     "switch_after_stable_weak",
+    "block_switch_adaptation_lift",
+    "block_switch_early_new_prior_choice_rate",
+    "block_switch_late_new_prior_choice_rate",
+    "block_switch_early_perseverative_choice_rate",
+    "block_switch_low_contrast_new_prior_choice_rate",
+    "block_switch_zero_contrast_new_prior_choice_rate",
     "exploration_gap",
 )
 
@@ -418,6 +431,7 @@ def _summarize_run(metrics: dict[str, Any]) -> dict[str, object]:
     history = _as_dict(metrics.get("history"))
     probe = _as_dict(metrics.get("adaptive_control_probe"))
     exploration_probe = _as_dict(metrics.get("exploration_probe"))
+    block_switch_probe = _as_dict(metrics.get("block_switch_probe"))
     quality = _as_dict(metrics.get("quality"))
 
     row: dict[str, object] = {
@@ -460,6 +474,22 @@ def _summarize_run(metrics: dict[str, Any]) -> dict[str, object]:
         "volatile_switch_lift_weak": exploration_probe.get("volatile_switch_lift_weak"),
         "volatile_weak_count": exploration_probe.get("volatile_weak_count"),
         "stable_weak_count": exploration_probe.get("stable_weak_count"),
+        "block_switch_count": block_switch_probe.get("switch_count"),
+        "block_switch_post_switch_trial_count": block_switch_probe.get("post_switch_trial_count"),
+        "block_switch_early_trial_count": block_switch_probe.get("early_trial_count"),
+        "block_switch_late_trial_count": block_switch_probe.get("late_trial_count"),
+        "block_switch_adaptation_lift": block_switch_probe.get("adaptation_lift"),
+        "block_switch_early_new_prior_choice_rate": block_switch_probe.get("early_new_prior_choice_rate"),
+        "block_switch_late_new_prior_choice_rate": block_switch_probe.get("late_new_prior_choice_rate"),
+        "block_switch_early_perseverative_choice_rate": block_switch_probe.get(
+            "early_perseverative_choice_rate",
+        ),
+        "block_switch_low_contrast_new_prior_choice_rate": block_switch_probe.get(
+            "low_contrast_new_prior_choice_rate",
+        ),
+        "block_switch_zero_contrast_new_prior_choice_rate": block_switch_probe.get(
+            "zero_contrast_new_prior_choice_rate",
+        ),
         "weak_streak_count": exploration_probe.get("weak_streak_count"),
         "strong_streak_count": exploration_probe.get("strong_streak_count"),
         "fresh_weak_count": exploration_probe.get("fresh_weak_count"),

@@ -359,6 +359,7 @@ The evaluator also includes two metric-first follow-up probes for the next explo
 
 - `unrewarded_switch_lift_weak`: switching after repeated weak failures minus matched weak-fresh switching.
 - `volatile_switch_lift_weak`: switching after locally mixed success/failure outcomes minus matched stable-history switching.
+- `block_switch_probe`: hidden-prior adaptation after IBL block reversals. The main readout is `adaptation_lift`, defined as new-prior choice rate on trials 6-10 after a block switch minus new-prior choice rate on trials 1-5. The probe also reports early perseverative choice and low-/zero-contrast new-prior choice rates.
 
 These are documented in [Adaptive Control Exploration Probe Design](adaptive_control_exploration_probe_design.md). They should be read as falsification probes, not as claims that exploration has already been validated.
 
@@ -380,6 +381,18 @@ A follow-up 5-seed screen tested exactly those unrewarded/volatile probes in `ru
 - Local-volatility switching was more count-supported and directionally positive: full-control minus no-control was `+0.071` (4/5 seeds). However, persistence-only also increased volatility lift versus no-control (`+0.040`, 3/5 seeds), so the signal is not cleanly exploration-specific.
 
 Result: the volatility probe is viable as a future readout, but exploration remains experimental. A stronger claim needs paired improvement over both no-control and persistence-only.
+
+A retrospective block-switch readout on `runs/adaptive_control_validation_suite_phase1_exploration/` gives the cleanest next experiment target. The IBL reference shows delayed hidden-prior adaptation (`early_new_prior_choice_rate=0.585`, `late_new_prior_choice_rate=0.747`, `adaptation_lift=+0.162` across 137 block switches). The current adaptive-control suite only partially reproduces this pattern:
+
+| Condition | Early new-prior choice | Late new-prior choice | Adaptation lift | Early perseverative choice | Zero-contrast new-prior choice |
+|-----------|------------------------|-----------------------|-----------------|----------------------------|-------------------------------|
+| IBL reference | 0.585 | 0.747 | +0.162 | 0.415 | 0.567 |
+| true no-control | 0.692 | 0.692 | -0.000 | 0.308 | 0.383 |
+| exploration-only | 0.640 | 0.720 | +0.080 | 0.360 | 0.435 |
+| persistence-only | 0.592 | 0.648 | +0.056 | 0.408 | 0.383 |
+| full-control | 0.612 | 0.680 | +0.068 | 0.388 | 0.396 |
+
+This is not a validation result yet. It says the existing suite has a measurable block-switch phenotype, and adaptive-control conditions introduce some delayed adaptation relative to no-control, but they remain below the reference lift and do not isolate exploration. The next claim-bearing run should therefore be a block-switch-focused matched suite, followed by PRL/DMS transfer if the effect survives.
 
 ## 9. Minimal experiment sequence
 
@@ -408,7 +421,7 @@ Result: the volatility probe is viable as a future readout, but exploration rema
 
 The scaffold and phase-1 validation are complete. The next scientific steps are:
 
-1. isolate the local-volatility signal against persistence-only, or move the exploration claim to PRL/DMS-style tasks where environmental change is explicit
+1. run a block-switch-focused matched suite using `block_switch_probe` as the bridge between stable IBL and PRL/DMS
 2. test whether the adaptive-control idea transfers to PRL/DMS-style tasks
 3. keep the claim narrow: biologically inspired control mechanism, not exact anatomy
 4. avoid spending more budget on the nonlinear gate unless a task-transfer result makes it decisive

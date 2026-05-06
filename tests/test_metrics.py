@@ -7,6 +7,7 @@ import pytest
 from eval.metrics import (
     compute_adaptive_control_probe_metrics,
     compute_all_metrics,
+    compute_block_switch_probe_metrics,
     compute_chronometric,
     compute_exploration_probe_metrics,
     compute_history_metrics,
@@ -367,6 +368,46 @@ def _make_unrewarded_volatile_exploration_df() -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _make_block_switch_df() -> pd.DataFrame:
+    rows = []
+    actions = [
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+    ]
+    for idx, action in enumerate(actions):
+        p_right = 0.2 if idx < 5 else 0.8
+        rows.append(
+            {
+                "task": "ibl_2afc",
+                "session_id": "switch_session",
+                "trial_index": idx,
+                "stimulus_contrast": 0.0,
+                "block_prior": {"p_right": p_right},
+                "action": action,
+                "correct": action == ("right" if p_right > 0.5 else "left"),
+                "reward": 1.0 if action == ("right" if p_right > 0.5 else "left") else 0.0,
+                "rt_ms": 400.0,
+                "prev_action": actions[idx - 1] if idx > 0 else None,
+                "prev_reward": 1.0 if idx > 0 else None,
+                "prev_correct": 1.0 if idx > 0 else None,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
 def test_psychometric_fit_returns_positive_slope():
     df = _make_psychometric_df()
     metrics = compute_psychometric(df, stimulus_key="contrast")
@@ -462,6 +503,31 @@ def test_compute_all_metrics_includes_new_exploration_probes():
 
     assert "unrewarded_switch_lift_weak" in probe
     assert "volatile_switch_lift_weak" in probe
+
+
+def test_block_switch_probe_metrics_capture_hidden_prior_adaptation():
+    df = _make_block_switch_df()
+    metrics = compute_block_switch_probe_metrics(df)
+
+    assert metrics.switch_count == 1
+    assert metrics.post_switch_trial_count == 10
+    assert metrics.early_trial_count == 5
+    assert metrics.late_trial_count == 5
+    assert metrics.early_new_prior_choice_rate == pytest.approx(0.6)
+    assert metrics.late_new_prior_choice_rate == pytest.approx(1.0)
+    assert metrics.adaptation_lift == pytest.approx(0.4)
+    assert metrics.early_perseverative_choice_rate == pytest.approx(0.4)
+    assert metrics.zero_contrast_trial_count == 10
+    assert metrics.zero_contrast_new_prior_choice_rate == pytest.approx(0.8)
+
+
+def test_compute_all_metrics_includes_block_switch_probe():
+    df = _make_block_switch_df()
+    metrics = compute_all_metrics(df, task="ibl_2afc")
+    probe = metrics["block_switch_probe"]
+
+    assert probe["switch_count"] == 1
+    assert probe["adaptation_lift"] == pytest.approx(0.4)
 
 
 def _make_ceiling_df() -> pd.DataFrame:

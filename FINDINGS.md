@@ -1867,6 +1867,24 @@ Paired deltas versus persistence-only:
 
 **Interpretation:** this screen does not validate exploration. The retry result is still cleaner than the exploration result: persistence-only and full-control both increase retry gap by about `+0.082` versus no-control, positive in 5/5 seeds. The unrewarded probe points in the right direction against persistence-only, but its repeated-failure event counts are too small to carry a claim. The local-volatility probe is the better future readout because it has hundreds of matched events per run and is strongest in full control, but persistence-only also shows a positive volatility lift versus no-control. The next claim-bearing step is therefore either a sharper volatility-specific lesion/gate that beats persistence-only, or a PRL/DMS transfer test where exploration is task-relevant rather than inferred from stable IBL behavior.
 
+### Hidden block-switch bridge metric
+
+The next recommended step is to use IBL's uncued block switches as a bridge between the stable 2AFC task and full probabilistic reversal learning. The evaluator now reports `block_switch_probe`, which detects reversals in `block_prior` and asks whether choices move toward the new hidden prior over the next 10 trials. The main readout is:
+
+`adaptation_lift = new-prior choice rate on trials 6-10 after switch - new-prior choice rate on trials 1-5 after switch`
+
+A retrospective readout on the IBL reference and `runs/adaptive_control_validation_suite_phase1_exploration/` gives the target shape:
+
+| Condition | Block switches | Early new-prior choice | Late new-prior choice | Adaptation lift | Early perseverative choice | Zero-contrast new-prior choice |
+|-----------|----------------|------------------------|-----------------------|-----------------|----------------------------|-------------------------------|
+| IBL reference | 137 | 0.585 | 0.747 | +0.162 | 0.415 | 0.567 |
+| true no-control | 30 | 0.692 | 0.692 | -0.000 | 0.308 | 0.383 |
+| exploration-only | 30 | 0.640 | 0.720 | +0.080 | 0.360 | 0.435 |
+| persistence-only | 30 | 0.592 | 0.648 | +0.056 | 0.408 | 0.383 |
+| full-control | 30 | 0.612 | 0.680 | +0.068 | 0.388 | 0.396 |
+
+**Interpretation:** this is a bridge metric, not a success claim. The reference animals show slow adaptation: early choices still partly follow the old prior, then late choices move toward the new prior. Current adaptive-control conditions introduce some delayed adaptation relative to no-control, but the effect is smaller than the reference and is not cleanly exploration-specific. The next experiment should spend budget on a block-switch-focused matched suite before building the full PRL/DMS transfer claim.
+
 ### What this achieved
 
 This is a legitimate controlled computational result:
