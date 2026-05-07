@@ -405,6 +405,18 @@ The block-switch-focused matched suite was run in `runs/adaptive_control_block_s
 
 Paired deltas showed `exploration_only - no_control = +0.103` (positive in 5/5 seeds) and `exploration_only - persistence_only = +0.037` (positive in 4/5 seeds). The mechanism is not random global switching: early post-switch choices become more perseverative, then late choices move toward the new prior. The important caveat is that full-control did not beat persistence-only (`-0.015`, positive in 0/5 seeds), so the interaction between persistence and exploration needs a targeted lesion before making a full-control exploration claim.
 
+The targeted persistence/exploration interaction sweep was then run in `runs/adaptive_control_interaction_sweep_v1/`. It tested seven full-control scale variants while holding the block-switch budget fixed. The key result is that weakening persistence inside full-control rescues the block-switch effect:
+
+| Condition | Persistence scale | Exploration scale | Block-switch lift | Delta vs persistence-only | Positive seeds | Retry gap |
+|-----------|-------------------|-------------------|-------------------|---------------------------|----------------|-----------|
+| persistence-only | 1.6 | off | +0.099 | baseline | - | 0.091 |
+| exploration-only | off | 0.8 | +0.136 | +0.037 | 4/5 | 0.031 |
+| full-control default | 1.6 | 0.8 | +0.084 | -0.015 | 0/5 | 0.067 |
+| full-control persist-half | 0.8 | 0.8 | +0.136 | +0.037 | 5/5 | 0.067 |
+| full-control explore-dominant | 0.4 | 1.6 | +0.112 | +0.013 | 4/5 | 0.103 |
+
+Interpretation: default full-control was over-weighted toward persistence for the hidden block-switch readout. `full_control_persist_half` is now the best full-control exploration candidate because it matches the exploration-only block-switch lift and beats persistence-only in 5/5 paired seeds. It is still a comparison/transfer candidate, not the default validated profile, because it weakens retry relative to persistence-only.
+
 ## 9. Minimal experiment sequence
 
 1. Build scaffold and smoke test
@@ -432,7 +444,7 @@ Paired deltas showed `exploration_only - no_control = +0.103` (positive in 5/5 s
 
 The scaffold and phase-1 validation are complete. The next scientific steps are:
 
-1. isolate why exploration-only improves block-switch adaptation while full-control does not beat persistence-only
+1. stress-test `full_control_persist_half` as the current full-control arbitration candidate
 2. test whether the adaptive-control idea transfers to PRL/DMS-style tasks
 3. keep the claim narrow: biologically inspired control mechanism, not exact anatomy
 4. avoid spending more budget on the nonlinear gate unless a task-transfer result makes it decisive

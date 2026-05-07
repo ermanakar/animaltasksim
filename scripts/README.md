@@ -18,6 +18,9 @@ Do not rename flags or output paths for these without explicit approval.
 `train_adaptive_control.py` defaults to the recommended `persistence_only`
 profile. Use `--control-profile full_control` only for explicitly labeled
 comparison runs because exploration is experimental/unvalidated.
+`adaptive_control_interaction_sweep.py` is the current full-control arbitration
+sweep; its strongest comparison candidate is `full_control_persist_half`, not a
+new validated default.
 
 ## Sweep And Validation Scripts
 

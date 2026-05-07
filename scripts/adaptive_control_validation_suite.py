@@ -118,6 +118,8 @@ class ValidationCondition:
     control_profile: AdaptiveControlProfile
     extra_args: tuple[str, ...] = ()
     control_uncertainty_power: float | None = None
+    persistence_bias_scale: float | None = None
+    exploration_bias_scale: float | None = None
 
 
 @dataclass(slots=True)
@@ -141,6 +143,7 @@ class ValidationSuiteArgs:
     history_drift_scale: float = 0.3
     lapse_rate: float = 0.05
     persistence_bias_scale: float = 1.6
+    exploration_bias_scale: float = 0.8
     persistence_learning_rate: float = 0.8
     control_uncertainty_power: float = 2.0
     include_exploration_only: bool = True
@@ -185,7 +188,7 @@ class ValidationSuiteArgs:
         _write_csv(self.run_root / "aggregate_summary.csv", aggregate_rows)
         _write_csv(self.run_root / "paired_deltas.csv", paired_rows)
         _write_csv(self.run_root / "paired_delta_summary.csv", paired_summary_rows)
-        self._write_json_summary(aggregate_rows, paired_summary_rows)
+        self._write_json_summary(conditions, aggregate_rows, paired_summary_rows)
         self._print_summary(aggregate_rows, paired_summary_rows)
 
     def _conditions(self) -> list[ValidationCondition]:
@@ -268,18 +271,46 @@ class ValidationSuiteArgs:
             "--lapse-rate",
             str(self.lapse_rate),
             "--persistence-bias-scale",
-            str(self.persistence_bias_scale),
+            str(self._condition_persistence_bias_scale(condition)),
+            "--exploration-bias-scale",
+            str(self._condition_exploration_bias_scale(condition)),
             "--persistence-learning-rate",
             str(self.persistence_learning_rate),
             "--control-uncertainty-power",
-            str(
-                condition.control_uncertainty_power
-                if condition.control_uncertainty_power is not None
-                else self.control_uncertainty_power
-            ),
+            str(self._condition_control_uncertainty_power(condition)),
             *condition.extra_args,
         ]
         return cmd
+
+    def _condition_persistence_bias_scale(self, condition: ValidationCondition) -> float:
+        """Return the resolved persistence scale for one condition."""
+        if condition.persistence_bias_scale is not None:
+            return condition.persistence_bias_scale
+        return self.persistence_bias_scale
+
+    def _condition_exploration_bias_scale(self, condition: ValidationCondition) -> float:
+        """Return the resolved exploration scale for one condition."""
+        if condition.exploration_bias_scale is not None:
+            return condition.exploration_bias_scale
+        return self.exploration_bias_scale
+
+    def _condition_control_uncertainty_power(self, condition: ValidationCondition) -> float:
+        """Return the resolved uncertainty-gate power for one condition."""
+        if condition.control_uncertainty_power is not None:
+            return condition.control_uncertainty_power
+        return self.control_uncertainty_power
+
+    def _condition_payload(self, condition: ValidationCondition) -> dict[str, object]:
+        """Return reproducible condition settings for summaries."""
+        return {
+            "label": condition.label,
+            "description": condition.description,
+            "control_profile": condition.control_profile,
+            "persistence_bias_scale": self._condition_persistence_bias_scale(condition),
+            "exploration_bias_scale": self._condition_exploration_bias_scale(condition),
+            "control_uncertainty_power": self._condition_control_uncertainty_power(condition),
+            "extra_args": list(condition.extra_args),
+        }
 
     @staticmethod
     def _build_eval_command(run_dir: Path) -> list[str]:
@@ -313,6 +344,10 @@ class ValidationSuiteArgs:
                     {
                         "condition": condition.label,
                         "description": condition_by_label[condition.label].description,
+                        "control_profile": condition.control_profile,
+                        "persistence_bias_scale": self._condition_persistence_bias_scale(condition),
+                        "exploration_bias_scale": self._condition_exploration_bias_scale(condition),
+                        "control_uncertainty_power": self._condition_control_uncertainty_power(condition),
                         "seed": seed,
                         "run_dir": str(run_dir),
                     }
@@ -323,6 +358,7 @@ class ValidationSuiteArgs:
 
     def _write_json_summary(
         self,
+        conditions: Sequence[ValidationCondition],
         aggregate_rows: list[dict[str, object]],
         paired_summary_rows: list[dict[str, object]],
     ) -> None:
@@ -335,11 +371,13 @@ class ValidationSuiteArgs:
                 "max_trials_per_session": self.max_trials_per_session,
                 "drift_scale": self.drift_scale,
                 "persistence_bias_scale": self.persistence_bias_scale,
+                "exploration_bias_scale": self.exploration_bias_scale,
                 "control_uncertainty_power": self.control_uncertainty_power,
                 "recommended_control_profile": RECOMMENDED_ADAPTIVE_CONTROL_PROFILE,
                 "include_exploration_only": self.include_exploration_only,
                 "include_gate_lesion": self.include_gate_lesion,
             },
+            "conditions": [self._condition_payload(condition) for condition in conditions],
             "aggregate": aggregate_rows,
             "paired_delta_summary": paired_summary_rows,
         }

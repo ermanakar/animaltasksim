@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from scripts.adaptive_control_validation_suite import (
+    ValidationCondition,
     ValidationSuiteArgs,
     _aggregate_rows,
     _paired_delta_rows,
@@ -40,6 +41,25 @@ def test_validation_suite_can_include_gate_lesion(tmp_path: Path) -> None:
     assert cmd[cmd.index("--control-profile") + 1] == "full_control"
     assert cmd.count("--control-uncertainty-power") == 1
     assert cmd[cmd.index("--control-uncertainty-power") + 1] == "1.0"
+
+
+def test_validation_suite_records_resolved_condition_scales(tmp_path: Path) -> None:
+    args = ValidationSuiteArgs(run_root=tmp_path, persistence_bias_scale=1.6, exploration_bias_scale=0.8)
+    condition = ValidationCondition(
+        label="scaled_full_control",
+        description="Scaled full-control comparison.",
+        control_profile="full_control",
+        persistence_bias_scale=0.8,
+        exploration_bias_scale=1.2,
+    )
+
+    payload = args._condition_payload(condition)
+    cmd = args._build_train_command(tmp_path / "run", 42, condition)
+
+    assert payload["persistence_bias_scale"] == 0.8
+    assert payload["exploration_bias_scale"] == 1.2
+    assert cmd[cmd.index("--persistence-bias-scale") + 1] == "0.8"
+    assert cmd[cmd.index("--exploration-bias-scale") + 1] == "1.2"
 
 
 def test_validation_suite_builds_exploration_only_condition(tmp_path: Path) -> None:

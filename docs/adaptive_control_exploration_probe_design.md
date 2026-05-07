@@ -102,3 +102,11 @@ Run: `runs/adaptive_control_block_switch_focus_v1/`
 The block-switch-focused suite increased rollout support to 30 biased block reversals per run. Exploration-only improved block-switch adaptation versus no-control (`+0.103`, positive in 5/5 seeds) and versus persistence-only (`+0.037`, positive in 4/5 seeds). This is the first strong lead for an exploration-specific behavioral role.
 
 Caveat: full-control did not inherit that advantage over persistence-only (`-0.015`, positive in 0/5 seeds). The next experiment should therefore isolate the arbitration/interaction between persistence and exploration, not simply declare full-control validated.
+
+## May 7 interaction sweep
+
+Run: `runs/adaptive_control_interaction_sweep_v1/`
+
+The arbitration sweep tested whether full-control can preserve the block-switch lead by changing persistence/exploration scales. The cleanest rescue was `full_control_persist_half` (`persistence_bias_scale=0.8`, `exploration_bias_scale=0.8`): block-switch lift was `+0.136`, equal to exploration-only and `+0.037` above persistence-only in 5/5 paired seeds. The default full-control setting remained below persistence-only (`-0.015`, 0/5 seeds), so the interaction failure was scale-dependent rather than a total failure of the full-control path.
+
+This still does not validate exploration as the main project claim. `full_control_persist_half` reduced retry gap relative to persistence-only (`-0.025`, 0/5 positive seeds), so it should be treated as a promising full-control comparison/transfer candidate. The recommended/default claim profile remains `persistence_only`.

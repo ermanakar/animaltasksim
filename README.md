@@ -31,7 +31,7 @@ The supported result is narrow but real: **uncertainty-gated adaptive retry/pers
 
 > **Supported.** Uncertainty-gated adaptive retry / persistence is validated in-simulator: the persistence-only lesion recovers almost all of the full-control retry-gap mean while keeping exploration disabled. Full-control remains useful as a comparison condition, not as the clean default claim.
 
-> **Not yet supported.** Exploration is not independently validated in the recommended/full-control agent. The rewarded-streak isolation probe failed (0/5 positive seeds on stale-switch lift), and the unrewarded/volatile screen found only directional proxies. A later block-switch screen gives a promising exploration-only lead, but full-control does not yet preserve it over persistence-only. No anatomical claim is made — the model is a computational analogy.
+> **Not yet supported.** Exploration is not independently validated in the recommended/default agent. The rewarded-streak isolation probe failed (0/5 positive seeds on stale-switch lift), and the unrewarded/volatile screen found only directional proxies. A later block-switch screen gives a promising exploration-only lead; an interaction sweep found one weakened-persistence full-control candidate that preserves that lead, but it trades off retry strength. No anatomical claim is made — the model is a computational analogy.
 
 > **Why this matters.** The same lesion-and-probe pipeline can ask, for any candidate control circuit, whether it is *necessary* to produce a behavioral signature observed in animals. The architecture is a hypothesis; the probe is the test.
 
@@ -145,6 +145,25 @@ runs/adaptive_control_block_switch_focus_v1/
 | Full control | +0.084 | 0.677 | 0.761 | 0/5 |
 
 Paired against no-control, exploration-only increased block-switch adaptation by `+0.103` in 5/5 seeds. Paired against persistence-only, exploration-only still improved adaptation by `+0.037` in 4/5 seeds. Full-control did not preserve the effect versus persistence-only (`-0.015`, 0/5 seeds), so this is a promising exploration-specific lead, not yet a clean full-control success.
+
+### Persistence/exploration interaction sweep
+
+We then prioritized the full-control arbitration question before PRL/DMS transfer by sweeping persistence and exploration scales:
+
+```text
+runs/adaptive_control_interaction_sweep_v1/
+```
+
+| Condition | Persistence scale | Exploration scale | Block-switch lift | Delta vs persistence-only | Positive seeds | Retry gap |
+|-----------|-------------------|-------------------|-------------------|---------------------------|----------------|-----------|
+| Persistence only | 1.6 | off | +0.099 | baseline | - | 0.091 |
+| Exploration only | off | 0.8 | +0.136 | +0.037 | 4/5 | 0.031 |
+| Full-control default | 1.6 | 0.8 | +0.084 | -0.015 | 0/5 | 0.067 |
+| Full-control persist-half | 0.8 | 0.8 | +0.136 | +0.037 | 5/5 | 0.067 |
+| Full-control explore-double | 1.6 | 1.6 | +0.103 | +0.004 | 3/5 | 0.094 |
+| Full-control explore-dominant | 0.4 | 1.6 | +0.112 | +0.013 | 4/5 | 0.103 |
+
+Interpretation: the default full-control setting was not broken, but it was over-arbitrated toward persistence for this hidden block-switch readout. Weakening persistence to `0.8` while keeping exploration at `0.8` restored the exploration-only block-switch gain over persistence-only (`+0.037`, 5/5 seeds), with 0/5 degenerate runs and 0/5 RT-ceiling warnings. It is a promising full-control comparison setting, not the new validated default, because its retry gap is weaker than persistence-only.
 
 ## Architecture
 
@@ -276,7 +295,7 @@ IBL contrasts are `{0, 0.0625, 0.125, 0.25, 1.0}`. A previous extra `0.5` contra
 
 Near-term work:
 
-1. Explain why exploration-only improves block-switch adaptation but full-control does not beat persistence-only.
+1. Stress-test the `full_control_persist_half` arbitration candidate before treating full-control exploration as claim-bearing.
 2. Test whether adaptive control transfers to Probabilistic Reversal Learning and Delayed Match-to-Sample.
 3. Expand lesion tests for control state, arbitration, evidence preservation, and gate shape.
 4. Keep all new tasks compatible with the shared `.ndjson` comparison pipeline.

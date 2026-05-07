@@ -1910,6 +1910,44 @@ Paired deltas:
 
 **Interpretation:** this is the first genuinely promising exploration-specific result. Exploration-only improved hidden block-switch adaptation versus no-control in 5/5 seeds and versus persistence-only in 4/5 seeds. The shape is also animal-like in one important way: early post-switch choices are more perseverative, then later choices move toward the new prior. However, this does not yet validate full-control exploration. Full-control did not beat persistence-only on block-switch lift, and the older stale-switch probe remained negative. The next experiment should isolate the interaction: why does the exploration controller help when persistence is disabled, but not when both controllers are enabled?
 
+### Persistence/exploration interaction sweep
+
+Run: `runs/adaptive_control_interaction_sweep_v1/`
+
+This sweep kept the block-switch-focused budget fixed (5 paired seeds, 6 episodes, 800 trials per episode, 1 epoch, 30 biased block switches per run) and varied the persistence/exploration scales inside full-control. The goal was to arbitrate full-control before moving to PRL/DMS: can a full-control setting preserve the exploration-only block-switch gain without collapsing the validated retry signal?
+
+Command shape:
+
+```bash
+python scripts/adaptive_control_interaction_sweep.py \
+  --run-root runs/adaptive_control_interaction_sweep_v1 \
+  --seeds 42 123 456 789 2026 \
+  --episodes 6 --trials-per-episode 800 --epochs 1 \
+  --hidden-size 32 --max-sessions 5 --max-trials-per-session 128 \
+  --no-skip-existing
+```
+
+| Condition | Persistence scale | Exploration scale | Retry gap | Block-switch lift | Delta block vs persistence-only | Positive seeds | Delta retry vs persistence-only | Degenerate |
+|-----------|-------------------|-------------------|-----------|-------------------|---------------------------------|----------------|--------------------------------|------------|
+| persistence-only | 1.6 | off | 0.091 | +0.099 | baseline | - | baseline | 0/5 |
+| exploration-only | off | 0.8 | 0.031 | +0.136 | +0.037 | 4/5 | -0.061 | 0/5 |
+| full-control default | 1.6 | 0.8 | 0.067 | +0.084 | -0.015 | 0/5 | -0.025 | 0/5 |
+| full-control persist-half | 0.8 | 0.8 | 0.067 | +0.136 | +0.037 | 5/5 | -0.025 | 0/5 |
+| full-control persist-quarter | 0.4 | 0.8 | 0.097 | +0.096 | -0.003 | 2/5 | +0.006 | 0/5 |
+| full-control explore-strong | 1.6 | 1.2 | 0.071 | +0.115 | +0.016 | 3/5 | -0.020 | 0/5 |
+| full-control explore-double | 1.6 | 1.6 | 0.094 | +0.103 | +0.004 | 3/5 | +0.003 | 0/5 |
+| full-control balanced | 0.8 | 1.2 | 0.082 | +0.112 | +0.013 | 3/5 | -0.009 | 0/5 |
+| full-control explore-dominant | 0.4 | 1.6 | 0.103 | +0.112 | +0.013 | 4/5 | +0.011 | 0/5 |
+
+All conditions also had 0/5 RT-ceiling warnings. The strongest full-control rescue was `full_control_persist_half`: it matched the exploration-only block-switch lift (`+0.136`) and beat persistence-only by `+0.037` in 5/5 paired seeds. That directly answers the previous arbitration failure: default full-control was not broken, but its persistence scale masked the exploration block-switch effect.
+
+The caveat is equally important. `full_control_persist_half` gave up retry-gap strength relative to persistence-only (`-0.025`, positive in 0/5 seeds), so it should not replace the recommended/default `persistence_only` profile. The honest status is now:
+
+1. `persistence_only` remains the validated claim profile.
+2. `full_control_persist_half` is the best current full-control exploration candidate for comparison/transfer.
+3. No single full-control setting yet dominates both persistence-only on retry and exploration-only on block-switch adaptation.
+4. PRL/DMS transfer should compare at least no-control, persistence-only, exploration-only, default full-control, and `full_control_persist_half`.
+
 ### What this achieved
 
 This is a legitimate controlled computational result:
@@ -1938,6 +1976,7 @@ The current status is best described as a **strong internal milestone**: a repro
 - Exploration-probe validation (default suite): `runs/adaptive_control_validation_suite_phase1_exploration/`
 - Unrewarded/volatility exploration-probe screen: `runs/adaptive_control_exploration_probe_5seed/`
 - Block-switch-focused exploration screen: `runs/adaptive_control_block_switch_focus_v1/`
+- Persistence/exploration interaction sweep: `runs/adaptive_control_interaction_sweep_v1/`
 - Persistence sweeps (April–May calibration): `runs/adaptive_control_persistence_sweep/`, `runs/adaptive_control_persistence_sweep_v1/`, `runs/adaptive_control_persistence_sweep_v2/`
 - Candidate comparisons: `runs/adaptive_control_candidate_compare/`, `runs/adaptive_control_candidate_compare_v1/`
 - Single-seed probes (with/without persistence, with/without exploration): `runs/adaptive_control_seed42/`, `runs/adaptive_control_seed42_no_persistence/`, `runs/adaptive_control_exploration_seed42/`, `runs/adaptive_control_exploration_seed42_no_exploration/`

@@ -331,6 +331,8 @@ The phase-1 result is intentionally narrow. The validated/default claim is persi
 
 Paired retry lift for full control was `+0.109 +/- 0.086`, positive in 5/5 seeds; persistence-only recovered ~98% of the full-control retry-gap mean. Because the exploration isolation probe failed, full control is reported as a comparison condition rather than the clean claim.
 
+Later exploration probes sharpened that boundary. Rewarded-streak exploration failed; the block-switch screen found an exploration-specific lead, but default full-control did not preserve it over persistence-only. The interaction sweep then identified `full_control_persist_half` (`persistence_bias_scale=0.8`, `exploration_bias_scale=0.8`) as the best current full-control arbitration candidate: it matched exploration-only block-switch lift (`+0.136`) and beat persistence-only by `+0.037` in 5/5 seeds. It still weakened retry gap relative to persistence-only (`0.067` vs `0.091`), so it is a comparison/transfer candidate, not the validated default.
+
 This is legitimate as a computational result, but it is not a claim of exact brain anatomy. The analogy is: real brains likely use separate sensory, value, persistence, exploration, and arbitration-like computations. The model tests whether that computational separation can generate animal-like behavior.
 
 The gate lesion sharpened the caveat. A linear uncertainty gate still worked somewhat (`+0.087 +/- 0.130`, positive in 3/5 seeds), while the nonlinear gate was stronger and more reliable. So the honest claim is not "the exponent 2 gate is necessary." The honest claim is "uncertainty-gated adaptive control is useful, and sharpening the gate improves robustness."
@@ -341,7 +343,7 @@ The gate lesion sharpened the caveat. A linear uncertainty gate still worked som
 |-----|--------|
 | History is injected, not learned | The win-stay and lose-shift strengths (0.30 and 0.15) are hand-set numbers, not values the history networks discovered on their own. The architecture *can* express history effects, but it cannot yet *discover* them from data. |
 | Adaptive control is an analogy | The new controller is lesion-tested in simulation, but it is not a neural anatomy claim and has not transferred to PRL/DMS yet. |
-| Exploration is not isolated | Exploration is off by default. Full control remains available for comparison, but the exploration component failed its stale-switch isolation probe and needs a cleaner necessary-role test. |
+| Exploration is not isolated | Exploration is off by default. `full_control_persist_half` rescues a block-switch lead, but it trades off retry strength and needs transfer before becoming claim-bearing. |
 | Lapse variance across seeds | Lapse rates range from 0.043 to 0.156 across seeds, suggesting the lapse mechanism interacts with training dynamics in ways we do not fully understand. |
 | Single task validated | Results are validated on IBL mouse only. The macaque RDM task produces correct reaction-time dynamics but lacks history effects (the macaque in the reference dataset was overtrained). |
 
