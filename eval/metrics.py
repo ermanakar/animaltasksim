@@ -95,6 +95,28 @@ class BlockSwitchProbeMetrics:
     zero_contrast_new_prior_choice_rate: float
 
 
+@dataclass(slots=True)
+class PRLMetrics:
+    """Behavioral fingerprint for probabilistic reversal learning."""
+
+    trial_count: int
+    committed_trial_count: int
+    reversal_count: int
+    post_reversal_trial_count: int
+    early_trial_count: int
+    late_trial_count: int
+    end_block_trial_count: int
+    optimal_choice_rate: float
+    reward_rate: float
+    early_optimal_choice_rate: float
+    late_optimal_choice_rate: float
+    adaptation_lift: float
+    end_block_optimal_choice_rate: float
+    block_learning_lift: float
+    stay_after_rewarded: float
+    switch_after_unrewarded: float
+
+
 def load_trials(path: str | Path) -> pd.DataFrame:
     """Load a validated `.ndjson` log into a DataFrame."""
 
@@ -653,6 +675,133 @@ def compute_block_switch_probe_metrics(
     )
 
 
+def compute_prl_metrics(
+    df: pd.DataFrame,
+    post_reversal_window: int = 10,
+    early_window: int = 5,
+    end_block_window: int = 20,
+) -> PRLMetrics:
+    """Measure option learning and recovery after hidden PRL reversals."""
+    if df.empty:
+        return _empty_prl_metrics()
+
+    data = df.copy()
+    sort_columns = [column for column in ("session_id", "trial_index") if column in data.columns]
+    if sort_columns:
+        data = data.sort_values(sort_columns).copy()
+    committed = data[data["action"].isin(["left", "right"])].copy()
+    if committed.empty:
+        return _empty_prl_metrics(trial_count=len(data))
+
+    committed["same_as_prev"] = (committed["action"] == committed["prev_action"]).astype(float)
+    valid_prev = committed[committed["prev_action"].isin(["left", "right"])].copy()
+    previous_reward = pd.to_numeric(valid_prev["prev_reward"], errors="coerce")
+    rewarded = valid_prev[previous_reward > 0.0]
+    unrewarded = valid_prev[previous_reward <= 0.0]
+
+    event_rows: list[dict[str, object]] = []
+    end_block_rows: list[dict[str, object]] = []
+    reversal_count = 0
+    groupby_key = "session_id" if "session_id" in data.columns else None
+    grouped_rows = data.groupby(groupby_key, sort=False) if groupby_key is not None else [(None, data)]
+    for _, session_rows in grouped_rows:
+        session_rows = session_rows.reset_index(drop=True)
+        for position, row in session_rows.iterrows():
+            if not _is_true(row.get("reversal")):
+                continue
+            reversal_count += 1
+            window = session_rows.iloc[position : position + post_reversal_window]
+            for offset, (_, post_row) in enumerate(window.iterrows(), start=1):
+                if post_row.get("action") not in {"left", "right"}:
+                    continue
+                event_rows.append(
+                    {
+                        "offset_after_reversal": offset,
+                        "optimal_choice": bool(post_row.get("correct", False)),
+                    }
+                )
+            next_reversal = next(
+                (
+                    next_position
+                    for next_position in range(position + 1, len(session_rows))
+                    if _is_true(session_rows.iloc[next_position].get("reversal"))
+                ),
+                len(session_rows),
+            )
+            block_rows = session_rows.iloc[position:next_reversal]
+            block_rows = block_rows[block_rows["action"].isin(["left", "right"])]
+            for _, end_row in block_rows.tail(end_block_window).iterrows():
+                end_block_rows.append(
+                    {"optimal_choice": bool(end_row.get("correct", False))}
+                )
+
+    if event_rows:
+        events = pd.DataFrame.from_records(event_rows)
+        events["optimal_choice"] = events["optimal_choice"].astype(float)
+        early = events[events["offset_after_reversal"] <= early_window]
+        late = events[events["offset_after_reversal"] > early_window]
+        early_rate = _mean_or_nan(early["optimal_choice"])
+        late_rate = _mean_or_nan(late["optimal_choice"])
+        adaptation_lift = late_rate - early_rate if math.isfinite(early_rate) and math.isfinite(late_rate) else np.nan
+    else:
+        events = pd.DataFrame()
+        early = pd.DataFrame()
+        late = pd.DataFrame()
+        early_rate = np.nan
+        late_rate = np.nan
+        adaptation_lift = np.nan
+
+    if end_block_rows:
+        end_block_events = pd.DataFrame.from_records(end_block_rows)
+        end_block_events["optimal_choice"] = end_block_events["optimal_choice"].astype(float)
+        end_block_rate = _mean_or_nan(end_block_events["optimal_choice"])
+        block_learning_lift = end_block_rate - early_rate if math.isfinite(early_rate) else np.nan
+    else:
+        end_block_events = pd.DataFrame()
+        end_block_rate = np.nan
+        block_learning_lift = np.nan
+
+    return PRLMetrics(
+        trial_count=int(len(data)),
+        committed_trial_count=int(len(committed)),
+        reversal_count=reversal_count,
+        post_reversal_trial_count=int(len(events)),
+        early_trial_count=int(len(early)),
+        late_trial_count=int(len(late)),
+        end_block_trial_count=int(len(end_block_events)),
+        optimal_choice_rate=float(np.mean(committed["correct"].astype(float))),
+        reward_rate=float(np.mean(pd.to_numeric(committed["reward"], errors="coerce") > 0.0)),
+        early_optimal_choice_rate=float(early_rate),
+        late_optimal_choice_rate=float(late_rate),
+        adaptation_lift=float(adaptation_lift),
+        end_block_optimal_choice_rate=float(end_block_rate),
+        block_learning_lift=float(block_learning_lift),
+        stay_after_rewarded=_mean_or_nan(rewarded["same_as_prev"]),
+        switch_after_unrewarded=_mean_or_nan(1.0 - unrewarded["same_as_prev"]),
+    )
+
+
+def _empty_prl_metrics(trial_count: int = 0) -> PRLMetrics:
+    return PRLMetrics(
+        trial_count=trial_count,
+        committed_trial_count=0,
+        reversal_count=0,
+        post_reversal_trial_count=0,
+        early_trial_count=0,
+        late_trial_count=0,
+        end_block_trial_count=0,
+        optimal_choice_rate=np.nan,
+        reward_rate=np.nan,
+        early_optimal_choice_rate=np.nan,
+        late_optimal_choice_rate=np.nan,
+        adaptation_lift=np.nan,
+        end_block_optimal_choice_rate=np.nan,
+        block_learning_lift=np.nan,
+        stay_after_rewarded=np.nan,
+        switch_after_unrewarded=np.nan,
+    )
+
+
 def _empty_block_switch_metrics(switch_count: int = 0) -> BlockSwitchProbeMetrics:
     return BlockSwitchProbeMetrics(
         switch_count=switch_count,
@@ -706,6 +855,11 @@ def _trial_success(row: pd.Series) -> bool:
     return float(reward) > 0.0
 
 
+def _is_true(value: object) -> bool:
+    """Return whether a schema flag is explicitly true."""
+    return value is True or isinstance(value, np.bool_) and bool(value)
+
+
 def _sanitize(obj: object) -> object:
     if isinstance(obj, bool):
         return obj
@@ -732,6 +886,29 @@ def _is_finite(value: object) -> bool:
 
 
 def _quality_flags(metrics: dict[str, object], task: str, is_choice_only: bool = False) -> dict[str, object]:
+    if task == "prl":
+        prl_metrics = metrics.get("prl", {}) or {}
+        commit_rate = metrics.get("commit_rate")
+        optimal_choice_rate = prl_metrics.get("optimal_choice_rate")
+        reversal_count = prl_metrics.get("reversal_count")
+        adaptation_lift = prl_metrics.get("adaptation_lift")
+        block_learning_lift = prl_metrics.get("block_learning_lift")
+        commit_rate_ok = _is_finite(commit_rate) and float(commit_rate) > 0.0
+        prl_metrics_ok = _is_finite(optimal_choice_rate)
+        reversal_probe_ok = (
+            _is_finite(reversal_count)
+            and float(reversal_count) > 0.0
+            and _is_finite(adaptation_lift)
+        )
+        block_learning_probe_ok = reversal_probe_ok and _is_finite(block_learning_lift)
+        return {
+            "commit_rate_ok": commit_rate_ok,
+            "prl_metrics_ok": prl_metrics_ok,
+            "reversal_probe_ok": reversal_probe_ok,
+            "block_learning_probe_ok": block_learning_probe_ok,
+            "degenerate": not commit_rate_ok or not prl_metrics_ok,
+        }
+
     psychometric = metrics.get("psychometric", {}) or {}
     history = metrics.get("history", {}) or {}
     chronometric = metrics.get("chronometric", {}) or {}
@@ -828,6 +1005,9 @@ def compute_all_metrics(df: pd.DataFrame, task: str, is_choice_only: bool = Fals
         metrics["psychometric"] = _sanitize(asdict(compute_psychometric(df, stimulus_key="coherence")))
         metrics["chronometric"] = _sanitize(asdict(compute_chronometric(df, stimulus_key="coherence")))
         metrics["history"] = _sanitize(asdict(compute_history_metrics(df)))
+    elif task == "prl":
+        metrics["history"] = _sanitize(asdict(compute_history_metrics(df)))
+        metrics["prl"] = _sanitize(asdict(compute_prl_metrics(df)))
     else:  # pragma: no cover - defensive fallback for future tasks
         metrics["history"] = _sanitize(asdict(compute_history_metrics(df)))
     metrics["adaptive_control_probe"] = _sanitize(asdict(compute_adaptive_control_probe_metrics(df)))
@@ -851,6 +1031,7 @@ __all__ = [
     "ChronometricMetrics",
     "ExplorationProbeMetrics",
     "HistoryMetrics",
+    "PRLMetrics",
     "PsychometricMetrics",
     "compute_adaptive_control_probe_metrics",
     "compute_all_metrics",
@@ -859,6 +1040,7 @@ __all__ = [
     "compute_exploration_probe_metrics",
     "compute_history_metrics",
     "compute_psychometric",
+    "compute_prl_metrics",
     "load_and_compute",
     "load_trials",
 ]

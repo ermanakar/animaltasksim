@@ -22,8 +22,16 @@ class ExperimentMetadata(BaseModel):
     # Required fields
     run_id: str = Field(..., description="Unique identifier (usually directory name)")
     created_date: str = Field(..., description="ISO format date (YYYY-MM-DD)")
-    task: Literal["ibl_2afc", "rdm_macaque"] = Field(..., description="Task environment")
-    agent: Literal["sticky_q", "bayes_observer", "ppo", "ddm", "hybrid_ddm_lstm", "unknown"] = Field(..., description="Agent type")
+    task: Literal["ibl_2afc", "rdm_macaque", "prl", "dms"] = Field(..., description="Task environment")
+    agent: Literal[
+        "sticky_q",
+        "bayes_observer",
+        "ppo",
+        "ddm",
+        "hybrid_ddm_lstm",
+        "adaptive_control",
+        "unknown",
+    ] = Field(..., description="Agent type")
     status: Literal["reference", "baseline", "experimental", "archived", "failed"] = Field(..., description="Run status")
     
     # Optional fields
@@ -41,7 +49,11 @@ class ExperimentMetadata(BaseModel):
     win_stay_rate: float | None = None
     lose_shift_rate: float | None = None
     sticky_choice_rate: float | None = None
-    quality: dict[str, bool] | None = None
+    prl_optimal_choice_rate: float | None = None
+    prl_reward_rate: float | None = None
+    prl_adaptation_lift: float | None = None
+    prl_block_learning_lift: float | None = None
+    quality: dict[str, object] | None = None
     
     # File paths (relative to project root)
     config_path: str | None = None
@@ -228,7 +240,13 @@ def extract_metadata_from_run(run_dir: Path) -> ExperimentMetadata | None:
     
     # Determine task and agent from config or directory name
     task = config.get("task", config.get("env", "ibl_2afc"))
-    if "rdm" in run_id.lower() or "macaque" in run_id.lower():
+    if task == "rdm":
+        task = "rdm_macaque"
+    if "prl" in run_id.lower():
+        task = "prl"
+    elif "dms" in run_id.lower():
+        task = "dms"
+    elif "rdm" in run_id.lower() or "macaque" in run_id.lower():
         task = "rdm_macaque"
     elif "ibl" in run_id.lower() or "2afc" in run_id.lower() or "mouse" in run_id.lower():
         task = "ibl_2afc"
@@ -250,7 +268,9 @@ def extract_metadata_from_run(run_dir: Path) -> ExperimentMetadata | None:
 
     # If still unknown, infer from directory name or config structure
     if agent == "unknown":
-        if "r_ddm" in run_id.lower() or "rollout_trials" in config:
+        if "adaptive_control" in run_id.lower() or "control_state_enabled" in config:
+            agent = "adaptive_control"
+        elif "r_ddm" in run_id.lower() or "rollout_trials" in config:
             agent = "ddm"
         elif "ppo" in run_id.lower():
             agent = "ppo"
@@ -315,9 +335,15 @@ def extract_metadata_from_run(run_dir: Path) -> ExperimentMetadata | None:
             metadata.win_stay_rate = metrics["history"].get("win_stay")
             metadata.lose_shift_rate = metrics["history"].get("lose_shift")
             metadata.sticky_choice_rate = metrics["history"].get("sticky_choice")
-        
+
+        if "prl" in metrics:
+            metadata.prl_optimal_choice_rate = metrics["prl"].get("optimal_choice_rate")
+            metadata.prl_reward_rate = metrics["prl"].get("reward_rate")
+            metadata.prl_adaptation_lift = metrics["prl"].get("adaptation_lift")
+            metadata.prl_block_learning_lift = metrics["prl"].get("block_learning_lift")
+
         if "quality" in metrics and isinstance(metrics["quality"], dict):
-            metadata.quality = {str(key): bool(value) for key, value in metrics["quality"].items()}
+            metadata.quality = {str(key): value for key, value in metrics["quality"].items()}
     
     # Check for other files
     if (run_dir / "trials.ndjson").exists():

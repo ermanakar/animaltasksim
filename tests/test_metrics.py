@@ -11,6 +11,7 @@ from eval.metrics import (
     compute_chronometric,
     compute_exploration_probe_metrics,
     compute_history_metrics,
+    compute_prl_metrics,
     compute_psychometric,
 )
 
@@ -408,6 +409,47 @@ def _make_block_switch_df() -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _make_prl_df() -> pd.DataFrame:
+    actions = [
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+    ]
+    rows = []
+    for idx, action in enumerate(actions):
+        optimal_action = "left" if idx < 5 else "right"
+        correct = action == optimal_action
+        rows.append(
+            {
+                "task": "prl",
+                "session_id": "prl_session",
+                "trial_index": idx,
+                "stimulus_contrast": 0.0,
+                "action": action,
+                "correct": correct,
+                "reward": 1.0 if correct else 0.0,
+                "rt_ms": 400.0,
+                "prev_action": actions[idx - 1] if idx > 0 else None,
+                "prev_reward": rows[idx - 1]["reward"] if idx > 0 else None,
+                "prev_correct": rows[idx - 1]["correct"] if idx > 0 else None,
+                "reversal": idx == 5,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
 def test_psychometric_fit_returns_positive_slope():
     df = _make_psychometric_df()
     metrics = compute_psychometric(df, stimulus_key="contrast")
@@ -528,6 +570,28 @@ def test_compute_all_metrics_includes_block_switch_probe():
 
     assert probe["switch_count"] == 1
     assert probe["adaptation_lift"] == pytest.approx(0.4)
+
+
+def test_prl_metrics_capture_hidden_reversal_adaptation():
+    metrics = compute_prl_metrics(_make_prl_df(), end_block_window=5)
+
+    assert metrics.reversal_count == 1
+    assert metrics.post_reversal_trial_count == 10
+    assert metrics.early_optimal_choice_rate == pytest.approx(0.6)
+    assert metrics.late_optimal_choice_rate == pytest.approx(1.0)
+    assert metrics.adaptation_lift == pytest.approx(0.4)
+    assert metrics.end_block_optimal_choice_rate == pytest.approx(1.0)
+    assert metrics.block_learning_lift == pytest.approx(0.4)
+
+
+def test_compute_all_metrics_includes_prl_fingerprint():
+    metrics = compute_all_metrics(_make_prl_df(), task="prl")
+
+    assert metrics["prl"]["adaptation_lift"] == pytest.approx(0.4)
+    assert metrics["prl"]["block_learning_lift"] == pytest.approx(0.2)
+    assert metrics["quality"]["reversal_probe_ok"] is True
+    assert metrics["quality"]["block_learning_probe_ok"] is True
+    assert metrics["quality"]["degenerate"] is False
 
 
 def _make_ceiling_df() -> pd.DataFrame:
