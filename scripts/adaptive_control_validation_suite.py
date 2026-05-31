@@ -63,6 +63,14 @@ SUMMARY_METRICS: tuple[str, ...] = (
     "block_switch_early_perseverative_choice_rate",
     "block_switch_low_contrast_new_prior_choice_rate",
     "block_switch_zero_contrast_new_prior_choice_rate",
+    "prl_optimal_choice_rate",
+    "prl_reward_rate",
+    "prl_reversal_count",
+    "prl_adaptation_lift",
+    "prl_early_optimal_choice_rate",
+    "prl_late_optimal_choice_rate",
+    "prl_end_block_optimal_choice_rate",
+    "prl_block_learning_lift",
     "weak_streak_count",
     "strong_streak_count",
     "fresh_weak_count",
@@ -96,6 +104,13 @@ PAIRED_METRICS: tuple[str, ...] = (
     "block_switch_early_perseverative_choice_rate",
     "block_switch_low_contrast_new_prior_choice_rate",
     "block_switch_zero_contrast_new_prior_choice_rate",
+    "prl_optimal_choice_rate",
+    "prl_reward_rate",
+    "prl_adaptation_lift",
+    "prl_early_optimal_choice_rate",
+    "prl_late_optimal_choice_rate",
+    "prl_end_block_optimal_choice_rate",
+    "prl_block_learning_lift",
     "exploration_gap",
 )
 
@@ -105,6 +120,8 @@ COUNT_KEYS: tuple[str, ...] = (
     "rt_ok",
     "chronometric_ok",
     "rt_ceiling_warning",
+    "reversal_probe_ok",
+    "block_learning_probe_ok",
     "degenerate",
 )
 
@@ -128,7 +145,7 @@ class ValidationSuiteArgs:
 
     run_root: Path = Path("runs/adaptive_control_validation_suite")
     seeds: Sequence[int] = (42, 123, 456, 789, 2026)
-    task: Literal["ibl_2afc", "rdm"] = "ibl_2afc"
+    task: Literal["ibl_2afc", "rdm", "prl"] = "ibl_2afc"
     episodes: int = 5
     trials_per_episode: int = 400
     epochs: int = 3
@@ -146,6 +163,8 @@ class ValidationSuiteArgs:
     exploration_bias_scale: float = 0.8
     persistence_learning_rate: float = 0.8
     control_uncertainty_power: float = 2.0
+    change_evidence_enabled: bool = False
+    change_evidence_decay: float = 0.7
     include_exploration_only: bool = True
     include_gate_lesion: bool = False
     gate_lesion_uncertainty_power: float = 1.0
@@ -278,6 +297,9 @@ class ValidationSuiteArgs:
             str(self.persistence_learning_rate),
             "--control-uncertainty-power",
             str(self._condition_control_uncertainty_power(condition)),
+            "--change-evidence-enabled" if self.change_evidence_enabled else "--no-change-evidence-enabled",
+            "--change-evidence-decay",
+            str(self.change_evidence_decay),
             *condition.extra_args,
         ]
         return cmd
@@ -365,7 +387,9 @@ class ValidationSuiteArgs:
         payload = {
             "config": {
                 "seeds": list(self.seeds),
+                "task": self.task,
                 "episodes": self.episodes,
+                "trials_per_episode": self.trials_per_episode,
                 "epochs": self.epochs,
                 "max_sessions": self.max_sessions,
                 "max_trials_per_session": self.max_trials_per_session,
@@ -373,6 +397,8 @@ class ValidationSuiteArgs:
                 "persistence_bias_scale": self.persistence_bias_scale,
                 "exploration_bias_scale": self.exploration_bias_scale,
                 "control_uncertainty_power": self.control_uncertainty_power,
+                "change_evidence_enabled": self.change_evidence_enabled,
+                "change_evidence_decay": self.change_evidence_decay,
                 "recommended_control_profile": RECOMMENDED_ADAPTIVE_CONTROL_PROFILE,
                 "include_exploration_only": self.include_exploration_only,
                 "include_gate_lesion": self.include_gate_lesion,
@@ -389,6 +415,10 @@ class ValidationSuiteArgs:
         aggregate_rows: list[dict[str, object]],
         paired_summary_rows: list[dict[str, object]],
     ) -> None:
+        if self.task == "prl":
+            self._print_prl_summary(aggregate_rows, paired_summary_rows)
+            return
+
         print(f"\n{'=' * 80}")
         print("Adaptive Control Validation Suite")
         print(f"{'=' * 80}")
@@ -460,6 +490,54 @@ class ValidationSuiteArgs:
         print(f"Aggregate summary saved to {self.run_root / 'aggregate_summary.csv'}")
         print(f"Paired deltas saved to {self.run_root / 'paired_deltas.csv'}")
 
+    def _print_prl_summary(
+        self,
+        aggregate_rows: list[dict[str, object]],
+        paired_summary_rows: list[dict[str, object]],
+    ) -> None:
+        """Print the hidden-reversal scorecard for a PRL transfer suite."""
+        print(f"\n{'=' * 80}")
+        print("Adaptive Control PRL Transfer Suite")
+        print(f"{'=' * 80}")
+        print(
+            f"{'condition':<26} | {'n':>2} | {'optimal':>7} | {'reward':>7} | "
+            f"{'early':>7} | {'late10':>7} | {'end':>7} | {'learn':>7} | {'rev':>5} | {'ok':>3} | {'deg':>3}"
+        )
+        print("-" * 116)
+        for row in aggregate_rows:
+            print(
+                f"{str(row['condition']):<26} | "
+                f"{int(row['num_seeds']):>2} | "
+                f"{_fmt(row.get('prl_optimal_choice_rate_mean'), decimals=3):>7} | "
+                f"{_fmt(row.get('prl_reward_rate_mean'), decimals=3):>7} | "
+                f"{_fmt(row.get('prl_early_optimal_choice_rate_mean'), decimals=3):>7} | "
+                f"{_fmt(row.get('prl_late_optimal_choice_rate_mean'), decimals=3):>7} | "
+                f"{_fmt(row.get('prl_end_block_optimal_choice_rate_mean'), decimals=3):>7} | "
+                f"{_fmt(row.get('prl_block_learning_lift_mean'), decimals=3):>7} | "
+                f"{_fmt(row.get('prl_reversal_count_mean'), decimals=1):>5} | "
+                f"{int(row.get('reversal_probe_ok_count', 0)):>3} | "
+                f"{int(row.get('degenerate_count', 0)):>3}"
+            )
+
+        if paired_summary_rows:
+            print(
+                f"\n{'comparison':<42} | {'d_opt':>7} | {'d_reward':>8} | "
+                f"{'d_learn':>7} | {'pos':>5}"
+            )
+            print("-" * 80)
+            for row in paired_summary_rows:
+                print(
+                    f"{str(row['comparison']):<42} | "
+                    f"{_fmt(row.get('delta_prl_optimal_choice_rate_mean'), decimals=3):>7} | "
+                    f"{_fmt(row.get('delta_prl_reward_rate_mean'), decimals=3):>8} | "
+                    f"{_fmt(row.get('delta_prl_block_learning_lift_mean'), decimals=3):>7} | "
+                    f"{int(row.get('delta_prl_block_learning_lift_positive_count', 0)):>5}"
+                )
+
+        print(f"\nPer-run summary saved to {self.run_root / 'per_run_comparison.csv'}")
+        print(f"Aggregate summary saved to {self.run_root / 'aggregate_summary.csv'}")
+        print(f"Paired deltas saved to {self.run_root / 'paired_deltas.csv'}")
+
 
 def _load_json(path: Path) -> dict[str, Any] | None:
     if not path.exists():
@@ -485,6 +563,7 @@ def _summarize_run(metrics: dict[str, Any]) -> dict[str, object]:
     probe = _as_dict(metrics.get("adaptive_control_probe"))
     exploration_probe = _as_dict(metrics.get("exploration_probe"))
     block_switch_probe = _as_dict(metrics.get("block_switch_probe"))
+    prl = _as_dict(metrics.get("prl"))
     quality = _as_dict(metrics.get("quality"))
 
     row: dict[str, object] = {
@@ -543,6 +622,14 @@ def _summarize_run(metrics: dict[str, Any]) -> dict[str, object]:
         "block_switch_zero_contrast_new_prior_choice_rate": block_switch_probe.get(
             "zero_contrast_new_prior_choice_rate",
         ),
+        "prl_optimal_choice_rate": prl.get("optimal_choice_rate"),
+        "prl_reward_rate": prl.get("reward_rate"),
+        "prl_reversal_count": prl.get("reversal_count"),
+        "prl_adaptation_lift": prl.get("adaptation_lift"),
+        "prl_early_optimal_choice_rate": prl.get("early_optimal_choice_rate"),
+        "prl_late_optimal_choice_rate": prl.get("late_optimal_choice_rate"),
+        "prl_end_block_optimal_choice_rate": prl.get("end_block_optimal_choice_rate"),
+        "prl_block_learning_lift": prl.get("block_learning_lift"),
         "weak_streak_count": exploration_probe.get("weak_streak_count"),
         "strong_streak_count": exploration_probe.get("strong_streak_count"),
         "fresh_weak_count": exploration_probe.get("fresh_weak_count"),
@@ -553,6 +640,8 @@ def _summarize_run(metrics: dict[str, Any]) -> dict[str, object]:
         "rt_ok": quality.get("rt_ok"),
         "chronometric_ok": quality.get("chronometric_ok"),
         "rt_ceiling_warning": quality.get("rt_ceiling_warning"),
+        "reversal_probe_ok": quality.get("reversal_probe_ok"),
+        "block_learning_probe_ok": quality.get("block_learning_probe_ok"),
         "degenerate": quality.get("degenerate"),
     }
     _add_gap(row, "retry_gap", "retry_after_failure_weak", "retry_after_failure_strong")

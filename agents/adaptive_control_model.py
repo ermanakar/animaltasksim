@@ -22,6 +22,9 @@ class AdaptiveControlModel(HybridDDMModel):
         control_state_enabled: bool = True,
         persistence_enabled: bool = True,
         exploration_enabled: bool = False,
+        uncertain_retry_enabled: bool = True,
+        change_evidence_enabled: bool = False,
+        change_evidence_decay: float = 0.7,
         persistence_learning_rate: float = 0.8,
         switch_learning_rate: float = 0.8,
         reward_learning_rate: float = 0.6,
@@ -44,6 +47,12 @@ class AdaptiveControlModel(HybridDDMModel):
         self.control_state_enabled = control_state_enabled
         self.persistence_enabled = persistence_enabled
         self.exploration_enabled = exploration_enabled
+        self.uncertain_retry_enabled = uncertain_retry_enabled
+        self.change_evidence_enabled = change_evidence_enabled
+        self.change_evidence_decay = float(change_evidence_decay)
+        self._last_history_retry_gate: torch.Tensor | None = None
+        self._last_history_switch_gate: torch.Tensor | None = None
+        self._last_change_evidence: torch.Tensor | None = None
         self.control_residual_limit = float(control_residual_limit)
         self.control_pressure_limit = float(control_pressure_limit)
         self.control_uncertainty_power = max(1.0, float(control_uncertainty_power))
@@ -131,13 +140,18 @@ class AdaptiveControlModel(HybridDDMModel):
     def init_plastic_state(
         self,
         batch_size: int = 1,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Initialize adaptive control state, eligibility trace, value prediction, and uncertainty gate."""
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Initialize control state, eligibility trace, value prediction, gate, and change-evidence.
+
+        `change_evidence` is the recurrent volatility accumulator. Seeding it to
+        zero here is the session/episode reset — callers re-init per episode.
+        """
         control_state = torch.zeros(batch_size, 2, device=self.device)
         eligibility_trace = torch.zeros(batch_size, 2, device=self.device)
         prev_value_prediction = torch.zeros(batch_size, 1, device=self.device)
         prev_uncertainty_gate = torch.zeros(batch_size, 1, device=self.device)
-        return control_state, eligibility_trace, prev_value_prediction, prev_uncertainty_gate
+        change_evidence = torch.zeros(batch_size, 1, device=self.device)
+        return control_state, eligibility_trace, prev_value_prediction, prev_uncertainty_gate, change_evidence
 
     def update_plastic_history(
         self,
@@ -147,26 +161,51 @@ class AdaptiveControlModel(HybridDDMModel):
         prev_reward: torch.Tensor,
         prev_value_prediction: torch.Tensor,
         prev_history_gate: torch.Tensor,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        change_evidence: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Update adaptive control from outcome valence while returning critic delta."""
         action_trace = self._action_one_hot(prev_action)
         valid = (action_trace.sum(dim=1, keepdim=True) > 0).float()
         reward = prev_reward.reshape(-1, 1)
         delta = (reward - prev_value_prediction) * valid
         success_signal, failure_signal = self._outcome_valence(reward, valid)
+        if change_evidence is None:
+            change_evidence = torch.zeros_like(valid)
         if not self.control_state_enabled:
-            return torch.zeros_like(plastic_state), torch.zeros_like(eligibility_trace), delta.squeeze(-1)
+            self._store_history_gate_diagnostics(None, None, change_evidence)
+            return (
+                torch.zeros_like(plastic_state),
+                torch.zeros_like(eligibility_trace),
+                delta.squeeze(-1),
+                change_evidence,
+            )
 
         alternative_trace = torch.flip(action_trace, dims=[1])
         uncertainty = self._shape_uncertainty(prev_history_gate)
 
+        # Update order (Section 4a of the volatility-uncertainty design): fold the
+        # just-resolved failure into the change-evidence accumulator FIRST, then
+        # gate this same trial's retry/switch update. The disabled branch keeps
+        # the original gates bit-for-bit (verified by the flag-off behavioral hash).
+        if not self.change_evidence_enabled:
+            next_change_evidence = change_evidence
+            retry_gate = uncertainty
+            switch_gate = 1.0 - uncertainty
+        else:
+            next_change_evidence = (
+                self.change_evidence_decay * change_evidence
+                + (1.0 - self.change_evidence_decay) * failure_signal
+            )
+            retry_gate = uncertainty * (1.0 - next_change_evidence)
+            switch_gate = torch.clamp((1.0 - uncertainty) + next_change_evidence, 0.0, 1.0)
+
         updated_trace = eligibility_trace * self.effective_control_state_decay + action_trace
         rewarded_stay = self.effective_reward_learning_rate * success_signal * updated_trace
-        if self.persistence_enabled:
+        if self.persistence_enabled and self.uncertain_retry_enabled:
             uncertain_retry = (
                 self.effective_persistence_learning_rate
                 * failure_signal
-                * uncertainty
+                * retry_gate
                 * updated_trace
             )
         else:
@@ -174,7 +213,7 @@ class AdaptiveControlModel(HybridDDMModel):
         confident_switch = (
             self.effective_switch_learning_rate
             * failure_signal
-            * (1.0 - uncertainty)
+            * switch_gate
         )
         chosen_suppression = confident_switch * updated_trace
         alternative_boost = confident_switch * alternative_trace
@@ -186,7 +225,22 @@ class AdaptiveControlModel(HybridDDMModel):
             + alternative_boost
         )
         updated_state = torch.clamp(updated_state, min=-3.0, max=3.0)
-        return updated_state, updated_trace, delta.squeeze(-1)
+        self._store_history_gate_diagnostics(retry_gate, switch_gate, next_change_evidence)
+        return updated_state, updated_trace, delta.squeeze(-1), next_change_evidence
+
+    def _store_history_gate_diagnostics(
+        self,
+        retry_gate: torch.Tensor | None,
+        switch_gate: torch.Tensor | None,
+        change_evidence: torch.Tensor,
+    ) -> None:
+        """Cache the recurrence gates for offline sidecar logging (no functional role).
+
+        Detached so observability never retains a training autograd graph.
+        """
+        self._last_history_retry_gate = None if retry_gate is None else retry_gate.detach()
+        self._last_history_switch_gate = None if switch_gate is None else switch_gate.detach()
+        self._last_change_evidence = change_evidence.detach()
 
     def forward(
         self,
@@ -210,6 +264,7 @@ class AdaptiveControlModel(HybridDDMModel):
                 {
                     "plastic_stay_tendency": zero,
                     "raw_control_bias": zero,
+                    "control_bias": zero,
                     "control_gate": zero,
                     "retry_pressure": zero,
                     "switch_pressure": zero,
@@ -222,13 +277,14 @@ class AdaptiveControlModel(HybridDDMModel):
                     "raw_control_residual": zero,
                     "control_residual": zero,
                     "arbitration_adjustment": zero,
+                    "base_stay_tendency": base_outputs["stay_tendency"],
                 }
             )
             return outputs, next_state
 
         prev_action = x[:, 3]
         prev_reward = x[:, 4:5]
-        uncertainty = self._shape_uncertainty(1.0 - torch.abs(x[:, 0:1]))
+        uncertainty = self._shape_uncertainty(base_outputs["perceptual_gate"].unsqueeze(-1))
         has_prev_action = (prev_action.abs().reshape(-1, 1) > 0.0).float()
         action_trace = self._action_one_hot(prev_action)
         alternative_trace = torch.flip(action_trace, dims=[1])
@@ -291,6 +347,7 @@ class AdaptiveControlModel(HybridDDMModel):
                 "stay_tendency": stay_tendency.squeeze(-1),
                 "plastic_stay_tendency": control_bias.squeeze(-1),
                 "raw_control_bias": raw_control_bias.squeeze(-1),
+                "control_bias": control_bias.squeeze(-1),
                 "control_gate": control_gate.squeeze(-1),
                 "retry_pressure": retry_pressure.squeeze(-1),
                 "switch_pressure": switch_pressure.squeeze(-1),
@@ -303,6 +360,7 @@ class AdaptiveControlModel(HybridDDMModel):
                 "raw_control_residual": raw_control_residual.squeeze(-1),
                 "control_residual": control_residual.squeeze(-1),
                 "arbitration_adjustment": arbitration_adjustment.squeeze(-1),
+                "base_stay_tendency": base_outputs["stay_tendency"],
             }
         )
         return outputs, next_state

@@ -16,10 +16,19 @@ from agents.adaptive_control_config import (
 )
 from agents.adaptive_control_model import AdaptiveControlModel
 from agents.hybrid_trainer import HybridDDMTrainer
+from animaltasksim.logging import NDJSONSidecarLogger
 from animaltasksim.seeding import seed_everything
 from envs.ibl_2afc import ACTION_NO_OP, AgentMetadata as IBLAgentMetadata, IBL2AFCConfig, IBL2AFCEnv
+from envs.prl_reversal import PRLConfig, ProbabilisticReversalLearningEnv
 from envs.rdm_macaque import ACTION_HOLD, ACTION_LEFT, ACTION_RIGHT, AgentMetadata, RDMConfig, RDMMacaqueEnv
 from envs.utils_timing import PhaseTiming
+
+
+def _tensor_scalar(value: torch.Tensor | None) -> float | None:
+    """Extract a scalar from an optional tensor for diagnostic sidecar logging."""
+    if value is None:
+        return None
+    return float(value.detach().reshape(-1)[0].cpu())
 
 
 class AdaptiveControlTrainer(HybridDDMTrainer):
@@ -44,6 +53,9 @@ class AdaptiveControlTrainer(HybridDDMTrainer):
             control_state_enabled=self.config.control_state_enabled,
             persistence_enabled=self.config.persistence_enabled,
             exploration_enabled=self.config.exploration_enabled,
+            uncertain_retry_enabled=self.config.uncertain_retry_enabled,
+            change_evidence_enabled=self.config.change_evidence_enabled,
+            change_evidence_decay=self.config.change_evidence_decay,
             persistence_learning_rate=self.config.persistence_learning_rate,
             switch_learning_rate=self.config.switch_learning_rate,
             reward_learning_rate=self.config.reward_learning_rate,
@@ -74,7 +86,11 @@ class AdaptiveControlTrainer(HybridDDMTrainer):
             PhaseTiming("outcome", 10),
         )
 
-    def rollout(self, paths) -> dict[str, float]:
+    def rollout(
+        self,
+        paths: AdaptiveControlPaths,
+        diagnostics_path: Path | None = None,
+    ) -> dict[str, float]:
         """Run episodes in the environment and write schema-valid `.ndjson` logs."""
         if self.config.task == "ibl_2afc":
             ibl_config = IBL2AFCConfig(
@@ -88,7 +104,19 @@ class AdaptiveControlTrainer(HybridDDMTrainer):
             env = IBL2AFCEnv(ibl_config)
             wait_action = ACTION_NO_OP
             new_trial_phase = "iti"
-        else:
+        elif self.config.task == "prl":
+            prl_config = PRLConfig(
+                trials_per_episode=self.config.trials_per_episode,
+                log_path=paths.log,
+                agent=IBLAgentMetadata(name="adaptive_control", version=self.config.agent_version),
+                seed=self.config.seed,
+                phase_schedule=self._ibl_phase_schedule(self.config.max_commit_steps),
+                min_response_latency_steps=self.config.min_commit_steps,
+            )
+            env = ProbabilisticReversalLearningEnv(prl_config)
+            wait_action = ACTION_NO_OP
+            new_trial_phase = "iti"
+        elif self.config.task == "rdm":
             rdm_config = RDMConfig(
                 trials_per_episode=self.config.trials_per_episode,
                 log_path=paths.log,
@@ -104,15 +132,20 @@ class AdaptiveControlTrainer(HybridDDMTrainer):
             env = RDMMacaqueEnv(rdm_config)
             wait_action = ACTION_HOLD
             new_trial_phase = "fixation"
+        else:  # pragma: no cover - config Literal keeps this defensive
+            raise NotImplementedError(f"Adaptive-control rollout is not implemented for task={self.config.task!r}")
 
         step_ms = env.config.step_ms
         response_phase = next(p for p in env._phase_schedule if p.name == "response")  # noqa: SLF001
         effective_max_commit = min(self.config.max_commit_steps, response_phase.duration_steps)
         metrics: dict[str, list[float]] = {"cumulative_reward": [], "mean_rt_ms": []}
+        diagnostics = NDJSONSidecarLogger(diagnostics_path) if diagnostics_path is not None else None
         for episode in range(self.config.episodes):
             _, info = env.reset(seed=self.config.seed + episode)
             h, c = self.model.init_state()
-            plastic_state, eligibility_trace, prev_value_prediction, prev_history_gate = self.model.init_plastic_state()
+            plastic_state, eligibility_trace, prev_value_prediction, prev_history_gate, change_evidence = (
+                self.model.init_plastic_state()
+            )
             cumulative_reward = 0.0
             planned_action = wait_action
             commit_step_target = self.config.min_commit_steps
@@ -121,6 +154,7 @@ class AdaptiveControlTrainer(HybridDDMTrainer):
             prev_reward = 0.0
             prev_correct = 0.0
             current_stimulus = self._get_stimulus(env)
+            pending_diagnostic: dict[str, object] | None = None
             while True:
                 phase = info["phase"]
                 if phase == "response":
@@ -137,17 +171,18 @@ class AdaptiveControlTrainer(HybridDDMTrainer):
                             trial_norm,
                         )
                         x = torch.from_numpy(features).unsqueeze(0).to(self.device)
-                        plastic_state, eligibility_trace, _ = self.model.update_plastic_history(
+                        plastic_state, eligibility_trace, _, change_evidence = self.model.update_plastic_history(
                             plastic_state=plastic_state,
                             eligibility_trace=eligibility_trace,
                             prev_action=x[:, 3],
                             prev_reward=x[:, 4],
                             prev_value_prediction=prev_value_prediction,
                             prev_history_gate=prev_history_gate,
+                            change_evidence=change_evidence,
                         )
                         out, (h, c) = self.model(x, (h, c), plastic_state=plastic_state)
                         prev_value_prediction = out["critic_value"].reshape(-1, 1)
-                        prev_history_gate = torch.clamp(1.0 - torch.abs(x[:, 0:1]), min=0.0, max=1.0)
+                        prev_history_gate = out["perceptual_gate"].reshape(-1, 1)
 
                         stimulus = x[0, 0].item()
                         drift_gain = out["drift_gain"].item()
@@ -191,6 +226,21 @@ class AdaptiveControlTrainer(HybridDDMTrainer):
                         )
                         commit_step_target = int(total_rt_ms / step_ms)
                         commit_step_target = int(np.clip(commit_step_target, self.config.min_commit_steps, effective_max_commit))
+                        if diagnostics is not None:
+                            pending_diagnostic = self._build_control_diagnostic(
+                                info=info,
+                                outputs=out,
+                                stimulus=stimulus,
+                                prev_action=prev_action_val,
+                                prev_reward=prev_reward,
+                                prev_correct=prev_correct,
+                                planned_action=planned_action,
+                                ddm_steps=ddm_steps,
+                                commit_step_target=commit_step_target,
+                                change_evidence=_tensor_scalar(self.model._last_change_evidence),  # noqa: SLF001
+                                history_retry_gate=_tensor_scalar(self.model._last_history_retry_gate),  # noqa: SLF001
+                                history_switch_gate=_tensor_scalar(self.model._last_history_switch_gate),  # noqa: SLF001
+                            )
                     phase_step_val = info.get("phase_step", 0)
                     current_step = int(phase_step_val) if isinstance(phase_step_val, (int, float)) else 0
                     action = planned_action if current_step + 1 >= commit_step_target else wait_action
@@ -209,13 +259,18 @@ class AdaptiveControlTrainer(HybridDDMTrainer):
                         prev_action_val = -1.0
                     else:
                         prev_action_val = 0.0
-                    if self.config.task == "ibl_2afc" and abs(current_stimulus) < 1e-6:
-                        block_prior = float(info.get("block_prior", 0.5))
-                        expected_right = block_prior > 0.5
-                    else:
-                        expected_right = current_stimulus >= 0.0
-                    prev_correct = 1.0 if (planned_action == ACTION_RIGHT) == expected_right else 0.0
+                    prev_correct = 1.0 if bool(env._correct) else 0.0  # noqa: SLF001
                     prev_reward = float(reward)
+                    if diagnostics is not None and pending_diagnostic is not None:
+                        pending_diagnostic.update(
+                            {
+                                "reward": float(reward),
+                                "correct": bool(env._correct),  # noqa: SLF001
+                                "rt_ms": actual_rt_ms,
+                            }
+                        )
+                        diagnostics.log(pending_diagnostic)
+                        pending_diagnostic = None
                 if info["phase"] == new_trial_phase and info.get("phase_step", 0) == 0:
                     pass
                 if terminated:
@@ -223,9 +278,67 @@ class AdaptiveControlTrainer(HybridDDMTrainer):
                     metrics["mean_rt_ms"].append(float(np.mean(rt_tracker) if rt_tracker else 0.0))
                     break
         env.close()
+        if diagnostics is not None:
+            diagnostics.close()
         return {
             "mean_reward": float(np.mean(metrics["cumulative_reward"])) if metrics["cumulative_reward"] else 0.0,
             "mean_rt_ms": float(np.mean(metrics["mean_rt_ms"])) if metrics["mean_rt_ms"] else 0.0,
+        }
+
+    def _get_stimulus(self, env: Any) -> float:
+        """Extract the signed evidence value without exposing hidden PRL contingencies."""
+        if self.config.task in {"ibl_2afc", "prl"}:
+            return float(env._stimulus.get("contrast", 0.0))  # noqa: SLF001
+        return float(getattr(env, "_signed_coherence", 0.0))
+
+    @staticmethod
+    def _build_control_diagnostic(
+        *,
+        info: dict[str, object],
+        outputs: dict[str, torch.Tensor],
+        stimulus: float,
+        prev_action: float,
+        prev_reward: float,
+        prev_correct: float,
+        planned_action: int,
+        ddm_steps: int,
+        commit_step_target: int,
+        change_evidence: float | None = None,
+        history_retry_gate: float | None = None,
+        history_switch_gate: float | None = None,
+    ) -> dict[str, object]:
+        """Build one offline sidecar record without changing the trial schema."""
+
+        def scalar(name: str) -> float:
+            return float(outputs[name].detach().reshape(-1)[0].cpu())
+
+        return {
+            "change_evidence": change_evidence,
+            "history_retry_gate": history_retry_gate,
+            "history_switch_gate": history_switch_gate,
+            "session_id": str(info.get("session_id", "")),
+            "trial_index": int(info.get("trial_index", 0)),
+            "block_index": int(info.get("block_index", 0)),
+            "reversal": bool(info.get("reversal", False)),
+            "contingency": info.get("contingency"),
+            "stimulus": stimulus,
+            "prev_action": prev_action,
+            "prev_reward": prev_reward,
+            "prev_correct": prev_correct,
+            "planned_action": planned_action,
+            "ddm_steps": ddm_steps,
+            "commit_step_target": commit_step_target,
+            "base_stay_tendency": scalar("base_stay_tendency"),
+            "raw_control_bias": scalar("raw_control_bias"),
+            "control_bias": scalar("control_bias"),
+            "control_gate": scalar("control_gate"),
+            "persistence_pressure": scalar("persistence_pressure"),
+            "exploration_pressure": scalar("exploration_pressure"),
+            "arbitration_adjustment": scalar("arbitration_adjustment"),
+            "raw_control_residual": scalar("raw_control_residual"),
+            "control_residual": scalar("control_residual"),
+            "staleness_signal": scalar("staleness_signal"),
+            "stay_tendency": scalar("stay_tendency"),
         }
 
     def save(

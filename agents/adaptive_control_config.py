@@ -80,7 +80,8 @@ class AdaptiveControlConfig:
             exploration-only or full-control comparisons.
     """
 
-    task: Literal["ibl_2afc", "rdm"] = "ibl_2afc"
+    task: Literal["ibl_2afc", "rdm", "prl"] = "ibl_2afc"
+    reference_task: Literal["ibl_2afc", "rdm"] | None = None
     reference_log: Path | None = None
     output_dir: Path | None = None
     agent_version: str = "0.1.0"
@@ -110,6 +111,9 @@ class AdaptiveControlConfig:
     control_state_enabled: bool = True
     persistence_enabled: bool = True
     exploration_enabled: bool = False
+    uncertain_retry_enabled: bool = True
+    change_evidence_enabled: bool = False
+    change_evidence_decay: float = 0.7
     persistence_learning_rate: float = 0.8
     switch_learning_rate: float = 0.8
     reward_learning_rate: float = 0.6
@@ -132,15 +136,21 @@ class AdaptiveControlConfig:
             0.0,
             float(self.evidence_preservation_regularization),
         )
+        if not 0.0 <= float(self.change_evidence_decay) <= 1.0:
+            raise ValueError("change_evidence_decay must be within [0, 1]")
+        if self.reference_task is None:
+            self.reference_task = "rdm" if self.task == "rdm" else "ibl_2afc"
         paths = ProjectPaths.from_cwd()
         if self.reference_log is None:
-            if self.task == "ibl_2afc":
+            if self.reference_task == "ibl_2afc":
                 self.reference_log = paths.data / "ibl" / "reference.ndjson"
             else:
                 self.reference_log = paths.data / "macaque" / "reference.ndjson"
         if self.output_dir is None:
             if self.task == "ibl_2afc":
                 self.output_dir = paths.runs / "ibl_adaptive_control"
+            elif self.task == "prl":
+                self.output_dir = paths.runs / "prl_adaptive_control"
             else:
                 self.output_dir = paths.runs / "rdm_adaptive_control"
 
