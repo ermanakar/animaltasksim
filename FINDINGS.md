@@ -2049,3 +2049,229 @@ https://github.com/ermanakar/animaltasksim
 October 2025 – May 2026
 Registry: 80+ experiments spanning Sticky-Q, PPO, Bayes Observer, Hybrid DDM+LSTM, R-DDM, and Adaptive-Control agents
 ```
+
+## PRL Transfer Scaffold — May 30, 2026
+
+The next practical roadmap step is now implemented: adaptive control can be
+rolled from its IBL-trained evidence core into Probabilistic Reversal Learning
+(PRL) without changing the frozen `.ndjson` contract.
+
+The key protocol correction is conceptual. PRL options must remain visibly
+neutral. The richer option is a hidden environmental contingency, and payout
+probabilities reverse silently. The environment logs `reversal`,
+`block_index`, and `contingency` for offline analysis, but the acting policy
+does not receive an oracle reversal flag or a visual hint. It must infer change
+from reward outcomes.
+
+The evaluator now reports a PRL fingerprint:
+
+1. `optimal_choice_rate`
+2. `reward_rate`
+3. `early_optimal_choice_rate` on trials 1-5 after a reversal
+4. `late_optimal_choice_rate` on trials 6-10 after a reversal
+5. `adaptation_lift = late - early`
+6. `end_block_optimal_choice_rate` on the final 20 trials before reversal
+7. `block_learning_lift = end_block - early`
+8. `stay_after_rewarded`
+9. `switch_after_unrewarded`
+
+`scripts/prl_transfer_validation_suite.py` compares five paired conditions:
+`true_no_control`, `exploration_only`, `persistence_only`,
+`full_control_default`, and `full_control_persist_half`.
+
+A lifecycle smoke run was generated at
+`runs/prl_adaptive_control_smoke_codex/`: 170 schema-valid trials, 2 hidden
+reversals, `commit_rate=1.0`, `optimal_choice_rate=0.424`,
+`adaptation_lift=+0.100`, and a rendered HTML report. These numbers are wiring
+evidence only. They are not a transfer claim: the smoke used one seed,
+`persistence_only`, and `epochs=0`.
+
+The DMS environment is also schema-valid and tested, but remains intentionally
+one step behind PRL. Adaptive-control DMS rollout and memory-specific metrics
+are not wired yet.
+
+### Matched transfer result
+
+The five-condition matched suite completed on May 30, 2026:
+
+```bash
+python scripts/prl_transfer_validation_suite.py \
+  --run-root runs/prl_transfer_validation_suite \
+  --seeds 42 123 456 789 2026
+```
+
+All 25 runs were usable: five paired seeds per condition, 1,600 trials and 16
+hidden reversals per run, 40,000 schema-valid trials total, 100% commit rate,
+and 0/25 degenerate runs.
+
+| Condition | Overall optimal | Reward rate | Early optimal | End-block optimal | Block-learning lift |
+|-----------|-----------------|-------------|---------------|-------------------|---------------------|
+| true no-control | 0.504 | 0.504 | 0.460 | 0.513 | +0.053 |
+| exploration-only | 0.579 | 0.549 | 0.322 | 0.683 | +0.360 |
+| persistence-only | 0.469 | 0.479 | 0.472 | 0.492 | +0.019 |
+| full-control default | 0.507 | 0.501 | 0.510 | 0.466 | -0.044 |
+| full-control persist-half | 0.510 | 0.502 | 0.478 | 0.543 | +0.066 |
+
+The initial 10-trial window under-reported the main phenomenon.
+`exploration_only` is deliberately perseverative immediately after a hidden
+swap, then recovers over the block as reward evidence accumulates. Its
+end-block optimal-choice rate improves by `+0.169` versus no-control, and its
+block-learning lift improves by `+0.307`; both comparisons are positive in 5/5
+paired seeds. Versus persistence-only, the block-learning improvement is
+`+0.341`, also positive in 5/5 seeds.
+
+The arbitration result is negative and useful. Neither full-control profile
+preserves the exploration-only learning effect. `full_control_persist_half`
+improves overall optimal choice versus persistence-only by `+0.042` in 5/5
+seeds, but its block-learning lift is only `+0.066`, far below
+exploration-only's `+0.360`.
+
+Claim boundary: this supports an isolated exploration-specific transfer
+phenotype inside the simulator. It does not establish PRL animal parity because
+the repository has no PRL animal reference dataset. It also does not validate a
+combined full-control profile. The next experiment should tune arbitration so
+full control preserves PRL learning without erasing the validated IBL retry
+phenotype.
+
+### PRL arbitration scale sweep
+
+The targeted follow-up completed on May 30, 2026:
+
+```bash
+python scripts/adaptive_control_interaction_sweep.py \
+  --task prl \
+  --run-root runs/prl_adaptive_control_interaction_sweep_v1 \
+  --seeds 42 123 456 789 2026 \
+  --episodes 4 --trials-per-episode 400 --epochs 1 \
+  --max-sessions 5 --max-trials-per-session 128
+```
+
+All 50 runs were usable: 10 conditions x 5 paired seeds, 80,000 schema-valid
+trials, 100% commit rate, and 0/50 degenerate runs.
+
+| Full-control condition | Persistence scale | Exploration scale | Overall optimal | End-block optimal | Block-learning lift |
+|------------------------|-------------------|-------------------|-----------------|-------------------|---------------------|
+| default | 1.6 | 0.8 | 0.507 | 0.466 | -0.044 |
+| persist-half | 0.8 | 0.8 | 0.510 | 0.543 | +0.066 |
+| persist-quarter | 0.4 | 0.8 | 0.491 | 0.459 | -0.094 |
+| explore-strong | 1.6 | 1.2 | 0.504 | 0.444 | -0.126 |
+| explore-double | 1.6 | 1.6 | 0.511 | 0.534 | +0.057 |
+| balanced | 0.8 | 1.2 | 0.503 | 0.445 | -0.080 |
+| explore-dominant | 0.4 | 1.6 | 0.470 | 0.454 | -0.016 |
+
+For comparison, `exploration_only` remains at `0.579` overall optimal choice,
+`0.683` end-block optimal choice, and `+0.360` block-learning lift. Every
+full-control condition loses block-learning lift against `exploration_only` in
+5/5 paired seeds. Loading the saved checkpoints showed that trained scales
+remained close to their configured starts, so the negative result is not caused
+by the optimizer collapsing the grid to one setting.
+
+Interpretation: global scale tuning is not enough. The isolated exploration
+controller shows a slow reward-driven recovery curve, while the combined
+controller does not learn the block even when persistence is reduced or
+exploration is strengthened. The next implementation step is a sidecar
+reversal-window diagnostic for `control_bias`, persistence pressure,
+exploration pressure, arbitration adjustment, and final bounded residual. That
+diagnostic should preserve the frozen trial schema. The next model test should
+be state-dependent arbitration, followed by matched PRL and IBL validation.
+
+The sidecar diagnostic is now implemented:
+
+```bash
+python scripts/prl_arbitration_diagnostic.py \
+  --source-root runs/prl_adaptive_control_interaction_sweep_v1 \
+  --output-root runs/prl_arbitration_diagnostic_v1
+```
+
+It rerolls `exploration_only`, `full_control_persist_half`, and
+`full_control_explore_double` checkpoints across five seeds without retraining.
+Each run writes the authoritative schema-validated `trials.ndjson` plus a
+separate `control_diagnostics.ndjson` sidecar containing direct control bias,
+persistence pressure, exploration pressure, arbitration adjustment, and final
+bounded residual. A 100-trial smoke reroll crossed one hidden reversal and
+produced 100 schema-valid trials, 100 sidecar records, and populated summary
+CSVs. Its values are wiring evidence only, not a new scientific result.
+
+## PRL Perseveration Mechanism Confirmed — May 30, 2026
+
+The arbitration diagnostic resolved the PRL transfer failure to a specific
+mechanism, and a controlled ablation then confirmed it.
+
+**The diagnostic decomposition was misleading at the surface.** The printed
+persistence/exploration pressure columns are essentially zero in PRL for every
+condition, and the exploration head is silent even in `exploration_only`. The
+full sidecar decomposition shows `control_gate = 1.000` in every post-reversal
+window. This is the tell: PRL options are visually neutral, so the
+stimulus-derived uncertainty signal `uncertainty = 1 - |contrast|` is pinned at
+its maximum on every trial. The arbitration mixer is not the problem; it barely
+acts (`arbitration_adjustment ~ 0.002`).
+
+**The actual lever is the `uncertain_retry` term in
+`AdaptiveControlModel.update_plastic_history`.** That term — "when uncertain and
+the last action failed, retry the same action" — is gated by uncertainty. In
+IBL, uncertainty varies with contrast, so the term only fires on genuinely
+ambiguous trials. In PRL, with uncertainty pinned at 1.0, it fires at full
+strength on every failure, while the opposing `confident_switch` term (scaled by
+`1 - uncertainty`) is dead. The result is relentless perseveration on the
+just-failed option.
+
+**Controlled ablation (5 seeds, `persistence_only` with a new
+`uncertain_retry_enabled=False` flag, otherwise identical):**
+
+| metric | `persistence_only` | `persistence_only` no-retry | `exploration_only` |
+|---|---:|---:|---:|
+| block_learning_lift | +0.019 | **+0.302** | +0.360 |
+| optimal_choice_rate | 0.469 | **0.593** | 0.579 |
+| end-of-block optimal | 0.492 | **0.657** | 0.682 |
+| adaptation_lift | -0.035 | +0.123 | +0.070 |
+
+All 5 seeds cleared the +0.20 confirmation threshold (paired deltas vs
+`persistence_only`: +0.069 to +0.441). Disabling only the `uncertain_retry`
+term — with the persistence pressure head and bias scale left fully enabled —
+turns below-chance perseveration into competent reversal learning that matches
+the isolated exploration controller.
+
+**Two conclusions narrow the hypothesis space:**
+
+1. The "exploration controller" never produced the `exploration_only` win. The
+   exploration head is inactive; the win came entirely from the *absence* of the
+   `uncertain_retry` perseveration update. `exploration_only` won by subtraction.
+2. The root cause is a degenerate uncertainty signal, not the arbitration layer.
+   `uncertainty = 1 - |stimulus|` carries no information when the stimulus is
+   always neutral. The principled fix (not yet implemented) is a volatility /
+   reward-history uncertainty signal so that both `uncertain_retry` and
+   `confident_switch` behave sensibly in PRL and IBL alike.
+
+Claim boundary unchanged: these zero-shot agents still top out near 0.59 optimal
+choice. The confirmed result is mechanistic (perseveration via `uncertain_retry`
+is necessary and sufficient for the persistence deficit), not a PRL transfer
+success. The new `uncertain_retry_enabled` flag defaults to `True`, so all prior
+runs and checkpoints are unaffected; it exists as a lesion knob.
+
+## Change-Evidence Recurrence Implemented — May 31, 2026
+
+The principled fix is now implemented (flag-gated, default off, validation
+pending). The single uncertainty signal is split into two: `perceptual_uncertainty`
+(the kept sensory `1 - |stimulus|`) and `change_evidence`, a decaying accumulator
+of recent committed failures (`λ·prev + (1−λ)·failure`, `change_evidence_decay`
+default 0.7). They drive opposite-direction gates:
+`retry_gate = perceptual·(1 − change_evidence)` and
+`switch_gate = clamp((1 − perceptual) + change_evidence)`. In IBL (`change_evidence`
+low in stable blocks) this reduces to current behavior; in PRL (perceptual pinned
+at 1.0) accumulated failures drive switching. The accumulator is essential because
+the 80/20 contingency means single-loss switching would fire on bad luck.
+
+Engineering: the raw perceptual gate is now model-owned and returned from
+`forward()` (no trainer rebuild); the recurrence is threaded through the plastic
+state with update-first timing, session/episode resets, and TBPTT detach; the
+base `HybridDDMModel` passes `change_evidence` through unchanged. Flag-off is a
+verified bit-for-bit no-op (IBL behavioral hash unchanged); flag-on is confirmed
+live. The sidecar logs `change_evidence`, `history_retry_gate`, and
+`history_switch_gate`, and the validation suites thread the new flags.
+
+Open calibration concern: at λ=0.7 the retry→switch crossover is the 2nd
+consecutive loss (~4% by chance on the good 80/20 option), likely too eager. The
+recovery-sequence unit test passes (no switch-back after recovery), but λ must be
+set by the recovery calibration run, not assumed. Still pending: flag-on IBL
+in-distribution check, λ calibration, and the matched flag-on PRL suite. No
+transfer claim until those land. See `docs/prl_volatility_uncertainty_design.md`.

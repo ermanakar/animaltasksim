@@ -442,9 +442,31 @@ Interpretation: default full-control was over-weighted toward persistence for th
 
 ## 11. Recommended next work
 
-The scaffold and phase-1 validation are complete. The next scientific steps are:
+The IBL scaffold, phase-1 validation, and PRL transfer plumbing are complete.
+PRL is now a hidden-contingency task: options stay neutral, reversals are
+available to offline analysis, and the acting policy must infer change from
+reward outcomes. Use [PRL Transfer Design](prl_transfer_design.md) for the
+protocol and command.
 
-1. stress-test `full_control_persist_half` as the current full-control arbitration candidate
-2. test whether the adaptive-control idea transfers to PRL/DMS-style tasks
-3. keep the claim narrow: biologically inspired control mechanism, not exact anatomy
-4. avoid spending more budget on the nonlinear gate unless a task-transfer result makes it decisive
+The first matched PRL suite is also complete. It supports a narrow
+exploration-specific transfer result: `exploration_only` reaches `0.683`
+end-of-block optimal choice and `+0.360` block-learning lift, beating no-control
+by `+0.307` lift in 5/5 paired seeds. A follow-up 10-condition PRL interaction
+sweep then tested seven full-control scale variants. Every one still lost
+block-learning lift versus `exploration_only` in 5/5 paired seeds. The current
+problem is state-dependent arbitration, not whether isolated exploration can
+learn a hidden reversal or whether one global scale knob needs a small tweak.
+
+The next scientific steps are:
+
+1. run `scripts/prl_arbitration_diagnostic.py` to record reversal-window controller contributions without altering the frozen NDJSON schema
+2. test state-dependent arbitration rather than another global scale sweep
+3. preserve the exploration-only block-learning lift without weakening the validated IBL retry phenotype
+4. keep the claim narrow: isolated exploration transfers in-simulator; the combined controller and animal parity remain unresolved
+5. define a DMS memory fingerprint before wiring adaptive-control DMS rollout
+
+```bash
+python scripts/prl_arbitration_diagnostic.py \
+  --source-root runs/prl_adaptive_control_interaction_sweep_v1 \
+  --output-root runs/prl_arbitration_diagnostic_v1
+```

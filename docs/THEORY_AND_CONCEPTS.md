@@ -32,7 +32,8 @@ The key insight is that animals are not optimal decision-makers. They are influe
 
 ## The Tasks
 
-AnimalTaskSim recreates two classic experiments from neuroscience. Think of each one as a simple game with precise rules copied from real labs.
+AnimalTaskSim recreates two classic experiments from neuroscience and adds a
+third transfer probe. Think of each one as a simple game with precise rules.
 
 ### Task 1: The Mouse Contrast Game (IBL 2AFC)
 
@@ -52,7 +53,29 @@ AnimalTaskSim recreates two classic experiments from neuroscience. Think of each
 
 **In the simulator.** The agent gets a coherence value (0% = pure noise, 100% = all dots agree) and must choose left or right. Importantly, the agent also controls *when* to respond — just like the real monkey, it has to decide when it has gathered enough evidence to commit.
 
-Both tasks ask the same basic question: **How do brains decide when the answer is not obvious?**
+### Task 3: The Silent Rule-Swap Game (PRL)
+
+**The experiment.** Two choices look the same, but one pays out more often. The
+agent has to learn which one is better by trying them. Then, without warning,
+the payout probabilities swap.
+
+**What makes it hard.** The environment does not announce the reversal. A
+single missed reward is ambiguous: the good option sometimes fails because the
+task is probabilistic. The agent has to accumulate evidence from outcomes,
+rather than react to a visible cue.
+
+**In the simulator.** Both options stay visually neutral. Hidden payout
+contingencies are logged for offline analysis, but the acting agent only sees
+neutral options and the ordinary previous-trial outcome path. The matched
+suite found a reproducible exploration-only recovery phenotype. This is still
+not an animal-parity result because the repository has no PRL animal reference.
+
+There is also a schema-valid **Delayed Match-to-Sample (DMS)** environment
+scaffold for future memory experiments. Its adaptive-control rollout and
+memory-specific scorecard are intentionally not wired yet.
+
+Together, the tasks ask: **How do brains decide under uncertainty, notice when
+the world changed, and remember what matters long enough to act?**
 
 ---
 
@@ -333,6 +356,28 @@ Paired retry lift for full control was `+0.109 +/- 0.086`, positive in 5/5 seeds
 
 Later exploration probes sharpened that boundary. Rewarded-streak exploration failed; the block-switch screen found an exploration-specific lead, but default full-control did not preserve it over persistence-only. The interaction sweep then identified `full_control_persist_half` (`persistence_bias_scale=0.8`, `exploration_bias_scale=0.8`) as the best current full-control arbitration candidate: it matched exploration-only block-switch lift (`+0.136`) and beat persistence-only by `+0.037` in 5/5 seeds. It still weakened retry gap relative to persistence-only (`0.067` vs `0.091`), so it is a comparison/transfer candidate, not the validated default.
 
+The PRL transfer suite gave that lead a harder test. Exploration-only started
+out perseverative after hidden payout reversals (`0.322` optimal choices on
+trials 1-5), then recovered by the end of each block (`0.683` optimal choices
+on the final 20 trials). Its block-learning lift was `+0.360`, compared with
+`+0.053` under no control. That difference was positive in 5/5 paired seeds.
+The combined full-control variants did not preserve the effect. The analogy is
+an engine test: the exploration engine works alone, but the current arbitration
+still lets persistence drown it out when both engines are connected.
+
+The next PRL interaction sweep tried seven different full-control scale
+combinations. None preserved the exploration-only learning curve: the best
+combined settings reached only `+0.066` and `+0.057` block-learning lift,
+compared with `+0.360` for exploration-only. Think of this as changing the
+volume knobs on two speakers and discovering that the problem is not simply
+volume. The system needs a better rule for deciding which speaker should be
+heard in a particular situation.
+
+The next diagnostic therefore records each speaker separately in an offline
+sidecar: direct control bias, persistence pressure, exploration pressure, the
+arbitration adjustment, and the final bounded residual. It does not alter the
+behavioral trial log or give the acting policy any hidden reversal hint.
+
 This is legitimate as a computational result, but it is not a claim of exact brain anatomy. The analogy is: real brains likely use separate sensory, value, persistence, exploration, and arbitration-like computations. The model tests whether that computational separation can generate animal-like behavior.
 
 The gate lesion sharpened the caveat. A linear uncertainty gate still worked somewhat (`+0.087 +/- 0.130`, positive in 3/5 seeds), while the nonlinear gate was stronger and more reliable. So the honest claim is not "the exponent 2 gate is necessary." The honest claim is "uncertainty-gated adaptive control is useful, and sharpening the gate improves robustness."
@@ -342,8 +387,9 @@ The gate lesion sharpened the caveat. A linear uncertainty gate still worked som
 | Gap | Detail |
 |-----|--------|
 | History is injected, not learned | The win-stay and lose-shift strengths (0.30 and 0.15) are hand-set numbers, not values the history networks discovered on their own. The architecture *can* express history effects, but it cannot yet *discover* them from data. |
-| Adaptive control is an analogy | The new controller is lesion-tested in simulation, but it is not a neural anatomy claim and has not transferred to PRL/DMS yet. |
-| Exploration is not isolated | Exploration is off by default. `full_control_persist_half` rescues a block-switch lead, but it trades off retry strength and needs transfer before becoming claim-bearing. |
+| Adaptive control is an analogy | The controller is lesion-tested in simulation, but it is not a neural anatomy claim. |
+| PRL animal parity is not tested | The exploration-only lesion shows reproducible hidden-contingency recovery, but there is no PRL animal reference dataset in this repository. |
+| Full-control arbitration is unresolved | Exploration works when isolated. A seven-profile full-control scale sweep still suppressed most of the PRL block-learning benefit, so `persistence_only` remains the IBL default and the next test must be state-dependent. |
 | Lapse variance across seeds | Lapse rates range from 0.043 to 0.156 across seeds, suggesting the lapse mechanism interacts with training dynamics in ways we do not fully understand. |
 | Single task validated | Results are validated on IBL mouse only. The macaque RDM task produces correct reaction-time dynamics but lacks history effects (the macaque in the reference dataset was overtrained). |
 
@@ -399,8 +445,8 @@ Training runs on CPU in under 20 minutes.
 ### Want to Contribute?
 
 1. Read [AGENTS.md](../AGENTS.md) for coding standards
-2. Run `pytest tests/` (104 tests should pass)
-3. Areas where help is especially welcome: teaching history networks to learn from data, lesion experiments (what happens when you remove each circuit?), new tasks (probabilistic reversal learning, delayed match-to-sample)
+2. Run `pytest tests/` (176 tests should pass)
+3. Areas where help is especially welcome: PRL arbitration sweeps, teaching history networks to learn from data, lesion experiments, and defining the DMS memory fingerprint
 
 ---
 
@@ -421,6 +467,7 @@ Training runs on CPU in under 20 minutes.
 | **Lapse** | A trial where the decision-maker makes an error despite strong evidence — usually due to momentary inattention |
 | **LSTM** | Long Short-Term Memory network — a type of neural network that remembers patterns across a sequence of events |
 | **Psychometric curve** | A plot of accuracy vs evidence strength — shows how sensitive the decision-maker is |
+| **PRL** | Probabilistic Reversal Learning — choose between neutral options, then adapt when their hidden payout odds silently swap |
 | **RDM** | Random-Dot Motion — the monkey dot-direction task |
 | **RT** | Reaction Time — how long it takes to respond |
 | **Stay tendency** | How biased the agent is toward repeating its previous choice |

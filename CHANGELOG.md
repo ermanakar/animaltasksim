@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **Probabilistic Reversal Learning transfer path**: Added a hidden-contingency PRL environment, PRL-specific reversal metrics, HTML report visualization, registry metadata, and a five-condition matched transfer suite.
+- **Slow PRL recovery metrics**: Added `end_block_optimal_choice_rate` and `block_learning_lift` after the matched suite showed that a 10-trial window under-reported outcome-driven reversal learning.
+- **Delayed Match-to-Sample scaffold**: Added a schema-valid DMS environment and focused environment tests. Adaptive-control DMS rollout remains intentionally unwired.
+- **PRL arbitration diagnostic**: Added a checkpoint-reroll CLI and a separate `control_diagnostics.ndjson` sidecar for reversal-window controller decomposition without altering the frozen trial schema.
+- **`uncertain_retry` lesion flag**: Confirmed (5-seed) that the PRL persistence deficit is the uncertainty-gated `uncertain_retry` term firing on every failure because PRL's neutral stimulus pins uncertainty at 1.0. Added `uncertain_retry_enabled` (default on) to ablate it.
+- **Change-evidence recurrence (flag-gated, default off)**: Added `change_evidence_enabled` / `change_evidence_decay`. A decaying accumulator of recent committed failures splits the single uncertainty gate into opposite-direction `history_retry_gate` and `history_switch_gate`, so accumulated volatility (not stimulus clarity) drives switching in PRL while IBL is preserved. The raw perceptual gate is now model-owned and threaded (no trainer rebuild). Flag-off is a verified bit-for-bit no-op. Validation pending.
+- **Regression coverage**: Added PRL/DMS environment tests, PRL metric tests, registry extraction tests, PRL suite tests, adaptive-control PRL rollout coverage, sidecar diagnostic tests, and change-evidence recurrence tests (defaults/threading, decay rejection, raw-gate output, base sentinel pass-through, transition-table arithmetic, recovery sequence) plus diagnostic interruption-handling tests. Total: 176 tests.
+
+### Changed
+
+- **Adaptive-control reference routing**: PRL uses the IBL reference log to train the shared evidence core before zero-shot transfer rollout.
+- **PRL protocol fidelity**: PRL options are visually neutral. Hidden payout reversals are logged for offline analysis but are not exposed to the acting policy.
+- **Validation suites**: `adaptive_control_validation_suite.py` and the PRL transfer suite now expose and thread `change_evidence_enabled` / `change_evidence_decay` so flag-on science runs are reproducible.
+- **PRL arbitration status**: Completed a 10-condition, 50-run PRL interaction sweep. Global persistence/exploration scale changes did not preserve the exploration-only block-learning phenotype inside full control, so the next step is a state-dependent arbitration diagnostic rather than another scalar sweep.
+
 ## [0.2.1] - 2026-03-01
 
 ### Fixed
