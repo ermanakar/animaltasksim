@@ -457,16 +457,20 @@ block-learning lift versus `exploration_only` in 5/5 paired seeds. The current
 problem is state-dependent arbitration, not whether isolated exploration can
 learn a hidden reversal or whether one global scale knob needs a small tweak.
 
+The sidecar diagnostic then localized the deficit: PRL's neutral options pin
+the old stimulus-derived uncertainty signal at 1.0, so `uncertain_retry` fires
+after every failure. A flag-gated change-evidence recurrence now accumulates
+recent failures and uses them to close the retry gate while opening the switch
+gate. Safety-gated calibration rejected λ=0.7 as too eager and selected λ=0.9
+as the leading opt-in combined-profile candidate. With `uncertain_retry` still
+enabled, λ=0.9 full control reaches PRL block-learning lift `+0.469` and optimal
+choice `0.706`; its IBL retry gap is `0.115` versus the historical flag-off
+`0.165`.
+
 The next scientific steps are:
 
-1. run `scripts/prl_arbitration_diagnostic.py` to record reversal-window controller contributions without altering the frozen NDJSON schema
-2. test state-dependent arbitration rather than another global scale sweep
-3. preserve the exploration-only block-learning lift without weakening the validated IBL retry phenotype
-4. keep the claim narrow: isolated exploration transfers in-simulator; the combined controller and animal parity remain unresolved
+1. keep λ=0.9 opt-in and inspect reversal-window traces when refining the remaining IBL retry-gap tradeoff
+2. keep `persistence_only` as the validated IBL default until combined-profile promotion criteria are agreed explicitly
+3. preserve the frozen NDJSON schema and use the sidecar diagnostic for internal controller traces
+4. keep the claim narrow: the combined controller now transfers in-simulator; PRL animal parity remains untested
 5. define a DMS memory fingerprint before wiring adaptive-control DMS rollout
-
-```bash
-python scripts/prl_arbitration_diagnostic.py \
-  --source-root runs/prl_adaptive_control_interaction_sweep_v1 \
-  --output-root runs/prl_arbitration_diagnostic_v1
-```

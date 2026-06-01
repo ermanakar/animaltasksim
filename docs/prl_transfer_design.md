@@ -144,9 +144,9 @@ DMS is one step behind PRL: its environment and schema path exist, but
 adaptive-control rollout and memory-specific metrics are deliberately not wired
 yet.
 
-## Next Experiment
+## Follow-up Experiment
 
-Run the checkpoint-reroll sidecar diagnostic:
+The checkpoint-reroll sidecar diagnostic used for the follow-up was:
 
 ```bash
 python scripts/prl_arbitration_diagnostic.py \
@@ -159,7 +159,14 @@ and `full_control_explore_double` across the same five seeds. It records
 `control_bias`, persistence pressure, exploration pressure, arbitration
 adjustment, and final bounded residual across each hidden-contingency block.
 These values live in a separate `control_diagnostics.ndjson` sidecar;
-`trials.ndjson` remains frozen. Use the resulting decomposition to design a
-state-dependent arbitration lesion: persistence should remain available for
-ambiguous retry behavior, while exploration must be allowed to act when reward
-evidence suggests that the hidden contingency has changed.
+`trials.ndjson` remains frozen.
+
+The decomposition localized the deficit to `uncertain_retry`: neutral PRL
+options pin the old stimulus-derived uncertainty signal at 1.0, so retry fires
+after every failure. The follow-up change-evidence recurrence accumulates
+recent failures and uses them to close retry while opening switch behavior.
+Safety-gated calibration selected λ=0.9 as the leading opt-in combined profile:
+with `uncertain_retry` still enabled, full control reaches PRL block-learning
+lift `+0.469` and optimal choice `0.706`. The feature remains default off
+because its IBL retry gap (`0.115`) still trails the historical flag-off
+result (`0.165`).

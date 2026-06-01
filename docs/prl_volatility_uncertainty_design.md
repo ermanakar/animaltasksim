@@ -1,14 +1,14 @@
 # Design Note: Change-Evidence Gating for Adaptive Control
 
-**Status:** IMPLEMENTED (May 31, 2026), flag-gated `change_evidence_enabled`
-(default off), validation pending. Design history below kept for provenance.
-Flag-off verified bit-for-bit no-op; flag-on confirmed live. Centralization,
-two-gate recurrence, update-order, TBPTT detach, session/episode reset, base
-sentinel pass-through, and sidecar fields all landed. Remaining: flag-on IBL
-in-distribution check, recovery calibration to choose λ (the unit recovery test
-passes at λ=0.7 but the 80/20 false-trigger concern stands), and the matched
-flag-on PRL suite.
-**Date:** May 30, 2026 (rev. May 31, 2026)
+**Status:** IMPLEMENTED AND CALIBRATED (June 1, 2026), flag-gated
+`change_evidence_enabled` (default off). Design history below kept for
+provenance. Flag-off is a verified bit-for-bit no-op. Safety-gated validation
+rejected λ=0.7 as too eager and selected λ=0.9 as the leading opt-in
+combined-profile candidate: with `uncertain_retry` still enabled, full-control
+PRL block-learning lift reaches `+0.469` and optimal choice reaches `0.706`;
+IBL full-control retry gap reaches `0.115` versus the historical flag-off
+`0.165`, so the feature is not promoted to a default.
+**Date:** May 30, 2026 (rev. June 1, 2026)
 **Supersedes:** v1 of this note, which folded everything into a single
 `uncertainty` dial. That was wrong — see Section 2. v2.1 added the per-trial
 update order (4a), the stored-perceptual state flow (Section 7), an explicit
@@ -354,8 +354,9 @@ Today `1 − |contrast|` is rebuilt in **four** places (model `forward` line 235
 
 ## 11. Out of scope (this step)
 
-- Making PRL agents *good* absolutely (they top out ~0.59; needs training
-  changes, not just the gate).
+- Claiming PRL animal parity. The repository has no PRL animal reference
+  dataset; the new ~0.71 in-simulator optimal-choice result is a transfer probe,
+  not a parity result.
 - Explicit value-gap (`choice_confidence`) modulation of the switch gate —
   deferred follow-up (Section 2).
 - Learnable λ or learnable blend weights (optimizer-exploitation risk).
@@ -363,21 +364,41 @@ Today `1 − |contrast|` is rebuilt in **four** places (model `forward` line 235
 
 ## 12. Related cleanups (surfaced in review, tracked separately)
 
-- **Diagnostic skip-logic:** `prl_arbitration_diagnostic.py` skips a reroll when
-  the *sidecar file* exists, but sidecars flush line-by-line, so an interrupted
-  partial run could later be summarized as complete. Skip only when the
-  completion *manifest* exists and row counts match. (Does not affect current
-  results — those runs finished with the full 1600 trials each.)
+- **Diagnostic skip-logic:** resolved. `prl_arbitration_diagnostic.py` now
+  skips a reroll only when the completion manifest exists and row counts match,
+  so an interrupted sidecar cannot be summarized as complete.
 - **Matplotlib backend:** report tests can abort on some macOS setups if a GUI
   backend is selected; add `matplotlib.use("Agg")` for headless robustness. (The
-  full suite passes 166/166 in the current dev environment.)
+  full suite passes 176/176 in the current dev environment.)
+
+## 12a. Validation result — June 1, 2026
+
+The safety sequence was run in order: IBL first, then PRL only for viable λ
+settings. PRL was intentionally skipped for λ=0.7 after it failed the IBL gate
+and for λ=0.85 after it was dominated by λ=0.8.
+
+| λ | IBL full-control retry gap | PRL full-control block-learning lift | interpretation |
+|---|---:|---:|---|
+| flag off | 0.165 | -0.044 | historical baseline |
+| 0.70 | 0.066 | not run | too eager |
+| 0.80 | 0.099 | +0.379 | viable first rescue |
+| 0.85 | 0.091 | not run | dominated |
+| 0.90 | **0.115** | **+0.469** | leading opt-in combined profile |
+
+At λ=0.9, IBL psychometric and chronometric fingerprints remain healthy, with
+zero degenerate runs and zero reaction-time ceiling warnings. All adaptive PRL
+conditions beat no control on paired block-learning lift in 5/5 seeds while
+`uncertain_retry` stays enabled. This is the intended win: one state-dependent
+rule now regulates retry versus switch behavior across both tasks. The
+remaining IBL retry-gap shortfall is why the feature stays default off.
 
 ## 13. Why this is the right next step
 
 The `uncertain_retry` ablation proved *what* breaks PRL but left a band-aid
 switch. This removes the band-aid by fixing the root cause — a sensory signal
-masquerading as a general one — in a way that, if it clears Section 9, makes one
-controller behave correctly in both a stable perceptual task and a volatile
-reversal task. That cross-task robustness, not raw PRL score, is the scientific
-payoff: evidence that uncertainty/change-gated arbitration is a *general*
-adaptation mechanism, not an IBL-specific fit.
+masquerading as a general one. Having cleared the Section 9 safety sequence, it
+now makes one controller behave sensibly in both a stable perceptual task and a
+volatile reversal task. That cross-task robustness, not raw PRL score, is the
+scientific payoff: evidence that uncertainty/change-gated arbitration is a
+*general* adaptation mechanism, not an IBL-specific fit. The remaining IBL
+retry-gap shortfall still keeps the result opt-in.

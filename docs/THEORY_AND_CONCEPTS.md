@@ -373,10 +373,23 @@ volume knobs on two speakers and discovering that the problem is not simply
 volume. The system needs a better rule for deciding which speaker should be
 heard in a particular situation.
 
-The next diagnostic therefore records each speaker separately in an offline
-sidecar: direct control bias, persistence pressure, exploration pressure, the
-arbitration adjustment, and the final bounded residual. It does not alter the
+The next diagnostic recorded each speaker separately in an offline sidecar:
+direct control bias, persistence pressure, exploration pressure, the
+arbitration adjustment, and the final bounded residual. It did not alter the
 behavioral trial log or give the acting policy any hidden reversal hint.
+
+That diagnostic found a simpler failure than expected. In PRL, both options
+look visually neutral, so the old "uncertainty" dial is pinned at maximum. The
+agent therefore retries failed choices too strongly. The change-evidence
+recurrence adds a second dial: recent failures accumulate, then gradually fade
+after wins. Think of the first dial as windshield visibility and the new dial
+as a warning light for repeated wrong turns. Safety-gated calibration rejected
+λ=0.7 as too jumpy and selected λ=0.9 as the leading opt-in combined profile.
+With `uncertain_retry` still enabled, full-control PRL block-learning lift
+improved from `-0.044` to `+0.469`; IBL full-control retry gap reached `0.115`
+versus the historical `0.165`. The shared rule is promising, but it remains
+experimental and default off because the IBL retry phenotype is not fully
+recovered.
 
 This is legitimate as a computational result, but it is not a claim of exact brain anatomy. The analogy is: real brains likely use separate sensory, value, persistence, exploration, and arbitration-like computations. The model tests whether that computational separation can generate animal-like behavior.
 
@@ -389,7 +402,7 @@ The gate lesion sharpened the caveat. A linear uncertainty gate still worked som
 | History is injected, not learned | The win-stay and lose-shift strengths (0.30 and 0.15) are hand-set numbers, not values the history networks discovered on their own. The architecture *can* express history effects, but it cannot yet *discover* them from data. |
 | Adaptive control is an analogy | The controller is lesion-tested in simulation, but it is not a neural anatomy claim. |
 | PRL animal parity is not tested | The exploration-only lesion shows reproducible hidden-contingency recovery, but there is no PRL animal reference dataset in this repository. |
-| Full-control arbitration is unresolved | Exploration works when isolated. A seven-profile full-control scale sweep still suppressed most of the PRL block-learning benefit, so `persistence_only` remains the IBL default and the next test must be state-dependent. |
+| Combined adaptive-control promotion is unresolved | The state-dependent change-evidence recurrence restores combined PRL recovery, but its best IBL retry gap (`0.115`) still trails the historical flag-off result (`0.165`). Keep `persistence_only` as the IBL default while the tradeoff is studied. |
 | Lapse variance across seeds | Lapse rates range from 0.043 to 0.156 across seeds, suggesting the lapse mechanism interacts with training dynamics in ways we do not fully understand. |
 | Single task validated | Results are validated on IBL mouse only. The macaque RDM task produces correct reaction-time dynamics but lacks history effects (the macaque in the reference dataset was overtrained). |
 
@@ -446,7 +459,7 @@ Training runs on CPU in under 20 minutes.
 
 1. Read [AGENTS.md](../AGENTS.md) for coding standards
 2. Run `pytest tests/` (176 tests should pass)
-3. Areas where help is especially welcome: PRL arbitration sweeps, teaching history networks to learn from data, lesion experiments, and defining the DMS memory fingerprint
+3. Areas where help is especially welcome: refining the cross-task change-evidence tradeoff, teaching history networks to learn from data, lesion experiments, and defining the DMS memory fingerprint
 
 ---
 

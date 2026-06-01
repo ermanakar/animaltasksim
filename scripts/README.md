@@ -19,11 +19,12 @@ Do not rename flags or output paths for these without explicit approval.
 profile. Use `--control-profile full_control` only for explicitly labeled
 comparison runs because exploration is experimental/unvalidated.
 `adaptive_control_interaction_sweep.py` completed both the IBL bridge sweep and
-the follow-up PRL arbitration sweep. The PRL result is negative and useful:
-none of seven full-control scale variants preserves the exploration-only
-block-learning curve. Do not spend another large run on scalar tuning before
-adding reversal-window controller diagnostics.
-`prl_arbitration_diagnostic.py` performs that next step cheaply by rerolling
+the follow-up PRL arbitration sweep. That PRL result was negative and useful:
+none of seven full-control scale variants preserved the exploration-only
+block-learning curve. The follow-up sidecar diagnostic localized the deficit
+to `uncertain_retry` firing after every failure under PRL's pinned perceptual
+uncertainty.
+`prl_arbitration_diagnostic.py` performs the sidecar step cheaply by rerolling
 selected saved PRL checkpoints and writing an offline
 `control_diagnostics.ndjson` sidecar. It does not change `trials.ndjson`.
 
@@ -40,8 +41,12 @@ Read `prl_block_learning_lift` alongside the original 10-trial
 hidden-contingency block, and the shorter window under-reports that recovery.
 The follow-up PRL interaction sweep is complete under
 `runs/prl_adaptive_control_interaction_sweep_v1/`: 50 usable runs and 80,000
-schema-valid trials. It moves the next question from global scale tuning to
-state-dependent arbitration.
+schema-valid trials. The flag-gated change-evidence recurrence then tested the
+state-dependent fix. Safety-gated calibration rejected λ=0.7 as too eager and
+selected λ=0.9 as the leading opt-in combined profile: with `uncertain_retry`
+still enabled, full control reaches PRL block-learning lift `+0.469` and
+optimal choice `0.706`; its IBL retry gap is `0.115` versus the historical
+flag-off `0.165`. The feature remains default off.
 
 ## Sweep And Validation Scripts
 

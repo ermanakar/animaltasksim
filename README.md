@@ -226,12 +226,12 @@ artifact of training collapsing the grid back to one setting.
 
 For comparison, `exploration_only` reaches `0.683` end-block optimal choice and
 `+0.360` block-learning lift. Every full-control setting loses block-learning
-lift versus `exploration_only` in 5/5 paired seeds. The next step is therefore
+lift versus `exploration_only` in 5/5 paired seeds. The next step was therefore
 not another scalar sweep: inspect controller contributions around reversals and
 test a state-dependent arbitration rule that lets exploration act when hidden
 contingencies change without disabling the IBL retry phenotype.
 
-Run the checkpoint-reroll diagnostic before changing the model:
+The checkpoint-reroll diagnostic used for that investigation is:
 
 ```bash
 python scripts/prl_arbitration_diagnostic.py \
@@ -383,16 +383,15 @@ IBL contrasts are `{0, 0.0625, 0.125, 0.25, 1.0}`. A previous extra `0.5` contra
 
 ## Roadmap
 
-A controlled ablation localized the PRL deficit: `uncertain_retry` (retry the failed action when uncertain) fires on every PRL failure because neutral options pin uncertainty at 1.0, producing perseveration. Disabling only that term recovers reversal learning (block-learning lift +0.019 → +0.302, 5/5 seeds), confirming `exploration_only` won by *removing* perseveration, not by exploring. The principled fix — a **change-evidence recurrence** that drives switching from accumulated failures instead of stimulus clarity — is now implemented behind `change_evidence_enabled` (default off, flag-off verified bit-for-bit). See [PRL Volatility-Uncertainty Design](docs/prl_volatility_uncertainty_design.md).
+A controlled ablation localized the PRL deficit: `uncertain_retry` (retry the failed action when uncertain) fires on every PRL failure because neutral options pin uncertainty at 1.0, producing perseveration. Disabling only that term recovers reversal learning (block-learning lift +0.019 → +0.302, 5/5 seeds), confirming `exploration_only` won by *removing* perseveration, not by exploring. The principled fix — a **change-evidence recurrence** that drives switching from accumulated failures instead of stimulus clarity — is implemented behind `change_evidence_enabled` (default off, flag-off verified bit-for-bit). Safety-gated calibration rejected λ=0.7 as too eager and selected λ=0.9 as the leading opt-in combined-profile candidate: with `uncertain_retry` still enabled, full-control PRL block-learning lift reached `+0.469` and optimal choice reached `0.706`; IBL full-control retry gap reached `0.115` versus the historical flag-off `0.165`. See [PRL Volatility-Uncertainty Design](docs/prl_volatility_uncertainty_design.md).
 
 Near-term work:
 
-1. Run flag-on IBL to confirm the change-evidence recurrence keeps IBL fingerprints in-distribution (the shared-core safety gate).
-2. Run the recovery calibration to choose `change_evidence_decay` (λ): the unit recovery test passes at λ=0.7, but its 2nd-loss crossover may be too eager for an 80/20 contingency.
-3. Run the matched flag-on PRL suite with `uncertain_retry` left enabled and check whether the gate now self-regulates.
-4. Keep `exploration_only` as the PRL mechanism lead and `persistence_only` as the validated IBL default until one combined profile survives both tasks.
-5. Wire DMS adaptive rollout only after defining its memory-specific fingerprint.
-6. Expand lesion tests for control state, arbitration, evidence preservation, and gate shape.
+1. Keep λ=0.9 as an opt-in experimental combined profile while investigating the remaining IBL retry-gap shortfall.
+2. Inspect reversal-window traces when refining the recurrence; do not return to global scalar sweeps.
+3. Keep `persistence_only` as the validated IBL default until promotion criteria for a combined profile are agreed explicitly.
+4. Wire DMS adaptive rollout only after defining its memory-specific fingerprint.
+5. Expand lesion tests for control state, arbitration, evidence preservation, and gate shape.
 
 ## Documentation
 

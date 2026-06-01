@@ -2272,6 +2272,65 @@ live. The sidecar logs `change_evidence`, `history_retry_gate`, and
 Open calibration concern: at λ=0.7 the retry→switch crossover is the 2nd
 consecutive loss (~4% by chance on the good 80/20 option), likely too eager. The
 recovery-sequence unit test passes (no switch-back after recovery), but λ must be
-set by the recovery calibration run, not assumed. Still pending: flag-on IBL
-in-distribution check, λ calibration, and the matched flag-on PRL suite. No
-transfer claim until those land. See `docs/prl_volatility_uncertainty_design.md`.
+set by calibration, not assumed. That safety-gated validation has now landed;
+see the June 1 result below. See `docs/prl_volatility_uncertainty_design.md`.
+
+## Change-Evidence Calibration Result — June 1, 2026
+
+The flag-on safety sequence is complete. The result is encouraging but narrow:
+the change-evidence recurrence is a credible cross-task mechanism, and λ=0.9 is
+the leading **experimental combined-profile candidate**. It is not a new
+default. The feature remains opt-in (`change_evidence_enabled=False` by
+default), because the best combined IBL retry phenotype still trails the
+historical flag-off result.
+
+### Safety-gated λ calibration
+
+| λ | IBL persistence-only retry gap | IBL full-control retry gap | PRL run? | interpretation |
+|---|---:|---:|---|---|
+| flag off | 0.164 | 0.165 | historical | validated IBL reference |
+| 0.70 | 0.052 | 0.066 | intentionally skipped | too eager; failed the IBL gate |
+| 0.80 | 0.115 | 0.099 | yes | viable first rescue |
+| 0.85 | 0.075 | 0.091 | intentionally skipped | dominated by 0.80 |
+| 0.90 | 0.095 | 0.115 | yes | leading combined-profile candidate |
+
+At λ=0.9 the IBL psychometric and chronometric fingerprints remained healthy,
+with zero degenerate runs and zero reaction-time ceiling warnings. The
+full-control retry gap improved over λ=0.8 (`0.099 → 0.115`) but remains below
+the historical flag-off `0.165`, which is why this does not replace the
+validated `persistence_only` default.
+
+### PRL transfer with `uncertain_retry` still enabled
+
+| condition | λ=0.80 optimal choice | λ=0.80 block-learning lift | λ=0.90 optimal choice | λ=0.90 block-learning lift |
+|---|---:|---:|---:|---:|
+| no control | 0.505 | +0.053 | 0.504 | +0.053 |
+| exploration only | 0.700 | +0.249 | 0.704 | +0.232 |
+| persistence only | 0.724 | +0.386 | 0.703 | +0.449 |
+| full control default | 0.717 | +0.379 | 0.706 | **+0.469** |
+| full control persist-half | 0.718 | +0.424 | **0.712** | +0.465 |
+
+All adaptive λ=0.9 conditions beat no control on paired block-learning lift in
+5/5 seeds. Most importantly, the combined controllers no longer suppress the
+PRL recovery effect while `uncertain_retry` remains enabled. The recurrence
+therefore fixes the mechanistic failure it was designed to fix: repeated
+failures can close the retry gate and open the switch gate without a task-name
+special case.
+
+Across the completed flag-on calibration sequence, 130 logs and 240,000 trial
+records passed schema validation: λ=0.7 IBL, λ=0.8 IBL + PRL, λ=0.85 IBL, and
+λ=0.9 IBL + PRL. PRL was intentionally skipped for unsafe or dominated IBL
+settings.
+
+Run roots: `runs/adaptive_control_change_evidence_ibl_lambda070_v1/`,
+`runs/adaptive_control_change_evidence_ibl_lambda080_v1/`,
+`runs/prl_change_evidence_lambda080_v1/`,
+`runs/adaptive_control_change_evidence_ibl_lambda085_v1/`,
+`runs/adaptive_control_change_evidence_ibl_lambda090_v1/`, and
+`runs/prl_change_evidence_lambda090_v1/`.
+
+**Claim boundary:** this is promising evidence for one state-dependent rule
+that works across stable perceptual choice and hidden-contingency reversal
+learning. It is still an in-simulator computational result, not a PRL animal
+parity claim, and λ=0.9 remains an opt-in research profile until the remaining
+IBL retry shortfall is understood or accepted explicitly.

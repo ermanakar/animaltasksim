@@ -143,13 +143,21 @@ learning curve. The best combined block-learning lifts were only `+0.066` for
 `full_control_persist_half` and `+0.057` for `full_control_explore_double`,
 versus `+0.360` for `exploration_only`.
 
-The next experiment should not spend more budget on global scale tuning. Run
-the sidecar reversal-window diagnostic and test whether persistence and
-exploration need state-dependent arbitration when hidden reward contingencies
-change:
+The next experiment did not spend more budget on global scale tuning. The
+sidecar reversal-window diagnostic showed that PRL's neutral options pin the
+old stimulus-derived uncertainty signal at 1.0, so `uncertain_retry` fires
+after every failure. The state-dependent change-evidence recurrence now
+accumulates recent failures and closes that retry gate while opening the switch
+gate:
 
 ```bash
 python scripts/prl_arbitration_diagnostic.py \
   --source-root runs/prl_adaptive_control_interaction_sweep_v1 \
   --output-root runs/prl_arbitration_diagnostic_v1
 ```
+
+Safety-gated calibration rejected λ=0.7 as too eager and selected λ=0.9 as the
+leading opt-in combined profile. With `uncertain_retry` still enabled, λ=0.9
+full control reaches PRL block-learning lift `+0.469` and optimal choice
+`0.706`; its IBL retry gap is `0.115` versus the historical flag-off `0.165`.
+The feature remains default off while that IBL tradeoff is studied.
