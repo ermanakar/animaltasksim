@@ -64,6 +64,10 @@ This was a lightweight matched screen across `true_no_control`, `persistence_onl
 
 Quality checks were clean: all four conditions had 0/5 degenerate runs and 0/5 RT-ceiling warnings.
 
+The retry-gap columns in this historical May screen and interaction sweep
+predate the June 1 prior-trial metric correction. They are retained for
+provenance and are superseded for claim use.
+
 Paired deltas versus no-control:
 
 | Comparison | Delta retry gap | Retry positive seeds | Delta unrewarded-switch lift | Unrewarded positive seeds | Delta volatile-switch lift | Volatile positive seeds |
@@ -157,7 +161,10 @@ python scripts/prl_arbitration_diagnostic.py \
 ```
 
 Safety-gated calibration rejected λ=0.7 as too eager and selected λ=0.9 as the
-leading opt-in combined profile. With `uncertain_retry` still enabled, λ=0.9
+validated opt-in cross-task profile. With `uncertain_retry` still enabled, λ=0.9
 full control reaches PRL block-learning lift `+0.469` and optimal choice
-`0.706`; its IBL retry gap is `0.115` versus the historical flag-off `0.165`.
+`0.706`; after the June 1 prior-trial metric correction, its IBL retry gap is
+`0.158` versus the historical flag-off `0.175`. Older retry-gap values in this
+historical probe note are retained for provenance and are superseded for claim
+use.
 The feature remains default off while that IBL tradeoff is studied.

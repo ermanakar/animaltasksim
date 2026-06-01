@@ -140,9 +140,10 @@ parity, because this repository has no PRL animal reference dataset. It also
 does not validate the combined full-control controller: all tested full-control
 variants suppress most of the exploration-only recovery effect.
 
-DMS is one step behind PRL: its environment and schema path exist, but
-adaptive-control rollout and memory-specific metrics are deliberately not wired
-yet.
+DMS is one step behind PRL: its environment and schema path exist, and its
+memory-specific fingerprint is defined in `docs/dms_memory_fingerprint_design.md`.
+Adaptive-control rollout remains deliberately unwired until the evaluator and a
+memoryless baseline exist.
 
 ## Follow-up Experiment
 
@@ -165,8 +166,8 @@ The decomposition localized the deficit to `uncertain_retry`: neutral PRL
 options pin the old stimulus-derived uncertainty signal at 1.0, so retry fires
 after every failure. The follow-up change-evidence recurrence accumulates
 recent failures and uses them to close retry while opening switch behavior.
-Safety-gated calibration selected λ=0.9 as the leading opt-in combined profile:
+Safety-gated calibration selected λ=0.9 as the validated opt-in cross-task profile:
 with `uncertain_retry` still enabled, full control reaches PRL block-learning
-lift `+0.469` and optimal choice `0.706`. The feature remains default off
-because its IBL retry gap (`0.115`) still trails the historical flag-off
-result (`0.165`).
+lift `+0.469` and optimal choice `0.706`. After the June 1 prior-trial
+retry-metric correction, its IBL retry gap is `0.158` versus historical
+flag-off `0.175`. The feature remains default off.

@@ -3,11 +3,12 @@
 **Status:** IMPLEMENTED AND CALIBRATED (June 1, 2026), flag-gated
 `change_evidence_enabled` (default off). Design history below kept for
 provenance. Flag-off is a verified bit-for-bit no-op. Safety-gated validation
-rejected λ=0.7 as too eager and selected λ=0.9 as the leading opt-in
-combined-profile candidate: with `uncertain_retry` still enabled, full-control
+rejected λ=0.7 as too eager and selected λ=0.9 as the validated opt-in
+cross-task profile: with `uncertain_retry` still enabled, full-control
 PRL block-learning lift reaches `+0.469` and optimal choice reaches `0.706`;
-IBL full-control retry gap reaches `0.115` versus the historical flag-off
-`0.165`, so the feature is not promoted to a default.
+after the June 1 prior-trial retry-metric correction, IBL full-control retry
+gap reaches `0.158` versus the historical flag-off `0.175`. The feature remains
+default off.
 **Date:** May 30, 2026 (rev. June 1, 2026)
 **Supersedes:** v1 of this note, which folded everything into a single
 `uncertainty` dial. That was wrong — see Section 2. v2.1 added the per-trial
@@ -379,18 +380,22 @@ and for λ=0.85 after it was dominated by λ=0.8.
 
 | λ | IBL full-control retry gap | PRL full-control block-learning lift | interpretation |
 |---|---:|---:|---|
-| flag off | 0.165 | -0.044 | historical baseline |
-| 0.70 | 0.066 | not run | too eager |
-| 0.80 | 0.099 | +0.379 | viable first rescue |
-| 0.85 | 0.091 | not run | dominated |
-| 0.90 | **0.115** | **+0.469** | leading opt-in combined profile |
+| flag off | 0.175 | -0.044 | corrected historical baseline |
+| 0.70 | 0.058 | not run | too eager |
+| 0.80 | 0.111 | +0.379 | viable first rescue |
+| 0.85 | 0.122 | not run | below λ=0.9 |
+| 0.90 | **0.158** | **+0.469** | validated opt-in cross-task profile |
 
 At λ=0.9, IBL psychometric and chronometric fingerprints remain healthy, with
 zero degenerate runs and zero reaction-time ceiling warnings. All adaptive PRL
 conditions beat no control on paired block-learning lift in 5/5 seeds while
 `uncertain_retry` stays enabled. This is the intended win: one state-dependent
-rule now regulates retry versus switch behavior across both tasks. The
-remaining IBL retry-gap shortfall is why the feature stays default off.
+rule now regulates retry versus switch behavior across both tasks. The June 1
+evaluator correction bins retry by the prior failed trial's strength rather
+than the newly sampled current trial. λ=0.9 nearly preserves historical
+flag-off retry (`0.158` vs `0.175`), so it is validated for explicitly labeled
+opt-in cross-task runs. The default remains off while corrected baselines are
+re-reported and PRL animal parity remains unavailable.
 
 ## 13. Why this is the right next step
 
@@ -400,5 +405,5 @@ masquerading as a general one. Having cleared the Section 9 safety sequence, it
 now makes one controller behave sensibly in both a stable perceptual task and a
 volatile reversal task. That cross-task robustness, not raw PRL score, is the
 scientific payoff: evidence that uncertainty/change-gated arbitration is a
-*general* adaptation mechanism, not an IBL-specific fit. The remaining IBL
-retry-gap shortfall still keeps the result opt-in.
+*general* adaptation mechanism, not an IBL-specific fit. The corrected IBL
+result supports an opt-in profile, while the conservative default stays off.

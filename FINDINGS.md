@@ -2334,3 +2334,61 @@ that works across stable perceptual choice and hidden-contingency reversal
 learning. It is still an in-simulator computational result, not a PRL animal
 parity claim, and λ=0.9 remains an opt-in research profile until the remaining
 IBL retry shortfall is understood or accepted explicitly.
+
+## Adaptive Retry Metric Provenance Correction — June 1, 2026
+
+A focused λ=0.9 trace comparison found an evaluator bug in
+`compute_adaptive_control_probe_metrics()`. The retry probe correctly selected
+trials after a failure, but it split weak versus strong failures using the
+**newly sampled current trial's** stimulus strength. It must use the
+**previous failed trial's** strength. Because IBL resamples stimulus contrast
+on every trial, the old metric mixed unrelated trials.
+
+The evaluator now sorts within session, shifts absolute stimulus strength by
+one trial, and bins the retry by that prior strength. A regression test pins
+the timing contract with deliberately disagreeing current and prior stimuli.
+The canonical IBL lesion suite was re-evaluated from its saved `.ndjson` logs
+and its tracked figures regenerated.
+
+### Corrected λ calibration
+
+| λ | IBL full-control retry gap | PRL full-control block-learning lift | interpretation |
+|---|---:|---:|---|
+| flag off | 0.175 | -0.044 | corrected historical baseline |
+| 0.70 | 0.058 | not run | too eager |
+| 0.80 | 0.111 | +0.379 | viable first rescue |
+| 0.85 | 0.122 | not run | below λ=0.9 |
+| 0.90 | **0.158** | **+0.469** | validated opt-in cross-task profile |
+
+The corrected result is stronger than the pre-correction report. λ=0.9 nearly
+preserves historical full-control IBL retry (`0.158` vs `0.175`) while restoring
+combined PRL recovery with `uncertain_retry` still enabled. It also exceeds the
+corrected historical `persistence_only` retry gap (`0.120`).
+
+The feature remains default off. PRL animal parity is still unavailable, the
+corrected retry baseline must be used in future figures and prose, and
+`persistence_only` remains the conservative standard IBL profile. λ=0.9 is now
+the validated opt-in profile for explicitly labeled cross-task experiments,
+not merely a candidate.
+
+### Focused λ=0.9 trace finding
+
+A 10-reroll, 20,000-trial sidecar comparison confirmed that the recurrence is
+live in IBL. Under λ=0.9, mean `change_evidence` is `0.239` after isolated
+losses and `0.334` after repeated losses; the mean retry gate falls from
+`0.680` to `0.596` while the switch gate rises from `0.337` to `0.428`.
+After wins, `change_evidence` decays gradually. This is the intended
+state-dependent behavior rather than a dead flag.
+
+All pre-correction retry-gap values in older historical sections are retained
+only for provenance and are superseded for claim use.
+
+## DMS Memory Fingerprint Defined — June 1, 2026
+
+The DMS environment remains a schema-valid scaffold. The memory-specific
+scorecard and lesion ladder are now defined in
+`docs/dms_memory_fingerprint_design.md`: overall accuracy, delay-retention
+curve, stimulus-strength breakdown, match/non-match balance, omissions,
+reaction-time breakdown, a memoryless baseline, and a delay-state reset
+lesion. Adaptive rollout remains intentionally unwired until those controls
+exist.

@@ -43,10 +43,11 @@ The follow-up PRL interaction sweep is complete under
 `runs/prl_adaptive_control_interaction_sweep_v1/`: 50 usable runs and 80,000
 schema-valid trials. The flag-gated change-evidence recurrence then tested the
 state-dependent fix. Safety-gated calibration rejected λ=0.7 as too eager and
-selected λ=0.9 as the leading opt-in combined profile: with `uncertain_retry`
+selected λ=0.9 as the validated opt-in cross-task profile: with `uncertain_retry`
 still enabled, full control reaches PRL block-learning lift `+0.469` and
-optimal choice `0.706`; its IBL retry gap is `0.115` versus the historical
-flag-off `0.165`. The feature remains default off.
+optimal choice `0.706`; after the June 1 prior-trial retry-metric correction,
+its IBL retry gap is `0.158` versus the historical flag-off `0.175`. The feature
+remains default off.
 
 ## Sweep And Validation Scripts
 

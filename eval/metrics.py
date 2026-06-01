@@ -357,7 +357,7 @@ def compute_history_metrics(df: pd.DataFrame) -> HistoryMetrics:
 
 
 def compute_adaptive_control_probe_metrics(df: pd.DataFrame) -> AdaptiveControlProbeMetrics:
-    """Measure retry versus switch after failure split by evidence strength."""
+    """Measure retry versus switch after failure split by prior evidence strength."""
     if df.empty:
         return AdaptiveControlProbeMetrics(np.nan, np.nan, np.nan, np.nan, 0, 0)
 
@@ -374,6 +374,14 @@ def compute_adaptive_control_probe_metrics(df: pd.DataFrame) -> AdaptiveControlP
         return AdaptiveControlProbeMetrics(np.nan, np.nan, np.nan, np.nan, 0, 0)
 
     data = df.copy()
+    sort_columns = [column for column in ("session_id", "trial_index") if column in data.columns]
+    if sort_columns:
+        data = data.sort_values(sort_columns).copy()
+    data["difficulty_abs"] = pd.to_numeric(data[stimulus_key], errors="coerce").abs()
+    if "session_id" in data.columns:
+        data["previous_difficulty_abs"] = data.groupby("session_id", sort=False)["difficulty_abs"].shift(1)
+    else:
+        data["previous_difficulty_abs"] = data["difficulty_abs"].shift(1)
     data = data[data["action"].isin(["left", "right"])].copy()
     data = data[data["prev_action"].isin(["left", "right"])].copy()
     if data.empty:
@@ -385,16 +393,15 @@ def compute_adaptive_control_probe_metrics(df: pd.DataFrame) -> AdaptiveControlP
         return AdaptiveControlProbeMetrics(np.nan, np.nan, np.nan, np.nan, 0, 0)
     data["prev_correct"] = prev_correct.loc[data.index].astype(float)
     data["same_as_prev"] = (data["action"] == data["prev_action"]).astype(float)
-    data["difficulty_abs"] = pd.to_numeric(data[stimulus_key], errors="coerce").abs()
-    data = data[data["difficulty_abs"].notnull()].copy()
+    data = data[data["previous_difficulty_abs"].notnull()].copy()
     failures = data[data["prev_correct"] <= 0.5].copy()
     if failures.empty:
         return AdaptiveControlProbeMetrics(np.nan, np.nan, np.nan, np.nan, 0, 0)
 
-    difficulty_levels = np.sort(failures["difficulty_abs"].unique().astype(float))
+    difficulty_levels = np.sort(failures["previous_difficulty_abs"].unique().astype(float))
     split_threshold = float(np.median(difficulty_levels))
-    weak_failures = failures[failures["difficulty_abs"] <= split_threshold].copy()
-    strong_failures = failures[failures["difficulty_abs"] > split_threshold].copy()
+    weak_failures = failures[failures["previous_difficulty_abs"] <= split_threshold].copy()
+    strong_failures = failures[failures["previous_difficulty_abs"] > split_threshold].copy()
 
     def _ratio(values: pd.Series, transform: Callable[[pd.Series], pd.Series] | None = None) -> float:
         if values.empty:

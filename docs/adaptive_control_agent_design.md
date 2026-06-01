@@ -16,13 +16,16 @@ Main validation: `runs/adaptive_control_validation_suite_phase1/`
 
 | Condition | Psych slope | Chrono slope | Retry gap | RT ceiling warnings | Degenerate |
 |-----------|-------------|--------------|-----------|---------------------|------------|
-| true no-control | 27.71 +/- 3.28 | -48.54 +/- 7.05 | 0.057 +/- 0.062 | 0/5 | 0/5 |
-| persistence-only | 21.75 +/- 2.69 | -33.47 +/- 4.49 | 0.164 +/- 0.108 | 1/5 | 0/5 |
-| full control | 22.26 +/- 1.80 | -33.97 +/- 4.02 | 0.165 +/- 0.045 | 0/5 | 0/5 |
+| true no-control | 27.71 +/- 3.28 | -48.54 +/- 7.05 | 0.019 +/- 0.095 | 0/5 | 0/5 |
+| persistence-only | 21.75 +/- 2.69 | -33.47 +/- 4.49 | 0.120 +/- 0.116 | 1/5 | 0/5 |
+| full control | 22.26 +/- 1.80 | -33.97 +/- 4.02 | 0.175 +/- 0.086 | 0/5 | 0/5 |
 
-Paired against the clean no-control lesion, full control increased retry gap by `+0.109 +/- 0.086`, positive in 5/5 seeds. Persistence-only recovered almost the same retry-gap mean (`0.164` vs `0.165`) with exploration disabled, so new default/recommended runs should use the `persistence_only` profile unless the purpose is an explicit lesion or full-control comparison.
+Paired against the clean no-control lesion, full control increased retry gap by `+0.157 +/- 0.137`, positive in 4/5 seeds. These are the corrected June 1 values: the evaluator now bins retry by the prior failed trial's stimulus strength, not the newly sampled current trial. New default/recommended IBL runs should use the conservative `persistence_only` profile unless the purpose is an explicit lesion or full-control comparison.
 
-Gate-lesion validation: `runs/adaptive_control_validation_suite_phase1_gate/`
+Gate-lesion validation: `runs/adaptive_control_validation_suite_phase1_gate/`.
+The retry numbers below predate the June 1 prior-trial metric correction and
+must be re-evaluated before claim use; the qualitative lesion history is kept
+for provenance.
 
 | Gate condition | Retry lift vs no-control | Positive seeds | Interpretation |
 |----------------|--------------------------|----------------|----------------|
@@ -326,7 +329,7 @@ Required ablation:
 - Adaptive-control state updates use explicit outcome valence: positive reward reinforces the chosen action, while zero/negative reward teaches persistence under uncertainty or switching under confidence. The critic prediction error remains available for value learning and diagnostics, but it must not silence failure teaching when the critic is poorly calibrated.
 - Arbitration is gated by current evidence confidence, and training tracks an evidence-preservation penalty on control residuals during high-evidence trials. The adaptive controller should explain ambiguous-trial history effects without rewriting the evidence pathway on easy trials. The expression gate is nonlinear (`control_uncertainty_power`) so control remains available near zero contrast but falls quickly as sensory evidence becomes informative.
 - IBL rollout must use the configured DDM response window, not the environment's short default response phase. Otherwise weak-evidence trials saturate at 300 ms and the chronometric warning measures a rollout ceiling rather than agent dynamics.
-- Current IBL calibration uses `drift_scale=6.0`, `control_uncertainty_power=2.0`, and `persistence_bias_scale=1.6`. The recommended/default profile is `persistence_only`: it keeps exploration disabled while retaining the validated weak-failure retry mechanism (`retry_gap=0.164` vs `0.057` in the clean no-control lesion). Full control retained calibrated behavior (`psychometric_slope=22.26 +/- 1.80`, `chronometric_slope=-33.97 +/- 4.02`) and produced the most consistent paired retry lift (`delta_retry_gap=+0.109 +/- 0.086`, positive in 5/5 seeds), but it should be labeled as a comparison condition because exploration is not validated. No full-control runs were degenerate or RT-ceiling flagged.
+- Current IBL calibration uses `drift_scale=6.0`, `control_uncertainty_power=2.0`, and `persistence_bias_scale=1.6`. The recommended/default profile is `persistence_only`: it keeps exploration disabled while retaining the validated weak-failure retry mechanism (`retry_gap=0.120` vs `0.019` in the clean no-control lesion). Full control retained calibrated behavior (`psychometric_slope=22.26 +/- 1.80`, `chronometric_slope=-33.97 +/- 4.02`) and increased retry gap (`delta_retry_gap=+0.157 +/- 0.137`, positive in 4/5 seeds), but it should be labeled as a comparison condition because exploration is not independently validated. No full-control runs were degenerate or RT-ceiling flagged.
 - Gate-lesion validation showed that a linear uncertainty gate still produces some adaptive retry behavior (`delta_retry_gap=+0.087 +/- 0.130`) but less reliably (3/5 positive seeds). Do not claim the nonlinear exponent is necessary; claim it improves robustness.
 
 Success criterion:
@@ -373,7 +376,7 @@ The first 5-seed exploration run did **not** support that expected result. In `r
 
 So the supported phase-1 claim remains persistence/adaptive retry after weak-evidence failure. Rewarded-streak exploration is not validated and is disabled in the recommended/default training profile. That result motivated a better probe around unrewarded or volatile streaks before deferring the exploration claim to PRL/DMS where environmental change is task-relevant.
 
-A follow-up 5-seed screen tested exactly those unrewarded/volatile probes in `runs/adaptive_control_exploration_probe_5seed/`. It was useful but still not a validation of exploration:
+A follow-up 5-seed screen tested exactly those unrewarded/volatile probes in `runs/adaptive_control_exploration_probe_5seed/`. It was useful but still not a validation of exploration. Its retry-gap values predate the June 1 prior-trial correction and are retained only for historical provenance:
 
 - Quality checks were clean: all four conditions had 0/5 degenerate runs and 0/5 RT-ceiling warnings.
 - Persistence-only and full-control both increased retry gap by about `+0.082` versus no-control, positive in 5/5 seeds. That keeps the validated mechanism claim on persistence/control state.
@@ -462,15 +465,15 @@ the old stimulus-derived uncertainty signal at 1.0, so `uncertain_retry` fires
 after every failure. A flag-gated change-evidence recurrence now accumulates
 recent failures and uses them to close the retry gate while opening the switch
 gate. Safety-gated calibration rejected λ=0.7 as too eager and selected λ=0.9
-as the leading opt-in combined-profile candidate. With `uncertain_retry` still
+as the validated opt-in cross-task profile. With `uncertain_retry` still
 enabled, λ=0.9 full control reaches PRL block-learning lift `+0.469` and optimal
-choice `0.706`; its IBL retry gap is `0.115` versus the historical flag-off
-`0.165`.
+choice `0.706`; after the June 1 prior-trial metric correction, its IBL retry
+gap is `0.158` versus the historical flag-off `0.175`.
 
 The next scientific steps are:
 
-1. keep λ=0.9 opt-in and inspect reversal-window traces when refining the remaining IBL retry-gap tradeoff
-2. keep `persistence_only` as the validated IBL default until combined-profile promotion criteria are agreed explicitly
+1. use λ=0.9 as an opt-in cross-task profile and inspect reversal-window traces for mechanism work
+2. keep `persistence_only` as the conservative IBL default while corrected retry baselines are re-reported
 3. preserve the frozen NDJSON schema and use the sidecar diagnostic for internal controller traces
 4. keep the claim narrow: the combined controller now transfers in-simulator; PRL animal parity remains untested
-5. define a DMS memory fingerprint before wiring adaptive-control DMS rollout
+5. implement DMS metrics and a memoryless baseline from the defined fingerprint before wiring adaptive-control DMS rollout

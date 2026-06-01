@@ -29,7 +29,7 @@ The supported result is narrow but real: **uncertainty-gated adaptive retry/pers
 
 ### Scope of the current claim
 
-> **Supported.** Uncertainty-gated adaptive retry / persistence is validated in-simulator: the persistence-only lesion recovers almost all of the full-control retry-gap mean while keeping exploration disabled. Full-control remains useful as a comparison condition, not as the clean default claim.
+> **Supported.** Uncertainty-gated adaptive retry / persistence is validated in-simulator. The corrected evaluator bins each retry by the stimulus strength of the failure that actually preceded it. The conservative recommended profile remains `persistence_only`; full control remains useful as a comparison condition.
 
 > **New PRL result.** Exploration now has an out-of-sample hidden-contingency phenotype in the standalone `exploration_only` lesion: end-of-block optimal choice reaches `0.683`, and block-learning lift exceeds no-control by `+0.307` in 5/5 paired seeds. A follow-up 10-condition, 50-run scale sweep found that every combined full-control variant still loses most of that recovery pattern. This validates an exploration-specific mechanism lead, not the final combined agent. No anatomical claim is made — the model is a computational analogy.
 
@@ -45,7 +45,7 @@ runs/adaptive_control_validation_suite_phase1_exploration/
 
 ### How to read the numbers
 
-- **Retry gap** = P(retry | weak-evidence failure) − P(retry | strong-evidence failure). A positive gap means the agent specifically retries when the prior failure was *not* clearly disambiguated by the stimulus — the signature of uncertainty-gated persistence.
+- **Retry gap** = P(retry | prior weak-evidence failure) − P(retry | prior strong-evidence failure). A positive gap means the agent specifically retries when the failure that just happened was *not* clearly disambiguated by its stimulus — the signature of uncertainty-gated persistence. A June 1, 2026 evaluator correction fixed older reports that accidentally binned by the next trial's stimulus.
 - **Stale-switch lift** = P(switch | stale state) − P(switch | fresh state). A positive lift means the agent samples alternatives more often when its recent action history has gone stale — the signature of rewarded-streak exploration.
 - **Unrewarded-switch lift** = P(switch | repeated weak failures) − P(switch | fresh weak evidence). This is a thin-count probe for failure-driven switching, not a claim by itself.
 - **Volatile-switch lift** = P(switch | locally mixed recent outcomes) − P(switch | locally stable recent outcomes). This is the more promising follow-up readout, but it must beat the persistence-only lesion to validate exploration.
@@ -72,15 +72,15 @@ runs/adaptive_control_validation_suite_phase1_exploration/
 
 | Condition | Psych slope | Chrono slope | Retry gap | Stale-switch lift | RT ceiling warnings | Degenerate |
 |-----------|-------------|--------------|-----------|-------------------|---------------------|------------|
-| No control       | 27.71 | −48.54 |  0.057 | −0.073 | 0/5 | 0/5 |
-| Exploration only | 24.00 | −38.83 |  0.092 | −0.160 | 0/5 | 0/5 |
-| Persistence only | 21.75 | −33.47 |  0.164 | −0.159 | 1/5 | 0/5 |
-| Full control     | 22.26 | −33.97 |  0.165 | −0.152 | 0/5 | 0/5 |
+| No control       | 27.71 | −48.54 |  0.019 | −0.073 | 0/5 | 0/5 |
+| Exploration only | 24.00 | −38.83 |  0.205 | −0.160 | 0/5 | 0/5 |
+| Persistence only | 21.75 | −33.47 |  0.120 | −0.160 | 1/5 | 0/5 |
+| Full control     | 22.26 | −33.97 |  0.175 | −0.152 | 0/5 | 0/5 |
 
 ![Per-condition behavioral readouts across the lesion suite](docs/figures/suite_validation_summary.png)
 
 > **Figure 2 | Per-condition behavioral readouts across the lesion suite.** Bars are means across n = 5 seeds; error bars are 1 s.d.
-> **(a)** Retry gap rises monotonically as adaptive control is added back, peaking in the persistence-only and full-control conditions.
+> **(a)** Retry gap is positive in every adaptive condition, with full control highest in this suite.
 > **(b)** Stale-switch lift remains negative in every condition, and is more negative in the adaptive conditions than under no control — i.e. the exploration controller fails its isolation probe in this design.
 > **(c)** Psychometric slope. Shaded band marks the IBL per-session reference (20.0 ± 5.7). Adding adaptive control reduces slope from the no-control level into the animal's distribution, at the cost of evidence sensitivity.
 > **(d)** Chronometric slope. Dashed line marks the literature target (≈ −36 ms / unit |stimulus|). All adaptive conditions land near the target.
@@ -91,21 +91,21 @@ runs/adaptive_control_validation_suite_phase1_exploration/
 
 | Comparison                          | Δ retry gap | Retry positive seeds | Δ stale-switch lift | Stale-lift positive seeds |
 |-------------------------------------|------------:|---------------------:|--------------------:|--------------------------:|
-| Exploration only − no control       |      +0.035 |                  3/5 |              −0.087 |                       0/5 |
-| Persistence only − no control       |      +0.107 |                  3/5 |              −0.086 |                       0/5 |
-| Full control − no control           |      +0.109 |                  5/5 |              −0.079 |                       0/5 |
+| Exploration only − no control       |      +0.186 |                  4/5 |              −0.087 |                       0/5 |
+| Persistence only − no control       |      +0.101 |                  4/5 |              −0.087 |                       0/5 |
+| Full control − no control           |      +0.157 |                  4/5 |              −0.078 |                       0/5 |
 
 ![Paired lesion deltas vs. no control](docs/figures/suite_paired_deltas.png)
 
 > **Figure 3 | Paired lesion deltas vs. the no-control lesion** (n = 5 seeds, paired by seed). Each bar pair shows the per-condition mean change in retry gap (green) and stale-switch lift (purple) relative to the same seed's no-control run. Numbers above and below bars are positive-seed counts (n/N): how many of the five seeds showed an effect in the expected direction.
-> Full control produces a positive Δ retry gap in **5/5** seeds — the strongest evidence in the suite that the persistence mechanism reliably changes behavior. In contrast, Δ stale-switch lift is negative in **0/5** seeds across every adaptive condition: rewarded-streak exploration is not validated by this probe.
+> Full control produces a positive Δ retry gap in **4/5** seeds. In contrast, Δ stale-switch lift is negative in **0/5** seeds across every adaptive condition: rewarded-streak exploration is not validated by this probe.
 
 ---
 
 ### Interpretation
 
-- The validated claim is persistence/retry: the persistence-only lesion already recovers ~98% of the full-control retry gap.
-- Full control is retained as a comparison condition and shows the most consistent paired retry lift, but it also includes the unvalidated exploration controller.
+- The validated claim is persistence/retry: the persistence-only profile keeps the mechanism isolated from experimental exploration.
+- Full control is retained as a comparison condition and has the largest retry-gap mean in this suite, but it also includes the unvalidated exploration controller.
 - Rewarded-streak exploration fails its isolation probe in every condition (Fig 2b, Fig 3).
 - The honest claim is **uncertainty-gated adaptive retry / persistence**, not a general exploration breakthrough. The exploration mechanism needs a different probe, a different gate, or both.
 
@@ -120,6 +120,10 @@ runs/adaptive_control_exploration_probe_5seed/
 ```
 
 This run used a lightweight budget (`episodes=3`, `epochs=1`) to check counts and directionality before spending a larger validation budget. All four conditions remained usable: 0/5 degenerate runs and 0/5 RT-ceiling warnings.
+
+The retry-gap columns in this May screen and the interaction table below
+predate the June 1 prior-trial correction. They are retained for provenance and
+must not be compared directly with the corrected current suite.
 
 | Comparison | Delta retry gap | Retry positive seeds | Delta unrewarded-switch lift | Unrewarded positive seeds | Delta volatile-switch lift | Volatile positive seeds |
 |------------|-----------------|----------------------|------------------------------|---------------------------|----------------------------|-------------------------|
@@ -383,14 +387,14 @@ IBL contrasts are `{0, 0.0625, 0.125, 0.25, 1.0}`. A previous extra `0.5` contra
 
 ## Roadmap
 
-A controlled ablation localized the PRL deficit: `uncertain_retry` (retry the failed action when uncertain) fires on every PRL failure because neutral options pin uncertainty at 1.0, producing perseveration. Disabling only that term recovers reversal learning (block-learning lift +0.019 → +0.302, 5/5 seeds), confirming `exploration_only` won by *removing* perseveration, not by exploring. The principled fix — a **change-evidence recurrence** that drives switching from accumulated failures instead of stimulus clarity — is implemented behind `change_evidence_enabled` (default off, flag-off verified bit-for-bit). Safety-gated calibration rejected λ=0.7 as too eager and selected λ=0.9 as the leading opt-in combined-profile candidate: with `uncertain_retry` still enabled, full-control PRL block-learning lift reached `+0.469` and optimal choice reached `0.706`; IBL full-control retry gap reached `0.115` versus the historical flag-off `0.165`. See [PRL Volatility-Uncertainty Design](docs/prl_volatility_uncertainty_design.md).
+A controlled ablation localized the PRL deficit: `uncertain_retry` (retry the failed action when uncertain) fires on every PRL failure because neutral options pin uncertainty at 1.0, producing perseveration. Disabling only that term recovers reversal learning (block-learning lift +0.019 → +0.302, 5/5 seeds), confirming `exploration_only` won by *removing* perseveration, not by exploring. The principled fix — a **change-evidence recurrence** that drives switching from accumulated failures instead of stimulus clarity — is implemented behind `change_evidence_enabled` (default off, flag-off verified bit-for-bit). Safety-gated calibration rejected λ=0.7 as too eager and selected λ=0.9 as a validated opt-in cross-task profile: with `uncertain_retry` still enabled, full-control PRL block-learning lift reached `+0.469` and optimal choice reached `0.706`; after the June 1 prior-trial retry-metric correction, IBL full-control retry gap is `0.158` versus the historical flag-off `0.175`. See [PRL Volatility-Uncertainty Design](docs/prl_volatility_uncertainty_design.md).
 
 Near-term work:
 
-1. Keep λ=0.9 as an opt-in experimental combined profile while investigating the remaining IBL retry-gap shortfall.
-2. Inspect reversal-window traces when refining the recurrence; do not return to global scalar sweeps.
-3. Keep `persistence_only` as the validated IBL default until promotion criteria for a combined profile are agreed explicitly.
-4. Wire DMS adaptive rollout only after defining its memory-specific fingerprint.
+1. Use λ=0.9 as a validated opt-in cross-task profile; keep the feature default off while corrected baselines are re-reported.
+2. Inspect reversal-window traces for mechanism work; do not return to global scalar sweeps.
+3. Keep `persistence_only` as the conservative default for standard IBL runs.
+4. Implement DMS metrics and a memoryless baseline from the defined fingerprint before wiring adaptive rollout.
 5. Expand lesion tests for control state, arbitration, evidence preservation, and gate shape.
 
 ## Documentation
@@ -401,6 +405,7 @@ Near-term work:
 | [Adaptive Control Agent Design](docs/adaptive_control_agent_design.md) | Current adaptive-control architecture and validation status |
 | [Adaptive Control Exploration Probe Design](docs/adaptive_control_exploration_probe_design.md) | Follow-up probe design and May 6 falsification screen for unrewarded/volatile exploration |
 | [PRL Transfer Design](docs/prl_transfer_design.md) | Hidden-contingency task design, PRL metrics, suite command, and claim boundary |
+| [DMS Memory Fingerprint Design](docs/dms_memory_fingerprint_design.md) | Memory-task scorecard, lesions, and prerequisites before adaptive rollout |
 | [Theory & Concepts](docs/THEORY_AND_CONCEPTS.md) | Accessible background on tasks, metrics, and model ideas |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
 
