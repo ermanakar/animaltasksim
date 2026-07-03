@@ -86,6 +86,43 @@ def _history_figure(df: pd.DataFrame, metrics: dict[str, object]) -> tuple[str, 
     return "History", _encode_figure(fig)
 
 
+def _prl_figure(df: pd.DataFrame) -> tuple[str, str]:
+    """Plot optimal-choice recovery after hidden PRL reversals."""
+    if "reversal" not in df.columns or not df["reversal"].fillna(False).any():
+        return "PRL reversal adaptation", ""
+
+    rows: list[dict[str, object]] = []
+    for _, session_rows in df.groupby("session_id", sort=False):
+        session_rows = session_rows.sort_values("trial_index").reset_index(drop=True)
+        for position, row in session_rows.iterrows():
+            reversal = row.get("reversal")
+            if reversal is None or pd.isna(reversal) or not bool(reversal):
+                continue
+            next_reversal = next(
+                (
+                    next_position
+                    for next_position in range(position + 1, len(session_rows))
+                    if bool(session_rows.iloc[next_position].get("reversal", False))
+                ),
+                len(session_rows),
+            )
+            for offset, (_, post_row) in enumerate(session_rows.iloc[position:next_reversal].iterrows(), start=1):
+                if post_row.get("action") not in {"left", "right"}:
+                    continue
+                rows.append({"offset": offset, "optimal_choice": float(bool(post_row.get("correct", False)))})
+    if not rows:
+        return "PRL reversal adaptation", ""
+
+    grouped = pd.DataFrame.from_records(rows).groupby("offset")["optimal_choice"].mean()
+    fig, ax = plt.subplots(figsize=(4, 3))
+    ax.plot(grouped.index, grouped.values, marker="o")
+    ax.set_ylim(0, 1)
+    ax.set_xlabel("Trial after hidden reversal")
+    ax.set_ylabel("P(optimal choice)")
+    ax.set_title("PRL reversal adaptation")
+    return "PRL reversal adaptation", _encode_figure(fig)
+
+
 def build_report(log_path: Path, out_path: Path, *, title: str = "AnimalTaskSim Report", metrics: dict[str, object] | None = None) -> None:
     df = load_trials(log_path)
     if df.empty:
@@ -96,6 +133,8 @@ def build_report(log_path: Path, out_path: Path, *, title: str = "AnimalTaskSim 
     figures.append(_psychometric_figure(df, computed_metrics))
     figures.append(_chronometric_figure(df))
     figures.append(_history_figure(df, computed_metrics))
+    if df["task"].iloc[0] == "prl":
+        figures.append(_prl_figure(df))
 
     body_blocks = []
     for name, data_uri in figures:

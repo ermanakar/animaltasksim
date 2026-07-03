@@ -3,8 +3,9 @@
 ## Mission Context
 
 - AnimalTaskSim benchmarks AI agents against rodent/primate behavioral fingerprints using task-faithful environments, baseline agents, and a shared evaluation stack.
-- Current scope (v0.2): IBL mouse 2AFC and macaque RDM tasks with Sticky-Q, Bayesian observer, PPO baselines, Hybrid DDM+LSTM, and R-DDM agents. 93 tests, 60+ registered experiments.
-- Roadmap (v0.2) adds **Probabilistic Reversal Learning** and **Delayed Match-to-Sample**; schema extensions are already drafted and tested (`tests/test_schema_v02.py`). Design so these slot in without breaking interfaces.
+- Current scope: IBL mouse 2AFC and macaque RDM tasks with Sticky-Q, Bayesian observer, PPO baselines, Hybrid DDM+LSTM, R-DDM, and adaptive-control agents. The PRL transfer path is wired end to end; DMS has a schema-valid environment scaffold. 176 tests pass.
+- Current PRL result: a 10-condition, 50-run scale sweep showed scalar tuning alone was insufficient, then the sidecar diagnostic localized the deficit to `uncertain_retry` firing after every failure under PRL's pinned perceptual uncertainty. The flag-gated change-evidence recurrence restores combined PRL recovery: λ=0.9 full control reaches block-learning lift `+0.469` and optimal choice `0.706` with `uncertain_retry` still enabled. A June 1 evaluator correction now bins retry by the prior failed trial's stimulus strength; under that corrected metric, λ=0.9 full control nearly preserves the historical flag-off IBL retry gap (`0.158` vs `0.175`). Treat λ=0.9 as a validated opt-in cross-task profile, not a default.
+- Roadmap: preserve `persistence_only` as the conservative IBL default while the corrected retry baseline is re-reported, use λ=0.9 for explicitly labeled cross-task runs, then implement **Delayed Match-to-Sample** metrics and a memoryless baseline from the defined memory fingerprint before wiring adaptive rollout. Keep all diagnostics compatible with the frozen shared pipeline.
 - Every contribution should strengthen the `.ndjson`-driven comparison pipeline between agents and animal data.
 
 ## Build & Test
@@ -26,8 +27,8 @@ python scripts/make_report.py --run runs/<run_dir>
 ## Architecture
 
 ```text
-envs/           → Gymnasium envs (IBL 2AFC, RDM). Env owns the NDJSONTrialLogger.
-agents/         → Agent implementations (Sticky-Q, Bayes, PPO, DDM, Hybrid)
+envs/           → Gymnasium envs (IBL 2AFC, RDM, PRL, DMS scaffold). Env owns logging.
+agents/         → Agent implementations (Sticky-Q, Bayes, PPO, DDM, Hybrid, Adaptive Control)
 eval/           → Metrics, schema validation (authoritative), HTML reports
 scripts/        → Frozen CLI entrypoints (train, evaluate, report)
 animaltasksim/  → Shared core (config, logging, seeding, registry)
@@ -92,7 +93,7 @@ All use `tyro.cli(DataclassArgs)` — no manual argparse. `Literal` types restri
 ## Workflow
 
 1. **Clarify & Plan** – Restate objectives and constraints; confirm changes stay inside frozen CLI + schema contract.
-2. **Design** – Sketch data structures, configs, logging hooks; ensure additions dovetail with schema validation and future PRL/DMS needs.
+2. **Design** – Sketch data structures, configs, logging hooks; ensure additions dovetail with schema validation and the PRL/DMS roadmap.
 3. **Implement** – Write typed Python 3.11 with `@dataclass(slots=True)` configs, `__all__` exports, and purposeful comments.
 4. **Validate** – Run `pytest` (especially `test_schema.py`), smoke relevant CLIs, confirm `.ndjson` logs pass `eval/schema_validator.py`.
 5. **Document** – Update README/docs when behavior changes; report results, risks, and roadmap alignment.
@@ -104,12 +105,12 @@ All use `tyro.cli(DataclassArgs)` — no manual argparse. `Literal` types restri
 - `.ndjson` validated via `eval/schema_validator.py`; `pytest tests/test_schema.py` passes.
 - Relevant CLIs smoke-tested.
 - README/docs updated if behavior changed.
-- Roadmap note: how work supports upcoming PRL/DMS additions.
+- Roadmap note: how work supports PRL transfer and the upcoming DMS rollout.
 
 ## Out of Scope Unless Explicitly Requested
 
 - Web/hosted leaderboard or evaluation services.
 - GPU or non-CPU acceleration paths.
 - Neural data fitting or spike-based models.
-- Implementing PRL/DMS deliverables ahead of schedule without approval.
+- Expanding DMS beyond its environment scaffold without approval.
 - Altering CLI surfaces, schema keys, or log formats.

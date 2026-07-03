@@ -29,7 +29,9 @@ Expected exploratory signature:
 
 ## Probe 2: Local Outcome Volatility
 
-A second probe asks whether the agent switches more after recent mixed outcomes. This is still only an IBL-compatible proxy for volatility; PRL/DMS will be a better transfer test once those tasks land.
+A second probe asks whether the agent switches more after recent mixed outcomes.
+This is still only an IBL-compatible proxy for volatility. PRL has now landed as
+the better hidden-contingency transfer test; DMS remains a future memory probe.
 
 Primary readouts in `exploration_probe`:
 
@@ -62,6 +64,10 @@ This was a lightweight matched screen across `true_no_control`, `persistence_onl
 
 Quality checks were clean: all four conditions had 0/5 degenerate runs and 0/5 RT-ceiling warnings.
 
+The retry-gap columns in this historical May screen and interaction sweep
+predate the June 1 prior-trial metric correction. They are retained for
+provenance and are superseded for claim use.
+
 Paired deltas versus no-control:
 
 | Comparison | Delta retry gap | Retry positive seeds | Delta unrewarded-switch lift | Unrewarded positive seeds | Delta volatile-switch lift | Volatile positive seeds |
@@ -93,7 +99,7 @@ Use the existing four-condition matched validation suite:
 3. `exploration_only`
 4. `full_control`
 
-Read the new lifts alongside the existing retry and stale-switch metrics. Do not tune agent parameters against a single-seed positive result. The next useful branch is the new `block_switch_probe`, which uses uncued IBL block reversals as a bridge to PRL/DMS: exploration should help the agent move toward a new hidden prior without merely increasing random switching.
+Read the new lifts alongside the existing retry and stale-switch metrics. Do not tune agent parameters against a single-seed positive result. The `block_switch_probe` uses uncued IBL block reversals as a bridge to PRL: exploration should help the agent move toward a new hidden prior without merely increasing random switching.
 
 ## Block-Switch Follow-Up Result
 
@@ -110,3 +116,55 @@ Run: `runs/adaptive_control_interaction_sweep_v1/`
 The arbitration sweep tested whether full-control can preserve the block-switch lead by changing persistence/exploration scales. The cleanest rescue was `full_control_persist_half` (`persistence_bias_scale=0.8`, `exploration_bias_scale=0.8`): block-switch lift was `+0.136`, equal to exploration-only and `+0.037` above persistence-only in 5/5 paired seeds. The default full-control setting remained below persistence-only (`-0.015`, 0/5 seeds), so the interaction failure was scale-dependent rather than a total failure of the full-control path.
 
 This still does not validate exploration as the main project claim. `full_control_persist_half` reduced retry gap relative to persistence-only (`-0.025`, 0/5 positive seeds), so it should be treated as a promising full-control comparison/transfer candidate. The recommended/default claim profile remains `persistence_only`.
+
+### PRL transfer follow-up
+
+The matched hidden-contingency PRL suite completed on May 30, 2026. It gave the
+exploration lead a stronger out-of-sample test:
+
+| Condition | End-block optimal choice | Block-learning lift |
+|-----------|--------------------------|---------------------|
+| no-control | 0.513 | +0.053 |
+| exploration-only | 0.683 | +0.360 |
+| persistence-only | 0.492 | +0.019 |
+| full-control default | 0.466 | -0.044 |
+| full-control persist-half | 0.543 | +0.066 |
+
+Exploration-only beats no-control by `+0.307` block-learning lift and
+persistence-only by `+0.341`, positive in 5/5 paired seeds for both
+comparisons. The useful negative result is that the combined controllers still
+mask most of this effect. PRL therefore validates the isolated exploration
+mechanism lead while reopening the arbitration problem.
+
+### PRL arbitration scale sweep
+
+Run: `runs/prl_adaptive_control_interaction_sweep_v1/`
+
+The PRL interaction sweep tested seven combined full-control scale variants
+across five paired seeds. All 50 runs were usable and all 80,000 trial records
+passed schema validation. No combined profile preserved the exploration-only
+learning curve. The best combined block-learning lifts were only `+0.066` for
+`full_control_persist_half` and `+0.057` for `full_control_explore_double`,
+versus `+0.360` for `exploration_only`.
+
+The next experiment did not spend more budget on global scale tuning. The
+sidecar reversal-window diagnostic showed that PRL's neutral options pin the
+old stimulus-derived uncertainty signal at 1.0, so `uncertain_retry` fires
+after every failure. The state-dependent change-evidence recurrence now
+accumulates recent failures and closes that retry gate while opening the switch
+gate:
+
+```bash
+python scripts/prl_arbitration_diagnostic.py \
+  --source-root runs/prl_adaptive_control_interaction_sweep_v1 \
+  --output-root runs/prl_arbitration_diagnostic_v1
+```
+
+Safety-gated calibration rejected λ=0.7 as too eager and selected λ=0.9 as the
+validated opt-in cross-task profile. With `uncertain_retry` still enabled, λ=0.9
+full control reaches PRL block-learning lift `+0.469` and optimal choice
+`0.706`; after the June 1 prior-trial metric correction, its IBL retry gap is
+`0.158` versus the historical flag-off `0.175`. Older retry-gap values in this
+historical probe note are retained for provenance and are superseded for claim
+use.
+The feature remains default off while that IBL tradeoff is studied.

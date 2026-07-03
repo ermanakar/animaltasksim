@@ -35,4 +35,30 @@ class NDJSONTrialLogger:
         self.close()
 
 
-__all__ = ["NDJSONTrialLogger"]
+class NDJSONSidecarLogger:
+    """Append-only `.ndjson` logger for non-contract diagnostic records."""
+
+    def __init__(self, path: str | Path) -> None:
+        self.path = Path(path)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._handle = self.path.open("a", encoding="utf-8")
+
+    def log(self, record: Mapping[str, object]) -> None:
+        """Write one compact diagnostic record and flush immediately."""
+        self._handle.write(json.dumps(dict(record), separators=(",", ":")))
+        self._handle.write("\n")
+        self._handle.flush()
+
+    def close(self) -> None:
+        """Close the sidecar file handle."""
+        if not self._handle.closed:
+            self._handle.close()
+
+    def __enter__(self) -> "NDJSONSidecarLogger":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()
+
+
+__all__ = ["NDJSONSidecarLogger", "NDJSONTrialLogger"]

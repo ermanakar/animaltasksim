@@ -102,7 +102,7 @@ def render_summary(summary: dict, output: Path) -> Path:
         aggregate,
         "retry_gap_mean",
         "retry_gap_std",
-        "Retry gap\nP(retry|weak fail) − P(retry|strong fail)",
+        "Retry gap\nP(retry|prior weak fail) − P(retry|prior strong fail)",
     )
 
     _bar_panel(

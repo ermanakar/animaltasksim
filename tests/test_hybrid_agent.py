@@ -80,9 +80,23 @@ def test_plastic_history_update_creates_rewarded_stay_bias() -> None:
         hidden_size=16,
         device=torch.device("cpu"),
     )
-    plastic_state, eligibility_trace, prev_value_prediction, prev_history_gate = model.init_plastic_state()
+    sentinel = torch.full((1, 1), 0.42)
+    _, _, _, threaded = model.update_plastic_history(
+        plastic_state=torch.zeros(1, 2),
+        eligibility_trace=torch.zeros(1, 2),
+        prev_action=torch.tensor([1.0]),
+        prev_reward=torch.tensor([0.0]),
+        prev_value_prediction=torch.zeros(1, 1),
+        prev_history_gate=torch.ones(1, 1),
+        change_evidence=sentinel,
+    )
+    # The base model has no change-evidence recurrence; it must thread a nonzero
+    # sentinel through completely unchanged.
+    assert threaded is sentinel
 
-    plastic_state, eligibility_trace, delta = model.update_plastic_history(
+    plastic_state, eligibility_trace, prev_value_prediction, prev_history_gate, _ = model.init_plastic_state()
+
+    plastic_state, eligibility_trace, delta, _ = model.update_plastic_history(
         plastic_state=plastic_state,
         eligibility_trace=eligibility_trace,
         prev_action=torch.tensor([1.0]),
@@ -108,11 +122,11 @@ def test_plastic_history_update_promotes_switch_after_loss() -> None:
         hidden_size=16,
         device=torch.device("cpu"),
     )
-    plastic_state, eligibility_trace, _, _ = model.init_plastic_state()
+    plastic_state, eligibility_trace, _, _, _ = model.init_plastic_state()
 
     # A negative prediction error on a previous right action should weaken that
     # action and strengthen the alternative through the counterfactual update.
-    plastic_state, _, delta = model.update_plastic_history(
+    plastic_state, _, delta, _ = model.update_plastic_history(
         plastic_state=plastic_state,
         eligibility_trace=eligibility_trace,
         prev_action=torch.tensor([1.0]),

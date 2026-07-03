@@ -117,11 +117,16 @@ class HybridDDMTrainer:
     # ------------------------------------------------------------------
     # Reference data handling
     # ------------------------------------------------------------------
+    def _reference_task(self) -> str:
+        """Return the task whose animal data supervises the shared evidence core."""
+        reference_task = getattr(self.config, "reference_task", None)
+        return str(reference_task or self.config.task)
+
     def _load_reference_sessions(self) -> list[SessionBatch]:
         df = load_trials(self.config.reference_log)
         if df.empty:
             return []
-        task_key = "ibl_2afc" if self.config.task == "ibl_2afc" else "rdm"
+        task_key = "ibl_2afc" if self._reference_task() == "ibl_2afc" else "rdm"
         df = df[df["task"] == task_key].copy()
         if df.empty:
             return []
@@ -193,7 +198,7 @@ class HybridDDMTrainer:
         max_idx = max(int(trials["trial_index"].max()), 1)
 
         for _, row in trials.iterrows():
-            stim_key = "stimulus_contrast" if self.config.task == "ibl_2afc" else "stimulus_coherence"
+            stim_key = "stimulus_contrast" if self._reference_task() == "ibl_2afc" else "stimulus_coherence"
             coherence = float(row.get(stim_key, 0.0))
             sign = np.sign(coherence)
             abs_coh = abs(coherence)
@@ -321,8 +326,8 @@ class HybridDDMTrainer:
         features: np.ndarray,
     ) -> tuple[np.ndarray, np.ndarray]:
         valid = (rt_mask > 0.5) & (rt_ms > 1.0)
-        fallback_mean = 1200.0 if self.config.task == "ibl_2afc" else 750.0
-        fallback_var = 8000000.0 if self.config.task == "ibl_2afc" else 30000.0
+        fallback_mean = 1200.0 if self._reference_task() == "ibl_2afc" else 750.0
+        fallback_var = 8000000.0 if self._reference_task() == "ibl_2afc" else 30000.0
         if not valid.any():
             length = len(rt_ms)
             return (
@@ -336,7 +341,7 @@ class HybridDDMTrainer:
         unique.sort()
 
         # Precompute mean/var from reference data (task-specific)
-        if self.config.task == "ibl_2afc":
+        if self._reference_task() == "ibl_2afc":
             ref_means = {
                 0.0: 2253.21,
                 0.0625: 1429.98,
@@ -471,7 +476,7 @@ class HybridDDMTrainer:
             for session in shuffled_sessions:
                 self.optimizer.zero_grad()
                 h, c = self.model.init_state()
-                plastic_state, eligibility_trace, prev_value_prediction, prev_history_gate = (
+                plastic_state, eligibility_trace, prev_value_prediction, prev_history_gate, change_evidence = (
                     self.model.init_plastic_state()
                 )
                 features = torch.from_numpy(session.features).to(self.device)
@@ -526,6 +531,7 @@ class HybridDDMTrainer:
                         eligibility_trace = eligibility_trace.detach()
                         prev_value_prediction = prev_value_prediction.detach()
                         prev_history_gate = prev_history_gate.detach()
+                        change_evidence = change_evidence.detach()
                     x = features[idx : idx + 1]
                     reward_pred_loss = torch.zeros(1, device=self.device)
                     if torch.abs(x[0, 3]).item() > 0.0:
@@ -535,17 +541,18 @@ class HybridDDMTrainer:
                         )
                         total_reward_pred_loss = total_reward_pred_loss + reward_pred_loss
                         reward_pred_weight += 1.0
-                    plastic_state, eligibility_trace, _ = self.model.update_plastic_history(
+                    plastic_state, eligibility_trace, _, change_evidence = self.model.update_plastic_history(
                         plastic_state=plastic_state,
                         eligibility_trace=eligibility_trace,
                         prev_action=x[:, 3],
                         prev_reward=x[:, 4],
                         prev_value_prediction=prev_value_prediction,
                         prev_history_gate=prev_history_gate,
+                        change_evidence=change_evidence,
                     )
                     out, (h, c) = self.model(x, (h, c), plastic_state=plastic_state)
                     prev_value_prediction = out["critic_value"].reshape(-1, 1)
-                    prev_history_gate = torch.clamp(1.0 - torch.abs(x[:, 0:1]), min=0.0, max=1.0)
+                    prev_history_gate = out["perceptual_gate"].reshape(-1, 1)
                     plastic_tendency_buffer.append(out["plastic_stay_tendency"])
                     win_tendency_buffer.append(out["win_stay_tendency"])
                     lose_tendency_buffer.append(out["lose_stay_tendency"])
@@ -1160,7 +1167,7 @@ class HybridDDMTrainer:
         for episode in range(self.config.episodes):
             observation, info = env.reset(seed=self.config.seed + episode)
             h, c = self.model.init_state()
-            plastic_state, eligibility_trace, prev_value_prediction, prev_history_gate = (
+            plastic_state, eligibility_trace, prev_value_prediction, prev_history_gate, change_evidence = (
                 self.model.init_plastic_state()
             )
             cumulative_reward = 0.0
@@ -1189,17 +1196,18 @@ class HybridDDMTrainer:
                             trial_norm,
                         )
                         x = torch.from_numpy(features).unsqueeze(0).to(self.device)
-                        plastic_state, eligibility_trace, _ = self.model.update_plastic_history(
+                        plastic_state, eligibility_trace, _, change_evidence = self.model.update_plastic_history(
                             plastic_state=plastic_state,
                             eligibility_trace=eligibility_trace,
                             prev_action=x[:, 3],
                             prev_reward=x[:, 4],
                             prev_value_prediction=prev_value_prediction,
                             prev_history_gate=prev_history_gate,
+                            change_evidence=change_evidence,
                         )
                         out, (h, c) = self.model(x, (h, c), plastic_state=plastic_state)
                         prev_value_prediction = out["critic_value"].reshape(-1, 1)
-                        prev_history_gate = torch.clamp(1.0 - torch.abs(x[:, 0:1]), min=0.0, max=1.0)
+                        prev_history_gate = out["perceptual_gate"].reshape(-1, 1)
 
                         # Extract DDM parameters
                         stimulus = x[0, 0].item()

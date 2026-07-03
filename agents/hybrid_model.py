@@ -116,13 +116,14 @@ class HybridDDMModel(nn.Module):
     def init_plastic_state(
         self,
         batch_size: int = 1,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Initialize fast history weights, eligibility trace, critic state, and gate."""
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Initialize fast history weights, eligibility trace, critic state, gate, and change-evidence."""
         plastic_state = torch.zeros(batch_size, 2, device=self.device)
         eligibility_trace = torch.zeros(batch_size, 2, device=self.device)
         prev_value_prediction = torch.zeros(batch_size, 1, device=self.device)
         prev_history_gate = torch.zeros(batch_size, 1, device=self.device)
-        return plastic_state, eligibility_trace, prev_value_prediction, prev_history_gate
+        change_evidence = torch.zeros(batch_size, 1, device=self.device)
+        return plastic_state, eligibility_trace, prev_value_prediction, prev_history_gate, change_evidence
 
     @property
     def effective_positive_history_plasticity(self) -> torch.Tensor:
@@ -170,8 +171,14 @@ class HybridDDMModel(nn.Module):
         prev_reward: torch.Tensor,
         prev_value_prediction: torch.Tensor,
         prev_history_gate: torch.Tensor,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Apply a local dopamine-like update to the fast history weights."""
+        change_evidence: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor | None]:
+        """Apply a local dopamine-like update to the fast history weights.
+
+        The base model does not use `change_evidence`; it is threaded through
+        unchanged so the shared trainer interface is uniform with the
+        adaptive-control subclass.
+        """
         action_trace = self._action_one_hot(prev_action)
         alternative_trace = torch.flip(action_trace, dims=[1])
         valid = (action_trace.sum(dim=1, keepdim=True) > 0).float()
@@ -198,7 +205,7 @@ class HybridDDMModel(nn.Module):
             + switch_update
         )
         updated_state = torch.clamp(updated_state, min=-3.0, max=3.0)
-        return updated_state, updated_trace, delta.squeeze(-1)
+        return updated_state, updated_trace, delta.squeeze(-1), change_evidence
 
     def forward(
         self,
@@ -254,12 +261,17 @@ class HybridDDMModel(nn.Module):
         ) * has_prev_action
         stay_tendency = torch.tanh(learned_stay_tendency + plastic_tendency)
 
+        # The raw perceptual gate (1 - |stimulus|) is owned and returned here so
+        # trainers thread a single model-supplied value rather than rebuilding it.
+        perceptual_gate = torch.clamp(1.0 - torch.abs(x[:, 0:1]), min=0.0, max=1.0)
+
         outputs = {
             "drift_gain": drift_gain.squeeze(-1),
             "bound": bound.squeeze(-1),
             "bias": bias.squeeze(-1),
             "history_bias": history_bias.squeeze(-1),
             "stay_tendency": stay_tendency.squeeze(-1),
+            "perceptual_gate": perceptual_gate.squeeze(-1),
             "plastic_stay_tendency": plastic_tendency.squeeze(-1),
             "win_stay_tendency": win_tendency.squeeze(-1),
             "lose_shift_tendency": lose_shift_tendency.squeeze(-1),
