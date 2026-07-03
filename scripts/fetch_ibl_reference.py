@@ -273,9 +273,19 @@ def fetch(args: Args) -> None:
             "ONE-api is required. Install it in a throwaway env: pip install ONE-api"
         ) from exc
 
-    one = ONE(base_url=args.base_url, silent=True)
+    # Public OpenAlyx is read-only but still requires the shared anonymous
+    # credentials (user "intbrainlab" / password "international"). Passing them
+    # explicitly avoids relying on a previously cached token from ONE.setup().
+    one = ONE(
+        base_url=args.base_url,
+        username="intbrainlab",
+        password="international",
+        silent=True,
+    )
     print(f"Searching for '{args.task_protocol}' sessions on {args.base_url} ...")
-    eids = one.search(task_protocol=args.task_protocol)
+    # task_protocol is filtered against the remote Alyx REST API, not the local
+    # cache table, so force a remote query.
+    eids = one.search(task_protocol=args.task_protocol, query_type="remote")
     print(f"  found {len(eids)} candidate sessions; taking up to {args.max_sessions}")
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
