@@ -4,6 +4,7 @@ import json
 
 import numpy as np
 
+from eval.metrics import compute_psychometric, load_trials
 from eval.schema_validator import validate_file
 from scripts.fetch_ibl_reference import (
     calibrate_choice_sign,
@@ -92,6 +93,21 @@ def test_session_to_records_is_schema_valid_and_filtered(tmp_path) -> None:
     result = validate_file(log_path, raise_on_error=False)
     assert result.errors == []
     assert result.total == len(records)
+
+
+def test_metrics_pipeline_recovers_a_sane_psychometric(tmp_path) -> None:
+    # End-to-end guard for the action-integer convention: reference logs use
+    # 0=right/1=left (eval.metrics.load_trials), the inverse of the env. Emitting
+    # the wrong convention inverts the curve and collapses the fit (slope->0,
+    # lapse->0.5). A trained synthetic mouse must fit a steep, low-lapse sigmoid.
+    trials = _synthetic_session(1200, right_choice_value=1.0)
+    records, _ = session_to_records(trials, "trained", rt_source="firstMovement")
+    log_path = tmp_path / "expanded.ndjson"
+    log_path.write_text("\n".join(json.dumps(r) for r in records) + "\n", encoding="utf-8")
+
+    metrics = compute_psychometric(load_trials(log_path), stimulus_key="contrast")
+    assert metrics.slope > 3.0  # steep, not the ~0 of an inverted fit
+    assert metrics.lapse_low < 0.2 and metrics.lapse_high < 0.2  # not the ~0.5 collapse
 
 
 def test_qc_reports_trained_and_untrained_full_contrast_accuracy() -> None:

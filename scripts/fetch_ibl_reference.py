@@ -58,6 +58,13 @@ ACTION_LEFT = 0
 ACTION_RIGHT = 1
 ACTION_NO_OP = 2
 
+# Reference logs use the integer convention of eval.metrics.load_trials and the
+# existing data/ibl/reference.ndjson: 0 = right, 1 = left, 2 = no-op. This is the
+# INVERSE of the env's ACTION_LEFT=0/ACTION_RIGHT=1 constants, so actions are
+# remapped to this convention at emission time. Emitting the env convention makes
+# load_trials relabel every right choice as left and inverts the psychometric.
+_REFERENCE_ACTION = {ACTION_RIGHT: 0, ACTION_LEFT: 1, ACTION_NO_OP: 2}
+
 
 @dataclass(slots=True)
 class Args:
@@ -241,7 +248,7 @@ def session_to_records(
             "trial_index": len(records),
             "stimulus": {"contrast": float(signed)},
             "block_prior": {"p_right": p_right(trials, i)},
-            "action": int(action),
+            "action": _REFERENCE_ACTION[action],
             "correct": correct,
             "reward": 1.0 if correct else 0.0,
             "rt_ms": reaction_time_ms(trials, i, rt_source),
