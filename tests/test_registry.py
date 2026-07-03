@@ -58,3 +58,34 @@ def test_registry_extracts_prl_adaptive_control_metrics(tmp_path: Path) -> None:
     registry.add(metadata)
 
     assert registry.get(run_dir.name) == metadata
+
+
+def test_explicit_config_task_wins_over_directory_name(tmp_path: Path) -> None:
+    # An IBL control run that happens to live inside a PRL-named suite directory
+    # must not be reclassified as a PRL run: the config task is authoritative.
+    run_dir = tmp_path / "runs" / "prl_transfer_suite_ibl_control_seed42"
+    run_dir.mkdir(parents=True)
+    (run_dir / "config.json").write_text(
+        json.dumps({"task": "ibl_2afc", "seed": 42, "control_state_enabled": True}),
+        encoding="utf-8",
+    )
+
+    metadata = extract_metadata_from_run(run_dir)
+
+    assert metadata is not None
+    assert metadata.task == "ibl_2afc"
+
+
+def test_directory_name_infers_task_when_config_task_missing(tmp_path: Path) -> None:
+    # With no task/env in the config, the directory-name heuristic still applies.
+    run_dir = tmp_path / "runs" / "prl_arbitration_diagnostic_v9"
+    run_dir.mkdir(parents=True)
+    (run_dir / "config.json").write_text(
+        json.dumps({"seed": 42, "control_state_enabled": True}),
+        encoding="utf-8",
+    )
+
+    metadata = extract_metadata_from_run(run_dir)
+
+    assert metadata is not None
+    assert metadata.task == "prl"

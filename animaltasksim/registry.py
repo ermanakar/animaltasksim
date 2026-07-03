@@ -238,18 +238,24 @@ def extract_metadata_from_run(run_dir: Path) -> ExperimentMetadata | None:
         except Exception:
             pass
     
-    # Determine task and agent from config or directory name
-    task = config.get("task", config.get("env", "ibl_2afc"))
+    # Determine task from config, falling back to directory-name heuristics
+    # only when the config does not specify one. An explicit config task is
+    # authoritative: overriding it from the run-directory name can silently
+    # misclassify runs (e.g. an IBL control run inside a PRL suite directory)
+    # and poison the registry.
+    explicit_task = config.get("task", config.get("env"))
+    task = explicit_task if explicit_task is not None else "ibl_2afc"
     if task == "rdm":
         task = "rdm_macaque"
-    if "prl" in run_id.lower():
-        task = "prl"
-    elif "dms" in run_id.lower():
-        task = "dms"
-    elif "rdm" in run_id.lower() or "macaque" in run_id.lower():
-        task = "rdm_macaque"
-    elif "ibl" in run_id.lower() or "2afc" in run_id.lower() or "mouse" in run_id.lower():
-        task = "ibl_2afc"
+    if explicit_task is None:
+        if "prl" in run_id.lower():
+            task = "prl"
+        elif "dms" in run_id.lower():
+            task = "dms"
+        elif "rdm" in run_id.lower() or "macaque" in run_id.lower():
+            task = "rdm_macaque"
+        elif "ibl" in run_id.lower() or "2afc" in run_id.lower() or "mouse" in run_id.lower():
+            task = "ibl_2afc"
     
     # Try to get agent from config (handle both nested and flat structures)
     agent = config.get("agent_type", "unknown")
