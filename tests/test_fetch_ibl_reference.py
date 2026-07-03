@@ -92,3 +92,22 @@ def test_session_to_records_is_schema_valid_and_filtered(tmp_path) -> None:
     result = validate_file(log_path, raise_on_error=False)
     assert result.errors == []
     assert result.total == len(records)
+
+
+def test_qc_reports_trained_and_untrained_full_contrast_accuracy() -> None:
+    import numpy as np
+
+    # A trained mouse (accuracy scales with contrast) clears the QC gate.
+    trained = _synthetic_session(600, right_choice_value=1.0)
+    _, summary = session_to_records(trained, "trained", rt_source="firstMovement")
+    assert summary["n_full_contrast"] >= 20
+    assert summary["easy_full_contrast_accuracy"] >= 0.85
+
+    # A near-chance session (feedback independent of contrast) fails QC.
+    untrained = _synthetic_session(600, right_choice_value=1.0)
+    n = len(untrained["feedbackType"])
+    untrained["feedbackType"] = np.where(
+        np.random.default_rng(7).random(n) < 0.5, 1.0, -1.0
+    )
+    _, summary_bad = session_to_records(untrained, "untrained", rt_source="firstMovement")
+    assert summary_bad["easy_full_contrast_accuracy"] < 0.85

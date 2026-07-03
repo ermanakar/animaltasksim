@@ -69,6 +69,8 @@ class Args:
     task_protocol: str = "biasedChoiceWorld"
     rt_source: Literal["firstMovement", "response"] = "firstMovement"
     min_trials: int = 150  # drop short/aborted sessions
+    min_easy_accuracy: float = 0.85  # trained-performance QC on |contrast|=1.0 trials
+    min_full_contrast_trials: int = 20  # need enough easy trials to score QC reliably
     base_url: str = "https://openalyx.internationalbrainlab.org"
     seed: int = 0  # deterministic session ordering only; not a model seed
 
@@ -251,11 +253,19 @@ def session_to_records(
         records.append(record)
         prev = {"action": record["action"], "reward": record["reward"], "correct": record["correct"]}
         kept += 1
+    # Trained-performance QC: accuracy on full-contrast (|contrast|=1.0) trials.
+    # Untrained/early sessions sit near chance here and must be excluded so the
+    # reference reflects mice that could actually see the stimulus.
+    full_contrast = [r["correct"] for r in records if abs(r["stimulus"]["contrast"]) == 1.0]
+    n_full = len(full_contrast)
+    easy_accuracy = (sum(full_contrast) / n_full) if n_full > 0 else None
     summary = {
         "session_id": session_id,
         "kept": kept,
         "dropped_off_protocol_contrast": dropped_contrast,
         "dropped_unclassified": dropped_unclassified,
+        "easy_full_contrast_accuracy": round(easy_accuracy, 4) if easy_accuracy is not None else None,
+        "n_full_contrast": n_full,
         "choice_sign_right_value": right_value,
         "choice_sign_agreement": round(agreement, 4),
         "choice_sign_calibration_trials": n_calib,
@@ -285,8 +295,13 @@ def fetch(args: Args) -> None:
     print(f"Searching for '{args.task_protocol}' sessions on {args.base_url} ...")
     # task_protocol is filtered against the remote Alyx REST API, not the local
     # cache table, so force a remote query.
-    eids = one.search(task_protocol=args.task_protocol, query_type="remote")
-    print(f"  found {len(eids)} candidate sessions; taking up to {args.max_sessions}")
+    eids = list(one.search(task_protocol=args.task_protocol, query_type="remote"))
+    # Alyx returns sessions in a fixed order that front-loads early/low-quality
+    # sessions and can group by lab. Shuffle deterministically so the kept set is
+    # a representative sample of the trained population, not an ordering artifact.
+    order = np.random.default_rng(args.seed).permutation(len(eids))
+    eids = [eids[i] for i in order]
+    print(f"  found {len(eids)} candidate sessions; taking up to {args.max_sessions} that pass QC")
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     manifest_path = args.manifest or args.out.with_suffix(".manifest.json")
@@ -307,6 +322,19 @@ def fetch(args: Args) -> None:
             if len(records) < args.min_trials:
                 print(f"  skip {eid}: only {len(records)} usable trials (< {args.min_trials})")
                 continue
+            easy_acc = summary["easy_full_contrast_accuracy"]
+            if summary["n_full_contrast"] < args.min_full_contrast_trials:
+                print(
+                    f"  skip {eid}: only {summary['n_full_contrast']} full-contrast trials "
+                    f"(< {args.min_full_contrast_trials}), cannot QC"
+                )
+                continue
+            if easy_acc is None or easy_acc < args.min_easy_accuracy:
+                print(
+                    f"  skip {eid}: untrained — full-contrast accuracy {easy_acc:.3f} "
+                    f"< {args.min_easy_accuracy}"
+                )
+                continue
             for record in records:
                 handle.write(json.dumps(record, separators=(",", ":")) + "\n")
             handle.flush()
@@ -315,6 +343,7 @@ def fetch(args: Args) -> None:
             flag = "" if summary["choice_sign_agreement"] >= 0.9 else "  ⚠ LOW choice-sign agreement"
             print(
                 f"  + {eid}: {len(records)} trials, "
+                f"full-contrast acc {summary['easy_full_contrast_accuracy']:.3f}, "
                 f"choice-sign agreement {summary['choice_sign_agreement']:.3f}{flag}"
             )
 
@@ -323,6 +352,8 @@ def fetch(args: Args) -> None:
         "task_protocol": args.task_protocol,
         "rt_source": args.rt_source,
         "contrast_set_abs": list(BIASED_BLOCK_ABS_CONTRASTS),
+        "min_easy_accuracy": args.min_easy_accuracy,
+        "selection_seed": args.seed,
         "n_sessions": len(used_sessions),
         "n_trials": total_trials,
         "sessions": used_sessions,
