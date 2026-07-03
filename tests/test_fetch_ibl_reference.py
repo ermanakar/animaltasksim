@@ -7,10 +7,25 @@ import numpy as np
 from eval.metrics import compute_psychometric, load_trials
 from eval.schema_validator import validate_file
 from scripts.fetch_ibl_reference import (
+    _is_nan,
     calibrate_choice_sign,
     in_biased_block_contrast_set,
     session_to_records,
 )
+
+
+def test_is_nan_handles_numpy_and_non_numeric() -> None:
+    import numpy as np
+
+    # numpy float32 is NOT a Python float subclass — the naive isinstance check
+    # missed it and let NaNs slip through signed_contrast/RT logic.
+    assert _is_nan(np.float32("nan"))
+    assert _is_nan(np.float64("nan"))
+    assert _is_nan(float("nan"))
+    assert not _is_nan(np.float32(0.0625))
+    assert not _is_nan(0.25)
+    assert not _is_nan(None)
+    assert not _is_nan("left")
 
 
 def _synthetic_session(n: int, right_choice_value: float, seed: int = 0) -> dict:

@@ -41,6 +41,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -78,12 +79,18 @@ class Args:
     min_trials: int = 150  # drop short/aborted sessions
     min_easy_accuracy: float = 0.85  # trained-performance QC on |contrast|=1.0 trials
     min_full_contrast_trials: int = 20  # need enough easy trials to score QC reliably
+    min_choice_sign_agreement: float = 0.9  # skip sessions whose choice column is unreliable
     base_url: str = "https://openalyx.internationalbrainlab.org"
     seed: int = 0  # deterministic session ordering only; not a model seed
 
 
 def _is_nan(x: object) -> bool:
-    return isinstance(x, float) and math.isnan(x)
+    # Handle Python float, numpy float64 (a float subclass) *and* numpy float32
+    # (which is not), plus non-numeric values, via math.isnan with a guard.
+    try:
+        return math.isnan(x)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return False
 
 
 def _get(trials: dict, key: str, index: int) -> object:
@@ -291,12 +298,13 @@ def fetch(args: Args) -> None:
         ) from exc
 
     # Public OpenAlyx is read-only but still requires the shared anonymous
-    # credentials (user "intbrainlab" / password "international"). Passing them
-    # explicitly avoids relying on a previously cached token from ONE.setup().
+    # credentials (the documented user "intbrainlab" / password "international").
+    # Read from the environment so they can be overridden/rotated without editing
+    # source; the public defaults keep the anonymous path working out of the box.
     one = ONE(
         base_url=args.base_url,
-        username="intbrainlab",
-        password="international",
+        username=os.environ.get("ONE_USERNAME", "intbrainlab"),
+        password=os.environ.get("ONE_PASSWORD", "international"),
         silent=True,
     )
     print(f"Searching for '{args.task_protocol}' sessions on {args.base_url} ...")
@@ -342,16 +350,25 @@ def fetch(args: Args) -> None:
                     f"< {args.min_easy_accuracy}"
                 )
                 continue
+            agreement = summary["choice_sign_agreement"]
+            if summary["choice_sign_right_value"] is None or agreement < args.min_choice_sign_agreement:
+                # An unreliable choice column would systematically mis-label
+                # zero-contrast trials (~half wrong); drop the whole session
+                # rather than guess.
+                print(
+                    f"  skip {eid}: choice-sign agreement {agreement:.3f} "
+                    f"< {args.min_choice_sign_agreement}; choice column unreliable"
+                )
+                continue
             for record in records:
                 handle.write(json.dumps(record, separators=(",", ":")) + "\n")
             handle.flush()
             total_trials += len(records)
             used_sessions.append(summary)
-            flag = "" if summary["choice_sign_agreement"] >= 0.9 else "  ⚠ LOW choice-sign agreement"
             print(
                 f"  + {eid}: {len(records)} trials, "
                 f"full-contrast acc {summary['easy_full_contrast_accuracy']:.3f}, "
-                f"choice-sign agreement {summary['choice_sign_agreement']:.3f}{flag}"
+                f"choice-sign agreement {summary['choice_sign_agreement']:.3f}"
             )
 
     manifest = {
@@ -360,6 +377,7 @@ def fetch(args: Args) -> None:
         "rt_source": args.rt_source,
         "contrast_set_abs": list(BIASED_BLOCK_ABS_CONTRASTS),
         "min_easy_accuracy": args.min_easy_accuracy,
+        "min_choice_sign_agreement": args.min_choice_sign_agreement,
         "selection_seed": args.seed,
         "n_sessions": len(used_sessions),
         "n_trials": total_trials,
