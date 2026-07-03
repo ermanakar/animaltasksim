@@ -2317,6 +2317,24 @@ therefore fixes the mechanistic failure it was designed to fix: repeated
 failures can close the retry gate and open the switch gate without a task-name
 special case.
 
+**The PRL dissociation reverses under the recurrence.** This is the single most
+important interpretive shift and must be stated plainly, because it contradicts
+the earlier May transfer result. In the pre-recurrence May PRL suite,
+`exploration_only` was the *sole* driver of reversal learning (block-learning
+lift `+0.360`) while `persistence_only` fell *below* no-control — it
+perseverated. Under λ=0.9 the ordering flips: `persistence_only` block-learning
+lift is `+0.449` and full control `+0.469`, while `exploration_only` trails at
+`+0.232` (table above). The mechanism explains why: the earlier "exploration
+win" was `exploration_only` winning *by subtraction* — it was the only lesion
+that disabled the misfiring `uncertain_retry` term. The recurrence un-breaks
+`uncertain_retry` directly, so persistence-based control now recovers in PRL on
+its own, and the combined agent recovers with it. The practical consequence is
+that the recurrence's contribution is *repairing persistence under pinned
+uncertainty*, not demonstrating that the combined agent requires the
+exploration controller. Readers arriving from the May transfer sections should
+treat this reversal as superseding the "exploration drives PRL" framing for the
+flag-on regime.
+
 Across the completed flag-on calibration sequence, 130 logs and 240,000 trial
 records passed schema validation: λ=0.7 IBL, λ=0.8 IBL + PRL, λ=0.85 IBL, and
 λ=0.9 IBL + PRL. PRL was intentionally skipped for unsafe or dominated IBL
