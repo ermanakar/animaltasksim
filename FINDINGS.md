@@ -2410,3 +2410,70 @@ curve, stimulus-strength breakdown, match/non-match balance, omissions,
 reaction-time breakdown, a memoryless baseline, and a delay-state reset
 lesion. Adaptive rollout remains intentionally unwired until those controls
 exist.
+
+## IBL Reference Expansion Pilot — July 3, 2026
+
+`scripts/fetch_ibl_reference.py` pulls multi-session `biasedChoiceWorld` data
+from the IBL public server (OpenAlyx, anonymous) into the project schema, to test
+whether the reference fingerprint — currently derived from 10 sessions / 8,406
+trials — reproduces on an independent, larger, reproducible sample. The pilot is
+**add-and-compare only**: `data/ibl/reference.ndjson` is untouched and no targets
+were adopted.
+
+### Result: the baseline fingerprint replicates independently
+
+A 20-session QC'd pull (15,583 trials, seed 0) reproduces every fingerprint
+within the baseline per-session 1σ:
+
+| metric | baseline (10 sess) | expanded (20 sess) | within 1σ |
+|---|---:|---:|:--:|
+| psych slope | 19.97 ± 5.70 | 21.94 ± 13.42 (median 17.5) | ✓ |
+| chrono slope (ms/unit) | -51.04 ± 63.65 | -27.67 ± 41.64 | ✓ |
+| win-stay | 0.72 ± 0.08 | 0.69 ± 0.04 | ✓ |
+| lose-shift | 0.47 ± 0.10 | 0.48 ± 0.08 | ✓ |
+| lapse low / high | 0.08 / 0.10 | 0.07 / 0.06 | ✓ |
+
+This is the first independent cross-validation that the reference distribution is
+not an artifact of the 10 hand-picked sessions.
+
+### Honest caveat: the psych-slope band is wider than the baseline implied
+
+More data did **not** tighten the psych-slope band (±5.70 → ±13.42). This is not
+noise-from-error: the high-slope sessions (42–49) are genuinely proficient mice
+with near-zero lapse and near-vertical curves, and with only five contrast levels
+the slope is weakly identified at that steep end. The likely reading is that the
+10-session baseline **under-sampled true between-mouse variation** in psychometric
+steepness (population median ~17, range 4–49). A wider, better-sampled reference
+band makes the hybrid agent's psych slope (~12–18) sit *more* comfortably within
+range, not less. Report psych slope as median + IQR to be robust to steep-end fit
+noise; win-stay, by contrast, tightened as expected (±0.08 → ±0.04).
+
+### Two infrastructure bugs the pilot caught before any adoption
+
+Both are "infrastructure correctness is a scientific concern" cases — a naive
+pull would have produced a plausible-looking but wrong reference.
+
+1. **Session selection.** OpenAlyx `biasedChoiceWorld` is ~73% trained / 27%
+   low-performers, and `one.search()` order front-loads the poor/early sessions,
+   so `eids[:N]` grabbed near-chance mice (full-contrast accuracy ~0.68,
+   near-flat psychometric). Fixed with a trained-performance QC gate
+   (`--min-easy-accuracy`, default 0.85 on |contrast|=1.0 trials) and a
+   deterministic shuffle of the candidate list.
+2. **Action integer convention.** Reference logs and `eval.metrics.load_trials`
+   use `0 = right, 1 = left` — the inverse of the env's
+   `ACTION_LEFT=0 / ACTION_RIGHT=1`. Emitting the env convention made
+   `load_trials` relabel every right choice as left, inverting the psychometric
+   and collapsing the sigmoid fit (slope 0.15, bias 183, lapse 0.48) despite
+   clean 0.9+ full-contrast accuracy. History metrics (action-only) stayed
+   healthy throughout, which is exactly what localized the fault to the
+   choice-vs-contrast axis. Fixed by remapping actions to the reference
+   convention at emission; an end-to-end regression test now runs the real
+   metrics pipeline and asserts a steep, low-lapse fit.
+
+### Status
+
+Feature is on `feat/ibl-reference-expansion` (PR #3), default-off in the sense
+that nothing consumes the expanded pull yet. Next: scale to ~50–100 sessions to
+pin the population distribution, then make a deliberate, dated provenance
+decision about whether to adopt re-derived targets. Until then the frozen
+`reference.ndjson` and its targets remain canonical.
