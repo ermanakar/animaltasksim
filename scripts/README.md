@@ -49,6 +49,23 @@ optimal choice `0.706`; after the June 1 prior-trial retry-metric correction,
 its IBL retry gap is `0.158` versus the historical flag-off `0.175`. The feature
 remains default off.
 
+## Data Acquisition
+
+`fetch_ibl_reference.py` expands the animal reference set beyond the current
+10-session `data/ibl/reference.ndjson` by pulling `biasedChoiceWorld` sessions
+from the IBL public server (OpenAlyx, anonymous) into the project schema. It
+requires `ONE-api` (`pip install ONE-api`) installed in a throwaway env — it is
+deliberately kept out of `pyproject.toml`. It derives each action from the
+stimulus side and `feedbackType` (convention-agnostic), auto-calibrates the IBL
+`choice` sign for zero-contrast trials and reports its agreement, filters to the
+biased-blocks contrast set (`0.5` excluded), and defaults RT to
+`firstMovement_times - stimOn_times` to match the existing reference. It applies
+a trained-performance QC gate (`--min-easy-accuracy`, default 0.85 on
+full-contrast trials) and shuffles the candidate list deterministically, because
+the Alyx search order front-loads early/low-performance sessions. It writes a
+manifest of session EIDs and does **not** overwrite `reference.ndjson`.
+Compare targets with `compute_reference_targets.py` before adopting anything.
+
 ## Sweep And Validation Scripts
 
 Sweep scripts may encode a specific scientific hypothesis, but shared mechanics
