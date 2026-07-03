@@ -2477,3 +2477,48 @@ that nothing consumes the expanded pull yet. Next: scale to ~50–100 sessions t
 pin the population distribution, then make a deliberate, dated provenance
 decision about whether to adopt re-derived targets. Until then the frozen
 `reference.ndjson` and its targets remain canonical.
+
+## IBL Reference Expansion — 80-Session Scale + RT Convention — July 4, 2026
+
+Scaled the reference pull to 80 QC'd sessions (57,888 trials; all choice-sign
+agreement 1.000). Comparison vs the 10-session baseline (median is the robust
+statistic; psych slope has a few near-perfect mice that rail the fit bound):
+
+| metric | baseline (10) | expanded (80) |
+|---|---:|---:|
+| psych slope | 19.97 ± 5.70 (med 20.33) | 22.43 ± 12.99 (med 20.1, IQR 12.7–29.6) |
+| win-stay | 0.72 (med 0.70) | 0.69 (med 0.70) |
+| lose-shift | 0.47 (med 0.50) | 0.46 (med 0.46) |
+| lapse low/high | 0.08 / 0.10 | 0.06 / 0.06 |
+
+Psychometric, history, and lapse fingerprints reproduce the baseline at scale;
+the psych-slope median is 20.1 vs 20.33. Report psych slope as median + IQR — the
+mean is inflated by proficient mice whose near-vertical curves rail the fit's
+upper slope bound.
+
+### Chronometric RT convention resolved: baseline uses `response_times`
+
+The chronometric slope initially looked off (much shallower) because the fetcher
+defaulted to `firstMovement_times - stimOn` (~155 ms median), whereas the baseline
+was built with `response_times - stimOn`. A matched 15-session A/B settled it:
+
+| source | median RT | RT-vs-\|contrast\| (0 → 1.0) | chrono slope |
+|---|---:|---|---:|
+| baseline | 379 ms | 540 → 309 | -15.6 |
+| firstMovement | 156 ms | 220 → 112 | -8.6 |
+| response | 405 ms | 539 → 320 | -16.8 |
+
+`response` reproduces the baseline RT distribution and chronometric slope almost
+exactly. The earlier "378 ms ⇒ firstMovement" inference was backwards — 378 ms is
+the response (movement-completion) measure. The fetcher default is now
+`--rt-source response`; `firstMovement` (the more standard decision-RT for
+chronometrics) remains available but does not match this project's calibrated
+targets. This is the RT-definition footgun flagged at the outset, now empirical.
+
+### Status
+
+All six fingerprints now reproduce on an 80-session independent sample under the
+correct RT convention. The reference distribution is not an artifact of the 10
+hand-picked sessions. Still add-and-compare: `reference.ndjson` and its targets
+remain canonical; adopting a re-derived, larger reference is the next deliberate,
+dated decision.

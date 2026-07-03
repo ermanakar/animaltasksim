@@ -55,9 +55,9 @@ ARTICLE.md
 # Data files
 data/macaque/roitman_pyddm/roitman_rts.csv
 
-# Expanded IBL reference pull — local add-and-compare artifact, not adopted
-# (the .ndjson is already covered by *.ndjson above; ignore the manifest too)
-data/ibl/reference_expanded.manifest.json
+# Expanded IBL reference pulls — local add-and-compare artifacts, not adopted
+# (the .ndjson is already covered by *.ndjson above; ignore the manifests too)
+data/ibl/reference_expanded*.manifest.json
 
 # Keep registry
 !runs/registry.json
