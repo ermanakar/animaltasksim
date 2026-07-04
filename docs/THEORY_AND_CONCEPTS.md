@@ -28,12 +28,13 @@ We ask a different question: *"Can we build an agent that makes decisions the wa
 
 The key insight is that animals are not optimal decision-makers. They are influenced by what happened on the last trial, they occasionally zone out, and they take longer to decide when the evidence is weak. These "imperfections" are not bugs — they are signatures of specific brain circuits doing specific computations. We call the full pattern of these signatures a **behavioral fingerprint**.
 
+A guiding value runs through the whole project: **honest reporting over impressive results.** Past documentation once drifted into overstated claims and had to be corrected. Negative results — the things that did *not* work — are treated as first-class findings, because they narrow down what a real brain must be doing. You will see that ethos throughout this document: every claim is hedged to exactly what the evidence supports, and no further.
+
 ---
 
 ## The Tasks
 
-AnimalTaskSim recreates two classic experiments from neuroscience and adds a
-third transfer probe. Think of each one as a simple game with precise rules.
+AnimalTaskSim recreates two classic experiments from neuroscience and adds a third transfer probe (plus a fourth, memory-focused scaffold still under construction). Think of each one as a simple game with precise rules.
 
 ### Task 1: The Mouse Contrast Game (IBL 2AFC)
 
@@ -43,7 +44,9 @@ third transfer probe. Think of each one as a simple game with precise rules.
 
 **In the simulator.** The AI agent gets the same information the mouse would — a number representing how visible the pattern is and which side it appeared on — and must choose left or right. The trial timing, the reward rules, and even the way the lab shifts the odds between blocks of trials are all copied from the real protocol.
 
-**Contrast levels used:** {0, 0.0625, 0.125, 0.25, 1.0} — five levels from invisible to unmistakable.
+**Contrast levels used:** {0, 0.0625, 0.125, 0.25, 1.0} — five levels from invisible to unmistakable. (An earlier version of the simulator included a sixth level that does not appear in the real protocol; removing it improved the agent's accuracy pattern noticeably, with zero model changes — a good example of why protocol fidelity matters.)
+
+This is the task the project has studied most thoroughly, and the one where the agent's behavioral fingerprint is validated.
 
 ### Task 2: The Monkey Dots Game (RDM)
 
@@ -53,29 +56,21 @@ third transfer probe. Think of each one as a simple game with precise rules.
 
 **In the simulator.** The agent gets a coherence value (0% = pure noise, 100% = all dots agree) and must choose left or right. Importantly, the agent also controls *when* to respond — just like the real monkey, it has to decide when it has gathered enough evidence to commit.
 
+**A caveat worth stating up front:** the macaque in the available reference dataset was overtrained and shows essentially no history effects. So RDM is useful for studying reaction-time dynamics, but it is *not* a good target for studying win-stay/lose-shift. Six months of history experiments were once run against this dataset before we realized the target simply did not exist — a lesson kept front-of-mind ever since.
+
 ### Task 3: The Silent Rule-Swap Game (PRL)
 
-**The experiment.** Two choices look the same, but one pays out more often. The
-agent has to learn which one is better by trying them. Then, without warning,
-the payout probabilities swap.
+**The experiment.** Two choices look the same, but one pays out more often. The agent has to learn which one is better by trying them. Then, without warning, the payout probabilities swap.
 
-**What makes it hard.** The environment does not announce the reversal. A
-single missed reward is ambiguous: the good option sometimes fails because the
-task is probabilistic. The agent has to accumulate evidence from outcomes,
-rather than react to a visible cue.
+**What makes it hard.** The environment does not announce the reversal. A single missed reward is ambiguous: the good option sometimes fails because the task is probabilistic. The agent has to accumulate evidence *from outcomes over time*, rather than react to a visible cue.
 
-**In the simulator.** Both options stay visually neutral. Hidden payout
-contingencies are logged for offline analysis, but the acting agent only sees
-neutral options and the ordinary previous-trial outcome path. The matched
-suite found a reproducible exploration-only recovery phenotype. This is still
-not an animal-parity result because the repository has no PRL animal reference.
+**In the simulator.** Both options stay visually neutral. The hidden payout contingencies are logged for offline analysis, but the acting agent only ever sees neutral options and the ordinary previous-trial outcome — it gets no oracle "the rule just flipped" flag. PRL is a *transfer probe*: an agent trained on the mouse task is dropped into this new task to see which of its decision circuits carry over. Crucially, **there is no PRL animal reference dataset in this repository**, so nothing here is an animal-parity claim; the findings are about which computational pieces are necessary inside the simulator.
 
-There is also a schema-valid **Delayed Match-to-Sample (DMS)** environment
-scaffold for future memory experiments. Its adaptive-control rollout and
-memory-specific scorecard are intentionally not wired yet.
+### Task 4: The Memory Game (DMS) — scaffold only
 
-Together, the tasks ask: **How do brains decide under uncertainty, notice when
-the world changed, and remember what matters long enough to act?**
+Delayed Match-to-Sample: the agent sees a sample stimulus, waits through a delay, then judges whether a second stimulus matches. This probes *memory* rather than perception. Right now DMS is a schema-valid environment scaffold with a **defined** memory scorecard and lesion plan, but it is deliberately one step behind: its metrics, a memoryless baseline, and adaptive rollout are intentionally not wired yet. Building those controls comes before drawing any conclusions.
+
+Together, the tasks ask: **How do brains decide under uncertainty, notice when the world changed, and remember what matters long enough to act?**
 
 ---
 
@@ -133,6 +128,8 @@ xychart-beta
 
 > A **negative slope** (slower for weak evidence, faster for strong evidence) is the hallmark of evidence accumulation — and the central challenge of this project.
 
+> **A note on measuring reaction time.** "Reaction time" sounds unambiguous, but in the real IBL data you can measure it several ways — from stimulus onset to *first movement* of the wheel (~150 ms), or from stimulus onset to *response completion* (~400 ms). These give very different chronometric slopes. This project's calibrated targets use the response-completion convention, and getting that definition wrong quietly throws off every reaction-time comparison. It is a real footgun, discovered empirically (see FINDINGS.md, "IBL Reference Expansion").
+
 ### 3. History Effects (Win-Stay and Lose-Shift)
 
 *"Is the agent influenced by what happened on the last trial?"*
@@ -144,7 +141,7 @@ These tendencies have names:
 - **Win-stay:** The tendency to repeat a choice that was just rewarded. Think of it like a restaurant habit — you had a great meal at that Italian place, so you go back next Friday.
 - **Lose-shift:** The tendency to switch away from a choice that was not rewarded. The sushi was bad, so you try Thai next time.
 
-In mice, win-stay is much stronger than lose-shift (0.72 vs 0.47). This asymmetry reflects a real property of the dopamine system in the brain: reward signals are louder and more persistent than punishment signals.
+In mice, win-stay is much stronger than lose-shift (roughly 0.72 vs 0.47). This asymmetry reflects a real property of the dopamine system in the brain: reward signals are louder and more persistent than punishment signals.
 
 ### 4. Lapse Rate
 
@@ -194,7 +191,7 @@ But the DDM needs someone to set its dials: How sensitive should it be? How much
 
 **The solution.** Two small, separate neural networks — one for wins and one for losses — that bypass the LSTM entirely and directly nudge the DDM.
 
-Why two networks instead of one? Because the brain handles rewards and punishments through different pathways. When a mouse gets a water reward, dopamine neurons in the ventral tegmental area fire strongly, creating a robust memory trace: "that action was good, do it again." When a mouse gets no reward, the signal is weaker and processed differently — through the lateral habenula and different dopamine circuits. The result: win-stay is much stronger than lose-shift (0.72 vs 0.47 in IBL mice). A single network processing both outcomes symmetrically cannot reproduce this asymmetry.
+Why two networks instead of one? Because the brain handles rewards and punishments through different pathways. When a mouse gets a water reward, dopamine neurons in the ventral tegmental area fire strongly, creating a robust memory trace: "that action was good, do it again." When a mouse gets no reward, the signal is weaker and processed differently — through the lateral habenula and different dopamine circuits. The result: win-stay is much stronger than lose-shift in IBL mice. A single network processing both outcomes symmetrically cannot reproduce this asymmetry.
 
 Each history network takes two inputs (what the agent chose last and whether it was rewarded) and outputs a single number: the **stay tendency** — how biased the agent should be toward repeating its previous choice.
 
@@ -204,6 +201,8 @@ The stay tendency reaches the DDM through two channels:
 - **Drift-rate bias.** Like wearing tinted glasses that make left-favoring evidence look slightly stronger throughout the whole trial. This is the critical mechanism — it affects decisions at *all* difficulty levels, matching the observation that real mice show win-stay even when the stimulus is obvious.
 
 An **attention gate** (`1 - |stimulus strength|`) controls how much the history bias is allowed through. When the stimulus is strong and obvious, the gate closes — sensory evidence dominates. When the stimulus is ambiguous, the gate opens — history has more influence. This prevents the history circuit from overwhelming the evidence circuit during training.
+
+> **An honest caveat that recurs throughout this project:** the win-stay and lose-shift *strengths* are currently injected as hand-set numbers, not values the history networks discovered on their own. The architecture can *express* history effects faithfully; it cannot yet *learn* them from data. Teaching the networks to discover these tendencies is the single biggest open frontier.
 
 ### Circuit 3: The Attention Lapse
 
@@ -294,11 +293,13 @@ flowchart LR
 
 **Phase 3 — Full balance.** All objectives active together: accuracy, reaction times, history effects, and drift magnitude regularization (which prevents the DDM parameters from collapsing to extreme values).
 
+(An earlier, more elaborate 7-phase curriculum actually made things *worse* — it let the optimizer crank up noise to game the loss, collapsing the accuracy pattern. Simpler won.)
+
 ### Co-Evolution: Evidence and History Must Grow Up Together
 
 A critical discovery: you cannot train the evidence circuit first and bolt on history effects later. When the evidence circuit learns without history bias present, it calibrates itself for a world without interference. Adding history bias afterward throws everything off — accuracy drops because the evidence circuit was not built to handle the extra push.
 
-The fix: **co-evolution training**. History injection is active from the start of training, so the evidence circuit learns to be stronger to compensate. This required recalibrating the drift magnitude target from 6.0 to 9.0 — the LSTM learns to push harder on the evidence signal because it "knows" that history bias will be pulling in its own direction.
+The fix: **co-evolution training**. History injection is active from the start of training, so the evidence circuit learns to be stronger to compensate. This required recalibrating the drift magnitude target upward — the LSTM learns to push harder on the evidence signal because it "knows" that history bias will be pulling in its own direction.
 
 This parallels a real phenomenon in brain development: sensory circuits and reward circuits have to mature together. If you disrupt one during development, the other does not compensate properly.
 
@@ -314,115 +315,104 @@ The fix: instead of using closed-form equations, we run the actual evidence accu
 
 ## Current Results
 
-After 70+ experiments, five agent architectures, and one protocol correction that improved accuracy by 44%, here is where the agent stands against real IBL mouse data (5 random seeds, 10 reference sessions with 8,406 total trials):
+The headline in plain language: **on the IBL mouse task, the hybrid DDM+LSTM agent reproduces all of the behavioral fingerprints at once** — the accuracy curve, the slow-down on hard trials, the win-stay/lose-shift asymmetry, the occasional lapse, and near-zero side bias with a 100% commit rate. Getting all of these *simultaneously* was the project's central challenge (the "Decoupling Problem"), and it is architecturally solved.
 
-| Metric | Agent (5-seed mean +/- std) | IBL Mouse (per-session) | Match? |
-|--------|--------------------------|----------------------------|--------|
-| Psychometric slope | 17.84 +/- 2.08 | 20.0 +/- 5.7 | Within 1 std |
-| Chronometric slope | -37.7 +/- 2.4 ms/unit | -51 +/- 64 ms/unit | Within range |
-| Win-stay | 0.734 +/- 0.022 | 0.72 +/- 0.08 | Within range |
-| Lose-shift | 0.444 +/- 0.017 | 0.47 +/- 0.10 | Within range |
-| Lapse rate | 0.086 +/- 0.049 | 0.08 +/- 0.07 | Within range |
-| Bias | ~0.005 | ~0 | Match |
-| Commit rate | 100% | 100% | Match |
+How good is the match? Across five random seeds, the history effects, the reaction-time slope, the lapse rate, and the bias all fall **within the range measured across real IBL mouse sessions**. The psychometric slope is the closest case: depending on the exact stimulus set and protocol details, it lands at or slightly below the reference mean. That single tightest metric is the one most sensitive to protocol details, which is why the project reports it carefully rather than rounding up.
 
-> *Co-evolution training with history injection (win_t=0.30, lose_t=0.15, drift_magnitude_target=9.0), 3-phase curriculum, asymmetric history networks, 5% rollout lapse, corrected 5-contrast stimulus set. Reference derived from per-session analysis of 10 IBL sessions. See [FINDINGS.md](../FINDINGS.md) for the full story.*
+Two honest qualifiers travel with this result:
 
-**All five behavioral metrics fall within the per-session reference distribution.**
+- **History effects are injected, not learned** (as noted above). The agent *displays* realistic win-stay/lose-shift because those strengths are supplied by hand — the networks have not yet discovered them from data.
+- **This is validated on IBL mouse only.** The macaque RDM task produces the right reaction-time dynamics but has no history effects to match (overtrained animal).
 
-### Adaptive Control: The New Mechanism Under Test
+For the exact per-metric numbers, seed-by-seed spreads, and the full experimental history — including every result that later turned out to be an artifact — see **[FINDINGS.md](../FINDINGS.md)**. Those numbers are the source of truth and are kept current there; this document deliberately stays qualitative so it does not go stale.
 
-The history-injection result above remains the best full behavioral match, but it does not solve learned history: the win/lose strengths are still supplied by hand. The next question became simpler and more biological:
+### How Do We Know the Target Is Real? (Reference Expansion, July 2026)
 
-**Can an agent learn when to persist, switch, or explore after uncertain outcomes?**
+A fair worry: what if the "mouse fingerprint" we are matching is just an artifact of ten hand-picked sessions? To test that, a fetcher script pulls quality-controlled sessions directly from the public IBL server. As of July 2026 it has independently reproduced **all six fingerprints on 80+ QC'd sessions** (tens of thousands of trials), once the correct reaction-time convention is used.
 
-The adaptive-control agent adds a small control system on top of the evidence accumulator:
+Two useful things came out of this. First, the reference fingerprint holds up on a much larger, independent sample — it is not an artifact of the small hand-curated set. Second, the wider sample revealed that real mice vary *more* between individuals than the small set suggested (especially in psychometric slope, where highly proficient mice have near-vertical curves) — which actually makes the agent's slope sit *more* comfortably within the natural range.
+
+**Important:** this expanded data is **add-and-compare only**. The frozen 10-session reference remains the canonical target; nothing has been re-derived or adopted from the larger pull. Adopting a bigger reference would be a separate, deliberate decision. (See FINDINGS.md for the two infrastructure bugs this exercise caught — a session-selection bias and an inverted left/right action convention — both examples of "a bug in the measurement pipeline is a bug in the science.")
+
+---
+
+## Adaptive Control: Learning When to Persist, Switch, or Explore
+
+The history-injection result above is the best *behavioral* match, but it does not solve learned history. So the research moved to a simpler, more biological question:
+
+**Can an agent learn when to persist, switch, or explore after an uncertain outcome?**
+
+The adaptive-control agent adds a small control system on top of the evidence accumulator. Loosely:
 
 - the evidence core asks, "what does the stimulus say?"
 - the outcome/value state asks, "what just happened?"
-- the persistence state asks, "was that failure ambiguous enough that I should retry?"
-- the exploration state asks, "is this context stale or uncertain enough to sample alternatives?" This controller is experimental and disabled in the recommended default profile.
-- the arbitration head combines those pressures without letting them erase strong sensory evidence
+- a **persistence** pressure asks, "was that failure ambiguous enough that I should retry the same choice?"
+- an **exploration** pressure asks, "is this context stale or uncertain enough that I should sample the alternative?"
+- an **arbitration** step combines these without letting them erase strong sensory evidence.
 
-The phase-1 result is intentionally narrow. The validated/default claim is persistence-only adaptive retry, not general exploration. In a 5-seed matched lesion suite, persistence-only recovered almost the same retry gap as full control while keeping exploration disabled:
+The claim here is intentionally narrow, and the default is conservative.
 
-| Condition | Psych slope | Chrono slope | Retry gap | Notes |
-|-----------|-------------|--------------|-----------|-------|
-| no-control lesion | 27.71 +/- 3.28 | -48.54 +/- 7.05 | 0.019 +/- 0.095 | adaptive state disabled |
-| persistence-only adaptive control | 21.75 +/- 2.69 | -33.47 +/- 4.49 | 0.120 +/- 0.116 | recommended/default profile; exploration disabled |
-| full adaptive control | 22.26 +/- 1.80 | -33.97 +/- 4.02 | 0.175 +/- 0.086 | comparison condition; exploration enabled |
+**On the stable IBL task, `persistence_only` is the validated, default profile.** In a 5-seed matched lesion suite, an uncertainty-gated "retry after a weak/ambiguous failure" rule reliably reproduced an adaptive retry pattern, in all five seeds, while keeping exploration switched off. Exploration is *not* independently validated on stable IBL, so the full controller (persistence + exploration together) is reported only as a comparison condition, not the recommended default.
 
-Paired retry lift for full control was `+0.157 +/- 0.137`, positive in 4/5 seeds. The June 1, 2026 evaluator correction bins retries by the prior failed trial's stimulus strength rather than the newly sampled current trial. Because the exploration isolation probe failed, full control is reported as a comparison condition rather than the clean claim.
+### The PRL Transfer Story (and a Reversal of Interpretation)
 
-Later exploration probes sharpened that boundary. Rewarded-streak exploration failed; the block-switch screen found an exploration-specific lead, but default full-control did not preserve it over persistence-only. The interaction sweep then identified `full_control_persist_half` (`persistence_bias_scale=0.8`, `exploration_bias_scale=0.8`) as the best current full-control arbitration candidate: it matched exploration-only block-switch lift (`+0.136`) and beat persistence-only by `+0.037` in 5/5 seeds. It still weakened retry gap relative to persistence-only (`0.067` vs `0.091`), so it is a comparison/transfer candidate, not the validated default.
+The interesting test is transfer: take that IBL-trained controller and drop it into the silent rule-swap task (PRL), where the payout odds flip without warning.
 
-The PRL transfer suite gave that lead a harder test. Exploration-only started
-out perseverative after hidden payout reversals (`0.322` optimal choices on
-trials 1-5), then recovered by the end of each block (`0.683` optimal choices
-on the final 20 trials). Its block-learning lift was `+0.360`, compared with
-`+0.053` under no control. That difference was positive in 5/5 paired seeds.
-The combined full-control variants did not preserve the effect. The analogy is
-an engine test: the exploration engine works alone, but the current arbitration
-still lets persistence drown it out when both engines are connected.
+The first version of this experiment had a puzzle. The combined controller failed to adapt after reversals, and the *only* configuration that recovered was, oddly, "exploration-only." For a while the story was "exploration drives PRL learning."
 
-The next PRL interaction sweep tried seven different full-control scale
-combinations. None preserved the exploration-only learning curve: the best
-combined settings reached only `+0.066` and `+0.057` block-learning lift,
-compared with `+0.360` for exploration-only. Think of this as changing the
-volume knobs on two speakers and discovering that the problem is not simply
-volume. The system needs a better rule for deciding which speaker should be
-heard in a particular situation.
+A careful offline diagnostic overturned that story and found a simpler mechanism. In PRL, both options look visually neutral, so the agent's sensory-uncertainty dial (`1 - |stimulus|`) is pinned at its maximum on *every* trial. A retry rule that says "when uncertain and you just failed, try the same thing again" therefore fires at full strength after every single failure — producing relentless perseveration. "Exploration-only" wasn't winning because exploration is powerful; it was winning *by subtraction*, because it was the only lesion that happened to disable the misfiring retry rule.
 
-The next diagnostic recorded each speaker separately in an offline sidecar:
-direct control bias, persistence pressure, exploration pressure, the
-arbitration adjustment, and the final bounded residual. It did not alter the
-behavioral trial log or give the acting policy any hidden reversal hint.
+**The fix: change-evidence recurrence (flag-gated, default OFF).** The single uncertainty signal is split into two dials:
 
-That diagnostic found a simpler failure than expected. In PRL, both options
-look visually neutral, so the old "uncertainty" dial is pinned at maximum. The
-agent therefore retries failed choices too strongly. The change-evidence
-recurrence adds a second dial: recent failures accumulate, then gradually fade
-after wins. Think of the first dial as windshield visibility and the new dial
-as a warning light for repeated wrong turns. Safety-gated calibration rejected
-λ=0.7 as too jumpy and selected λ=0.9 as the validated opt-in cross-task profile.
-With `uncertain_retry` still enabled, full-control PRL block-learning lift
-improved from `-0.044` to `+0.469`; after the prior-trial retry-metric
-correction, IBL full-control retry gap reaches `0.158` versus the historical
-flag-off `0.175`. The shared rule is a validated opt-in cross-task profile. It
-remains default off while corrected baselines are re-reported and PRL animal
-parity remains unavailable.
+- **Perceptual uncertainty** — the old sensory dial (`1 - |stimulus|`). Think: windshield visibility.
+- **Change evidence** — a slow accumulator of recent failures that builds up as failures repeat and fades after wins. Think: a "you keep taking wrong turns" warning light.
 
-This is legitimate as a computational result, but it is not a claim of exact brain anatomy. The analogy is: real brains likely use separate sensory, value, persistence, exploration, and arbitration-like computations. The model tests whether that computational separation can generate animal-like behavior.
+When failures pile up, change evidence closes the retry gate and opens the switch gate — so the agent stops perseverating *without* needing to be told the rule flipped. In the stable IBL task, where failures don't pile up, this dial stays quiet and behavior is essentially unchanged. In fact, turning the flag off is a verified bit-for-bit no-op: it changes nothing unless you opt in.
 
-The gate lesion sharpened the caveat. A linear uncertainty gate still worked somewhat (`+0.087 +/- 0.130`, positive in 3/5 seeds), while the nonlinear gate was stronger and more reliable. So the honest claim is not "the exponent 2 gate is necessary." The honest claim is "uncertainty-gated adaptive control is useful, and sharpening the gate improves robustness."
+A safety-gated calibration searched for how fast the accumulator should react. A fast setting (λ=0.7) was rejected as too jumpy — it would switch on ordinary bad luck. **λ=0.9 was selected as the validated opt-in cross-task profile.** With this recurrence active, the combined controller finally adapts after reversals, and on the IBL side it nearly preserves the original retry behavior.
 
-### What Is Not Solved Yet
+**The interpretation reverses under the recurrence.** With the mechanism repaired, it is now *persistence*, not exploration, that drives PRL recovery — the exact opposite of the earlier "exploration wins" story, and for a principled reason (exploration was only ever winning by disabling a bug). Readers who saw the earlier framing should treat this as superseding it for the flag-on regime.
+
+Three caveats bound all of this tightly:
+
+- **This is not "solving PRL."** In absolute terms, these zero-shot agents perform only a little above chance. The claim is about *mechanism* — which computational piece is necessary — not about matching an animal.
+- **There is no PRL animal reference**, so none of this is an animal-parity claim.
+- **The feature stays default OFF.** λ=0.9 is an opt-in profile for explicitly labeled cross-task experiments; `persistence_only` remains the conservative standard default for the IBL task.
+
+And a final honest note on the architecture itself: the "control system" is a computational analogy, lesion-tested in simulation, not a claim about specific brain anatomy. A follow-up lesion showed that even a simpler, linear uncertainty gate works *somewhat*, while the sharper nonlinear gate is stronger and more reliable — so the honest takeaway is "uncertainty-gated adaptive control is useful, and sharpening the gate helps," not "this exact gate shape is necessary."
+
+---
+
+## What Is Not Solved Yet
 
 | Gap | Detail |
 |-----|--------|
-| History is injected, not learned | The win-stay and lose-shift strengths (0.30 and 0.15) are hand-set numbers, not values the history networks discovered on their own. The architecture *can* express history effects, but it cannot yet *discover* them from data. |
-| Adaptive control is an analogy | The controller is lesion-tested in simulation, but it is not a neural anatomy claim. |
-| PRL animal parity is not tested | The exploration-only lesion shows reproducible hidden-contingency recovery, but there is no PRL animal reference dataset in this repository. |
-| Combined adaptive-control default promotion is deferred | The state-dependent change-evidence recurrence restores combined PRL recovery and λ=0.9 nearly preserves corrected historical IBL retry (`0.158` vs `0.175`). Use λ=0.9 as an opt-in cross-task profile; keep `persistence_only` as the conservative standard IBL default while corrected baselines are re-reported. |
-| Lapse variance across seeds | Lapse rates range from 0.043 to 0.156 across seeds, suggesting the lapse mechanism interacts with training dynamics in ways we do not fully understand. |
-| Single task validated | Results are validated on IBL mouse only. The macaque RDM task produces correct reaction-time dynamics but lacks history effects (the macaque in the reference dataset was overtrained). |
+| History is injected, not learned | The win-stay and lose-shift strengths are hand-set numbers, not values the history networks discovered on their own. The architecture *can* express history effects, but it cannot yet *discover* them from data. This is the biggest open frontier. |
+| Adaptive control is an analogy | The controller is lesion-tested in simulation, but it is not a neural-anatomy claim. |
+| PRL animal parity is not tested | The lesion suite shows reproducible *in-simulator* mechanisms, but there is no PRL animal reference dataset in this repository, and absolute performance is near chance. |
+| Combined adaptive control stays opt-in | The change-evidence recurrence repairs combined PRL recovery and λ=0.9 nearly preserves the IBL retry pattern, but it remains default off; `persistence_only` is the conservative standard IBL default. |
+| DMS is a scaffold | The memory task's metrics, memoryless baseline, and adaptive rollout are defined but not yet wired. Controls come before conclusions. |
+| Lapse variance across seeds | Lapse rates vary noticeably across seeds, suggesting the lapse mechanism interacts with training dynamics in ways we do not fully understand. |
+| Single task validated | Behavioral-fingerprint results are validated on IBL mouse only. The macaque RDM task produces correct reaction-time dynamics but lacks history effects (overtrained animal). |
 
 ---
 
 ## Lessons Learned (The Hard Way)
 
-Over 70+ experiments, we hit 12 critical failure modes. Here are the most instructive:
+Over 70+ experiments, we hit many critical failure modes. Here are the most instructive:
 
 | What Went Wrong | Why | What Fixed It |
 |----------------|-----|---------------|
 | Agent always answered instantly, no matter the difficulty | Reinforcement learning (PPO) optimizes for reward, not deliberation | Replaced RL with a DDM that must accumulate evidence over time |
-| Win-stay stuck at chance (0.50) for months | A bug: the agent never received reward information between trials | Fixed one line: `phase_step == 1` instead of `== 0` |
+| Win-stay stuck at chance (0.50) for months | A bug: the agent never received reward information between trials | Fixed one line: read the reward at the right point in the trial phase cycle |
 | Accuracy collapsed when we added a fancy training curriculum | The complex 7-phase curriculum let the optimizer crank up noise to game the loss function | Switched to a simpler 3-phase curriculum |
 | Agent learned to "lapse" on 15% of trials as a strategy | A learnable lapse parameter was exploited by the optimizer — random guessing reduces loss on hard trials | Made lapse a fixed, non-learnable parameter (5%) |
 | Six months optimizing for history effects on the wrong task | The macaque in the reference data was overtrained and had no history effects to match | Switched to IBL mouse data, which has robust history effects |
-| Accuracy improved 44% with zero model changes | The simulator included a contrast level (0.5) that does not exist in the real experiment | Removed the bogus contrast level to match the actual protocol |
+| Accuracy improved with zero model changes | The simulator included a contrast level that does not exist in the real experiment | Removed the bogus contrast level to match the actual protocol |
+| An 84% "leftward bias" that wasn't real | The bias metric counted no-response trials in the denominator — a pipeline artifact, not agent behavior | Fixed the metric; always verify metrics reflect the agent, not the pipeline |
+| "Exploration drives PRL learning" turned out to be a side effect | A misfiring retry rule under pinned uncertainty caused perseveration; exploration only "won" by disabling it | Split uncertainty into perceptual + change-evidence dials (change-evidence recurrence) |
 
-The common theme: **most failures came from measurement or training pipeline bugs, not from the architecture being wrong.** Getting the infrastructure right was as important as getting the model right.
+The common theme: **most failures came from measurement or training-pipeline bugs, not from the architecture being wrong.** Getting the infrastructure right was as important as getting the model right — in this project, a bug in the measurement pipeline is a bug in the science.
 
 ---
 
@@ -454,13 +444,13 @@ Training runs on CPU in under 20 minutes.
 
 - Browse `runs/` for experiment outputs
 - Open any `dashboard.html` to see agent vs. animal comparisons
-- Read [FINDINGS.md](../FINDINGS.md) for the full experimental narrative (70+ experiments, including all the failures)
+- Read [FINDINGS.md](../FINDINGS.md) for the full experimental narrative (70+ experiments, including all the failures and exact numbers)
 
 ### Want to Contribute?
 
 1. Read [AGENTS.md](../AGENTS.md) for coding standards
 2. Run `pytest tests/` (176 tests should pass)
-3. Areas where help is especially welcome: re-reporting corrected retry baselines, teaching history networks to learn from data, lesion experiments, and implementing the DMS evaluator plus memoryless baseline from the defined fingerprint
+3. Areas where help is especially welcome: teaching the history networks to learn win-stay/lose-shift from data (the open frontier), lesion experiments, and implementing the DMS evaluator plus memoryless baseline from the defined fingerprint
 
 ---
 
@@ -469,21 +459,25 @@ Training runs on CPU in under 20 minutes.
 | Term | Plain-Language Meaning |
 |------|----------------------|
 | **2AFC** | Two-Alternative Forced Choice — pick left or right, no other options |
+| **Change evidence** | An adaptive-control dial (opt-in) that accumulates recent failures and fades after wins — a "you keep getting it wrong" signal, separate from sensory uncertainty |
 | **Chronometric curve** | A plot of reaction time vs difficulty — shows whether the agent slows down on hard trials |
 | **Co-evolution** | Training the evidence and history circuits together from the start, so they learn to work alongside each other |
 | **Coherence** | In the monkey dots task: what fraction of dots move in the same direction (more = easier) |
 | **Contrast** | In the mouse task: how visible the striped pattern is (higher = easier to see) |
 | **DDM** | Drift-Diffusion Model — a mathematical model of how brains accumulate evidence before making a decision |
 | **Decoupling Problem** | The challenge of getting one agent to simultaneously produce realistic reaction times AND history effects |
+| **DMS** | Delayed Match-to-Sample — a memory task (see a sample, wait, judge whether a second stimulus matches). A scaffold here, not yet wired |
 | **Drift-rate bias** | A history-driven nudge that affects how evidence is processed throughout the whole trial, not just at the start |
 | **Fingerprint** | The full pattern of accuracy, speed, history, and lapses that characterizes a particular decision-maker |
 | **History effects** | How the outcome of the previous trial influences the current decision (win-stay, lose-shift) |
 | **Lapse** | A trial where the decision-maker makes an error despite strong evidence — usually due to momentary inattention |
 | **LSTM** | Long Short-Term Memory network — a type of neural network that remembers patterns across a sequence of events |
+| **Perceptual uncertainty** | The sensory "how ambiguous is the stimulus?" dial (`1 - |stimulus|`) — pinned at maximum in PRL, which is why the retry rule misfired there |
+| **Persistence-only** | The validated, default adaptive-control profile on IBL: retry after ambiguous failures, with exploration switched off |
 | **Psychometric curve** | A plot of accuracy vs evidence strength — shows how sensitive the decision-maker is |
 | **PRL** | Probabilistic Reversal Learning — choose between neutral options, then adapt when their hidden payout odds silently swap |
 | **RDM** | Random-Dot Motion — the monkey dot-direction task |
-| **RT** | Reaction Time — how long it takes to respond |
+| **RT** | Reaction Time — how long it takes to respond (note: the *definition* of RT matters; see the chronometric section) |
 | **Stay tendency** | How biased the agent is toward repeating its previous choice |
 
 ---
@@ -497,7 +491,7 @@ Training runs on CPU in under 20 minutes.
 - Urai et al. (2019). *Nature Communications* — How past outcomes bias future decisions in animals
 
 **Project Documentation:**
-- [FINDINGS.md](../FINDINGS.md) — The full experimental narrative (70+ experiments, all failures documented)
+- [FINDINGS.md](../FINDINGS.md) — The full experimental narrative and exact, current numbers (70+ experiments, all failures documented)
 - [AGENTS.md](../AGENTS.md) — Developer guide and coding standards
 - [README.md](../README.md) — Installation and quickstart
 - [DMS Memory Fingerprint Design](dms_memory_fingerprint_design.md) — Memory-task scorecard and rollout prerequisites
