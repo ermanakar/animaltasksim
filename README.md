@@ -189,6 +189,8 @@ python scripts/make_dashboard.py \
 
 The IBL reference was expanded from 10 to 120 QC'd public sessions in July 2026 (`scripts/fetch_ibl_reference.py`, `response_times` RT convention, trained-performance QC gate; EID manifest at `data/ibl/reference.manifest.json`). The legacy 10-session set is preserved as `data/ibl/reference_10session.ndjson` so earlier results stay reproducible, and targets are now reported as median [IQR]. See FINDINGS.md "Reference Adoption." Overlay figures above predate the expansion and are rendered against the legacy 10-session reference.
 
+**Data licensing:** the IBL reference is a derived subset of International Brain Laboratory data under **CC-BY 4.0** (repository *code* is MIT). Attribution and required citations are in [`data/README.md`](data/README.md).
+
 IBL contrasts are `{0, 0.0625, 0.125, 0.25, 1.0}`. A previous extra `0.5` contrast was removed after it distorted psychometric fits. Macaque RDM data should not be treated as a history-effect target; the reference animal is overtrained and shows weak sequential effects.
 
 ## Scientific Guardrails
