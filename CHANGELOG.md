@@ -1,6 +1,10 @@
 # Changelog
 
-All notable changes to AnimalTaskSim will be documented in this file.
+All notable changes to AnimalTaskSim are documented here. This file tracks
+**releases and contract-affecting changes** — CLI arguments, schema keys, file
+paths, environment behavior — plus headline features. For the scientific record
+(experiments, metrics, negative results, target provenance) see
+[FINDINGS.md](FINDINGS.md); this changelog deliberately does not duplicate it.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
@@ -10,277 +14,111 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
-- **Probabilistic Reversal Learning transfer path**: Added a hidden-contingency PRL environment, PRL-specific reversal metrics, HTML report visualization, registry metadata, and a five-condition matched transfer suite.
-- **Slow PRL recovery metrics**: Added `end_block_optimal_choice_rate` and `block_learning_lift` after the matched suite showed that a 10-trial window under-reported outcome-driven reversal learning.
-- **Delayed Match-to-Sample scaffold**: Added a schema-valid DMS environment and focused environment tests. Added a memory-specific fingerprint design note; adaptive-control DMS rollout remains intentionally unwired until metrics and a memoryless baseline exist.
-- **PRL arbitration diagnostic**: Added a checkpoint-reroll CLI and a separate `control_diagnostics.ndjson` sidecar for reversal-window controller decomposition without altering the frozen trial schema.
-- **`uncertain_retry` lesion flag**: Confirmed (5-seed) that the PRL persistence deficit is the uncertainty-gated `uncertain_retry` term firing on every failure because PRL's neutral stimulus pins uncertainty at 1.0. Added `uncertain_retry_enabled` (default on) to ablate it.
-- **Change-evidence recurrence (flag-gated, default off)**: Added `change_evidence_enabled` / `change_evidence_decay`. A decaying accumulator of recent committed failures splits the single uncertainty gate into opposite-direction `history_retry_gate` and `history_switch_gate`, so accumulated volatility (not stimulus clarity) drives switching in PRL while IBL psychometric and chronometric fingerprints stay healthy. The raw perceptual gate is now model-owned and threaded (no trainer rebuild). Flag-off is a verified bit-for-bit no-op. Safety-gated validation completed June 1: λ=0.7 was rejected as too eager and λ=0.9 is the validated opt-in cross-task profile.
-- **Regression coverage**: Added PRL/DMS environment tests, PRL metric tests, registry extraction tests, PRL suite tests, adaptive-control PRL rollout coverage, sidecar diagnostic tests, and change-evidence recurrence tests (defaults/threading, decay rejection, raw-gate output, base sentinel pass-through, transition-table arithmetic, recovery sequence) plus diagnostic interruption-handling tests. Total: 176 tests.
-- **Reproducible IBL reference fetcher**: Added `scripts/fetch_ibl_reference.py`, a one-time data-acquisition tool (requires `ONE-api`, kept out of `pyproject.toml`) that pulls multi-session `biasedChoiceWorld` data from the IBL public server into the project schema. Derives actions convention-agnostically (stimulus side + `feedbackType`), auto-calibrates the IBL `choice` sign for zero-contrast trials, applies a trained-performance QC gate (`--min-easy-accuracy`, default 0.85) with a deterministic shuffle, filters to the biased-blocks contrast set, defaults RT to `firstMovement`, and writes an EID manifest. A 20-session QC'd pull reproduces the baseline fingerprint within per-session 1σ on all six metrics; nothing consumes the expanded pull yet and `reference.ndjson` is untouched (add-and-compare). See FINDINGS.md "IBL Reference Expansion Pilot."
+- **Adaptive-control agent**: a new agent archetype that adds persistence, exploration, and uncertainty-gated arbitration control on top of the hybrid evidence core (`agents/adaptive_control_*.py`, `scripts/train_adaptive_control.py`, `--control-profile {no_control, persistence_only, exploration_only, full_control}`). `persistence_only` is the validated default; the others are comparison/lesion conditions.
+- **Adaptive-control probe metrics** (`eval/metrics.py`): retry gap, stale-switch lift, unrewarded/volatile-switch lift, and block-switch adaptation lift, plus the matched validation-suite and interaction-sweep scripts (`scripts/adaptive_control_validation_suite.py`, `scripts/adaptive_control_interaction_sweep.py`, `scripts/adaptive_control_persistence_sweep.py`).
+- **Probabilistic Reversal Learning transfer path**: hidden-contingency PRL environment (`envs/prl_reversal.py`), PRL reversal metrics, HTML report visualization, registry metadata, and a matched transfer suite.
+- **Delayed Match-to-Sample scaffold**: schema-valid DMS environment (`envs/dms_match.py`) plus tests and a memory-fingerprint design note. Adaptive-control DMS rollout is intentionally unwired.
+- **Schema v0.2 optional fields** (`eval/schema_validator.py`, additive; `extra="forbid"` preserved): PRL (`reversal`, `block_index`, `contingency`) and DMS (`sample_stimulus`, `delay_ms`, `match`) trial fields. Registry gains PRL metadata and `prl`/`dms` task values.
+- **Adaptive-control lesion / recurrence flags**: `uncertain_retry_enabled` (default on) and the flag-gated change-evidence recurrence (`change_evidence_enabled` / `change_evidence_decay`, default off; verified flag-off bit-for-bit no-op). λ=0.9 is the validated opt-in cross-task profile.
+- **PRL arbitration diagnostic**: a checkpoint-reroll CLI writing a separate `control_diagnostics.ndjson` sidecar, leaving the frozen trial schema unchanged.
+- **Reproducible IBL reference fetcher** (`scripts/fetch_ibl_reference.py`): pulls multi-session `biasedChoiceWorld` data from the IBL public server (OpenAlyx) into the project schema, with convention-agnostic action derivation, choice-sign auto-calibration, a trained-performance QC gate, and an EID manifest. Requires `ONE-api` (kept out of `pyproject.toml`). Add-and-compare only; `reference.ndjson` is unchanged.
+- Regression coverage across PRL / DMS / registry / diagnostics / change-evidence / fetcher. Total: 185 tests.
 
 ### Changed
 
-- **Adaptive-control reference routing**: PRL uses the IBL reference log to train the shared evidence core before zero-shot transfer rollout.
-- **PRL protocol fidelity**: PRL options are visually neutral. Hidden payout reversals are logged for offline analysis but are not exposed to the acting policy.
-- **Validation suites**: `adaptive_control_validation_suite.py` and the PRL transfer suite now expose and thread `change_evidence_enabled` / `change_evidence_decay` so flag-on science runs are reproducible.
-- **Change-evidence calibration**: Completed the safety-gated λ sequence. λ=0.7 failed the IBL gate, λ=0.85 was dominated by λ=0.8, and λ=0.9 is the validated opt-in cross-task profile. With `uncertain_retry` still enabled, λ=0.9 full control reaches PRL block-learning lift `+0.469` and optimal choice `0.706`; after the prior-trial metric correction, IBL full-control retry gap is `0.158` versus the historical flag-off `0.175`. The feature remains default off.
-- **PRL arbitration status**: Completed a 10-condition, 50-run PRL interaction sweep and sidecar diagnostic. Global persistence/exploration scale changes did not preserve the exploration-only block-learning phenotype inside full control; the state-dependent change-evidence recurrence now restores combined PRL recovery without a task-name special case.
+- **Adaptive-control default** is `persistence_only` (validated); full control is a comparison condition.
+- **Registry task inference**: the config `task` is authoritative over run-directory-name heuristics.
+- **IBL fetcher RT source** defaults to `response_times - stimOn` (matches the baseline `reference.ndjson`); `firstMovement` is available but does not match the project's calibrated chronometric targets.
+- **Documentation**: FINDINGS.md restructured into a navigable chronological record (full raw notebook archived under `docs/archive/`).
 
 ### Fixed
 
-- **Adaptive retry-gap provenance**: `compute_adaptive_control_probe_metrics()` now bins retry behavior by the stimulus strength of the prior failed trial, not the newly sampled current trial. Re-evaluated the canonical IBL lesion suite and regenerated its tracked summary figures. Older pre-correction retry-gap values are superseded.
+- **Adaptive retry-gap provenance**: `compute_adaptive_control_probe_metrics()` bins retry by the *prior failed* trial's stimulus strength, not the newly sampled current trial.
+
+_Scientific results and validation numbers for all of the above live in [FINDINGS.md](FINDINGS.md)._
 
 ## [0.2.1] - 2026-03-01
 
 ### Fixed
 
-- **Mixed-provenance behavioral targets**: Prior IBL targets were assembled from three independent sources (psych slope from single-session, history from multi-session, chrono from literature). All targets now derived from per-session analysis of `data/ibl/reference.ndjson` (10 sessions, 8,406 trials). See FINDINGS.md "Target Provenance Correction."
-- **IBL contrast set**: Removed 0.5 contrast from `envs/ibl_2afc.py` default contrast set. The IBL biased-blocks protocol does not use 0.5 contrast — confirmed absent from all 10 reference sessions.
-- **Cherry-picked reporting**: All agent results now reported as 5-seed mean ± std instead of single best seed. Previous "0.3% gap" claim used seed 42 (psych=13.16); 5-seed mean is 12.38 ± 0.64.
+- **`prev_reward` rollout bug (critical)**: the outcome-phase check used `phase_step == 0`, but the environment returns reward *before* advancing the phase step and returns info *after* — corrected to `== 1`. `prev_reward` had always been 0.0, routing every trial through the lose-history pathway and pinning win-stay near 0.556. This single bug explained why prior history interventions had failed.
+- **Mixed-provenance behavioral targets**: all IBL targets now derived from per-session analysis of `data/ibl/reference.ndjson` (10 sessions, 8,406 trials); previously assembled from three independent sources.
+- **IBL contrast set**: removed the 0.5 contrast from `envs/ibl_2afc.py` (not part of the biased-blocks protocol).
+- **Reporting**: agent results now reported as 5-seed mean ± std instead of a single best seed.
 
 ### Added
 
-- **Per-session reference analysis script** (`scripts/compute_reference_targets.py`): Computes per-session psychometric, chronometric, and history metrics from reference data. Outputs `data/ibl/reference_targets.json` as single source of truth for behavioral targets.
+- **Co-evolution training** for the Hybrid agent: training from scratch with history injection active, so the evidence circuits learn alongside the history effects (post-hoc injection degraded psychometric slope). `drift_magnitude_target` recalibrated 6.0 → 9.0 to compensate; produces all six IBL behavioral fingerprints simultaneously (5-seed validation). Adds `scripts/run_5seed_validation.py` and history diagnostic/sweep scripts.
+- `scripts/compute_reference_targets.py`: per-session psychometric / chronometric / history metrics → `data/ibl/reference_targets.json`, the single source of truth for behavioral targets.
 
 ### Changed
 
-- **Regenerated `data/ibl/metrics.json`**: Now computed from multi-session reference (was incorrectly from single-session).
-- **Chrono target comment**: `eval/metrics.py` chrono_target documented with provenance (per-session median -44, retained at -36 for continuity).
-- **All documentation updated**: CLAUDE.md, FINDINGS.md, README.md, THEORY_AND_CONCEPTS.md, MEMORY.md, and skill context files updated with corrected targets and multi-seed statistics.
-
----
+- Regenerated `data/ibl/metrics.json` from the multi-session reference.
+- Documented chronometric-target provenance in `eval/metrics.py`.
 
 ## [0.2.0] - 2026-02-19
 
 ### Added
 
-- **Separate history network architecture**: MLP bypass path (2→8→1, ReLU, zero-init) that computes `stay_tendency` from (prev_action, prev_reward), independent of LSTM evidence processing. Mirrors biological separation between PFC/basal ganglia (history) and LIP/parietal (evidence).
-- **Drift-rate bias mechanism**: History modulates evidence accumulation throughout the trial via `drift = gain × stimulus + stay_tendency × drift_scale × prev_direction`. This produces history effects at all difficulty levels, unlike starting-point bias which only affects ambiguous trials.
-- **IBL 2AFC support for Hybrid agent**: `train_hybrid_curriculum.py` now supports `--task ibl_2afc` with auto-inferred reference data, contrast-based stimulus processing, and IBL-specific phase timing.
-- **Per-trial history loss** (`agents/losses.py`): Supervises P(stay) on every individual trial rather than batch-level aggregation, avoiding Jensen's inequality artifacts.
-- **Multi-seed validation** (`scripts/seed_sweep.py`): Runs 5 seeds sequentially, computes mean ± std across seeds, writes structured results to `sweep_results.json`.
-- **14 new tests**: History architecture tests (`test_history_bias_head.py`, `test_per_trial_history.py`), seed robustness tests (`test_seed_robustness.py`), schema v0.2 tests (`test_schema_v02.py`). Total: 93 tests.
+- **Separate history-network architecture**: an MLP bypass path (2→8→1, zero-init) computing `stay_tendency` from (prev_action, prev_reward), independent of the LSTM evidence path.
+- **Drift-rate bias mechanism**: history modulates evidence accumulation throughout the trial, producing history effects at all difficulty levels (unlike starting-point bias, which only affects ambiguous trials).
+- **IBL 2AFC support for the Hybrid agent**: `train_hybrid_curriculum.py --task ibl_2afc` with auto-inferred reference data and IBL phase timing.
+- **Per-trial history loss** (`agents/losses.py`) and **multi-seed validation** (`scripts/seed_sweep.py`).
+- 14 new tests (history architecture, seed robustness, schema v0.2). Total: 93 tests.
 
 ### Fixed
 
-- **WFPT image charge positions**: Corrected small-time series to use `z + 2ka` (not `z + 2k`). Both series now agree to 6 decimal places.
-- **Bias measurement artifact**: Discovered that "84% leftward bias" was holds counted in denominator. Added `p_right_committed` metric that excludes holds. All prior Hybrid conclusions reassessed.
-- **DDM timing alignment**: Response duration override ensures `max_commit_steps` matches environment response phase, preventing artificial hold rates.
+- **WFPT image charge positions**: small-time series corrected to `z + 2ka`; both series now agree to 6 decimal places.
+- **Bias measurement artifact**: the "84% leftward bias" was holds counted in the denominator; added the `p_right_committed` metric that excludes holds.
+- **DDM timing alignment**: `max_commit_steps` matched to the environment response phase, preventing artificial hold rates.
 
 ### Changed
 
-- **Curriculum updated to 7 phases**: WFPT warmup → gentle choice → annealed choice → history supervision → RT calibration → RT weighting → history finetune (frozen DDM, only history_network trains).
-- **Loss weight defaults**: WFPT dominant in early phases, per-trial history loss in Phase 7 with separate learning rate (3e-3 vs 1e-3 main).
-
-### Results (IBL 2AFC, 5-seed validation)
-
-| Metric | Agent (mean ± std) | IBL Mouse | Match |
-|--------|-------------------|-----------|-------|
-| Win-stay | 0.665 ± 0.015 | 0.724 | 92% |
-| Lose-shift | 0.405 ± 0.016 | 0.427 | 95% |
-| Chrono slope | -66.7 ± 2.0 ms/unit | negative | direction ✓ |
-| Psych slope | 6.31 ± 0.38 | ~13.2 | 48% |
-| Commit rate | 100% | 100% | exact |
-
-Config: `--task ibl_2afc --history-drift-scale 15.0 --episodes 30 --max-sessions 80`
+- Curriculum expanded to 7 phases; loss-weight defaults rebalanced (WFPT-dominant early).
 
 ### Removed
 
-- Superseded scripts: `train_hybrid.py`, `pretrain_hybrid.py`, `finetune_hybrid.py`, `calibration.py`, `eval_wfpt.py`, `make_compare.py`, `generate_readme_figures.py`, `experiment_decoupling.py`, debug scripts.
-- Duplicate data: `data/ibl/reference_multi_session.ndjson` (identical to `reference.ndjson`).
-- Root-level one-off scripts: `count_actions.py`, `analyze_rollout.py`.
-
----
+- Superseded scripts (`train_hybrid.py`, `pretrain_hybrid.py`, `finetune_hybrid.py`, `calibration.py`, `eval_wfpt.py`, `make_compare.py`, `experiment_decoupling.py`, debug scripts), the duplicate `reference_multi_session.ndjson`, and root-level one-off scripts.
 
 ## [0.1.2] - 2025-10-12
 
-Added
+### Added
 
-- **Curriculum Learning Framework**: Implemented a curriculum learning framework for the hybrid DDM+LSTM agent.
-- **WFPT-based Curriculum**: Created a new default curriculum that prioritizes the WFPT loss in the initial phase of training.
-- **Curriculum extensions**: Curriculum phases can now override commit windows; `CurriculumConfig.wfpt_history_refine()` adds an optional history-focused third phase, while `CurriculumConfig.wfpt_time_cost()` introduces a time-cost constrained schedule for RT tuning experiments.
-- **Hybrid timing guardrails**: Increased the hybrid agent’s default `max_commit_steps` to 180, bolstered the WFPT warm-up (longer phase, higher drift/non-decision supervision), and rebalanced the time-cost curriculum so WFPT remains dominant while RT penalties stay gentle.
+- Curriculum-learning framework for the hybrid agent (WFPT-based default; phases can override commit windows).
 
 ### Changed
 
-- **Default Curriculum**: The default curriculum for the hybrid agent is now a two-phase, WFPT-based curriculum.
-- **Reward Structure**: The reward for an incorrect choice is now -0.1 (previously 0.0).
-- **Observation Space**: The environment now supports including the previous trial's action, reward, and correctness in the observation.
-- **Zero-Contrast Trials**: The hard-coded logic for zero-contrast trials has been removed. The agent is now rewarded for choosing the side with the higher prior probability.
-
-### Results (`runs/hybrid_wfpt_curriculum/`)
-
-**Chronometric (RT Dynamics):**
-
-- Slope: -767 ms/unit (macaque reference: -645 ms/unit)
-- RT range: 790ms (high coherence) → 1200ms (low coherence)
-
-**Psychometric (Choice Behavior):**
-
-- Slope: 7.33 (macaque: 17.56)
-- Bias: +0.001 (macaque: ≈0)
+- **Reward structure**: an incorrect choice is now −0.1 (was 0.0).
+- **Observation space**: the environment can now include the previous trial's action, reward, and correctness.
+- **Zero-contrast trials**: the hard-coded logic was removed; the agent is rewarded for choosing the higher-prior side.
 
 ## [0.1.1] - 2025-10-11
 
 ### Added
 
-- **WFPT (Wiener First Passage Time) likelihood loss** (`agents/wfpt_loss.py`)
-  - Likelihood-based DDM training objective: p(choice, RT | drift, bound, bias, noise, non_decision)
-  - Small-time and large-time series approximations for numerical stability
-  - Gradient propagation through all DDM parameters
-  - 271 lines including test harness
-
-- **Drift magnitude regularization** (`agents/losses.py`, `agents/hybrid_ddm_lstm.py`)
-  - Regularization term: `(drift_gain - 12)²` with configurable weight
-  - Anchors parameter scale to target regime (drift_gain 10-20)
-  - Prevents convergence to weak-drift local minima observed in Attempt 10
-  - Integrated into training metrics and CLI arguments
-
-- **Mini-batch training** (`agents/hybrid_ddm_lstm.py:224-259`)
-  - Automatic splitting of large sessions into batches of 100 trials
-  - Increases gradient updates: 26 batches per epoch (520 total) vs 1 batch (15 total)
-  - Required for sufficient optimization steps on single-session datasets
+- **WFPT (Wiener First Passage Time) likelihood loss** (`agents/wfpt_loss.py`): p(choice, RT | DDM params) with small- and large-time series approximations.
+- **Drift-magnitude regularization** and **mini-batch training** for the hybrid agent; `drift_magnitude` exposed in the CLI.
 
 ### Fixed
 
-- **Dashboard Plotting for IBL Task**: Dashboard chronometric and accuracy plots now support both contrast and coherence (`eval/dashboard.py`).
-  - Previously `_plot_chronometric_comparison()` and `_plot_accuracy_by_coherence()` only checked for `stimulus_coherence`, causing an error for the IBL mouse task which uses `stimulus_contrast`.
-  - Both functions now auto-detect the stimulus column and use absolute values for binning, correctly rendering all plots for both tasks.
-
-- **Chronometric Analysis for IBL Task**: Chronometric metrics are now computed for the IBL mouse 2AFC task (`eval/metrics.py:218`).
-  - Previously, only psychometric and history metrics were computed. The fix adds a `compute_chronometric(df, stimulus_key="contrast")` call.
-
-- **Collapsing bound override bug in Hybrid DDM+LSTM Agent** (`agents/hybrid_ddm_lstm.py:661`):
-  - The environment's `collapsing_bound=True` was overriding the agent's learned commit step, causing all RTs to collapse to a minimum.
-  - Setting `collapsing_bound=False` delegates timing control to the agent's DDM, restoring correct RT dynamics.
-
-- **Type annotations in debug scripts**: Corrected type hints in debug scripts (since removed in v0.2.0).
-
-### Changed items
-
-- **Hybrid DDM+LSTM Agent**:
-  - Loss tracking now includes `epoch_drift_magnitude`.
-  - The `drift_magnitude` parameter is exposed in the CLI.
-  - Documentation was updated with diagnostic process and results.
-
-### Results (Attempt 11: `runs/rdm_wfpt_regularized/`)
-
-**Chronometric (RT Dynamics):**
-
-- Slope: -981 ms/unit (macaque reference: -645 ms/unit, ratio 1.52)
-- RT range: 710ms (high coherence) → 1200ms (low coherence)
-- Inverted-U chronometric curve shape
-
-**Psychometric (Choice Behavior):**
-
-- Slope: 10.93 (macaque: 17.56, ratio 0.62)
-- Bias: -0.001 (macaque: +0.0003, both ~0)
-- Lapses: ~10^-13 (macaque: ~10^-16, both negligible)
-
-**History Effects:**
-
-- Win-stay: 0.50 (macaque: 0.46)
-- Lose-shift: 0.50 (macaque: 0.52)
-- Sticky-choice: 0.50 (macaque: 0.46)
-
-**DDM Parameters:**
-
-- drift_gain: 12-18 (target regime)
-- SNR: 0.029 → 0.396 (coherence-dependent scaling)
-- bounds: 1.9-2.7
-
-**Training Configuration:**
-
-```python
-LossWeights(choice=1.0, rt=0.0, wfpt=1.0, history=0.1, drift_magnitude=0.5)
-```
-
-20 epochs, 26 batches/epoch, 520 total gradient updates. Seed 43, training time ~20min CPU.
-
-### Documentation
-
-- Updated `README.md` with quantitative results and technical approach
-- Updated `FINDINGS.md` with Attempt 11 analysis and historical context
-- Updated `TRAINING_PROGRESS.md` with attempt summary and limitations
-- Created `BUGFIX_SUMMARY.md` documenting collapsing bound diagnostic process
-- Created `CHANGELOG.md` (this file) for version tracking
-
-### Limitations
-
-- Low coherences (0.0-0.128) reach 1200ms timeout (macaque: 660-760ms)
-- RT intercept elevated: 1259ms vs 759ms (macaque), +500ms offset
-- Psychometric slope shallower: 10.93 vs 17.56 (62% of reference)
-- Calibration targets for future work: non-decision time, bound parameters, timeout window
-
----
+- Dashboard chronometric/accuracy plots auto-detect contrast vs coherence (adds IBL support).
+- Chronometric metrics are now computed for the IBL 2AFC task.
+- **Collapsing-bound override bug**: the environment's `collapsing_bound=True` overrode the agent's learned commit step; delegating timing to the agent's DDM restored RT dynamics.
 
 ## [0.1.0] - 2025-10-10
 
-### Initial Release
+### Initial release
 
-**Added:**
-
-- **Environments**
-  - `envs/ibl_2afc.py`: IBL-style mouse visual 2AFC task
-  - `envs/rdm_macaque.py`: Macaque random-dot motion discrimination
-  - `envs/utils_timing.py`: Shared timing utilities
-
-- **Agents**
-  - `agents/sticky_q.py`: Sticky Q-learning baseline
-  - `agents/bayes_observer.py`: Bayesian observer with sensory noise
-  - `agents/ppo_baseline.py`: PPO with action masking
-  - `agents/ddm_baseline.py`: Drift Diffusion Model baseline
-  - `agents/hybrid_ddm_lstm.py`: Hybrid DDM+LSTM agent (initial implementation)
-
-- **Evaluation Stack**
-  - `eval/metrics.py`: Psychometric, chronometric, history metrics
-  - `eval/report.py`: HTML report generation
-  - `eval/dashboard.py`: Interactive comparison dashboards
-  - `eval/schema_validator.py`: NDJSON log validation
-
-- **Scripts**
-  - `scripts/train_agent.py`: Train baseline agents
-  - `scripts/train_hybrid_curriculum.py`: Train hybrid DDM+LSTM agent
-  - `scripts/evaluate_agent.py`: Compute metrics
-  - `scripts/make_report.py`: Generate HTML reports
-  - `scripts/make_dashboard.py`: Generate comparison dashboards
-  - `scripts/run_experiment.py`: Interactive experiment wizard
-
-- **Data**
-- `data/ibl/reference.ndjson`: Mouse 2AFC reference data (multi-session aggregate; 10 sessions, 8,406 trials)
-- `data/ibl/reference_single_session.ndjson`: Legacy single-session reference (885 trials)
-  - `data/macaque/reference.ndjson`: Macaque RDM reference data (2611 trials)
-
-**Testing:**
-
-- `tests/test_envs.py`: Environment unit tests
-- `tests/test_agents.py`: Agent unit tests
-- `tests/test_metrics.py`: Metrics unit tests
-- `tests/test_schema.py`: Schema validation tests
-- `tests/test_cli.py`: CLI tests
-
-**Documentation:**
-
-- `README.md`: Project overview, quickstart, task descriptions
-- `FINDINGS.md`: Benchmark results and insights
-- `AGENTS.md`: Agent operating guide
-
-**Infrastructure:**
-
-- Python 3.11 type hints and docstrings
-- Deterministic seeding (Python, NumPy, PyTorch)
-- Schema-validated NDJSON logging with line-by-line flushing
-- CPU-only training (<20 min, <4 GB RAM for demos)
-- Frozen CLI interfaces for reproducibility
+- **Environments**: IBL 2AFC (`envs/ibl_2afc.py`), macaque RDM (`envs/rdm_macaque.py`), shared timing utilities.
+- **Agents**: Sticky-Q, Bayesian observer, PPO (action masking), DDM baseline, Hybrid DDM+LSTM.
+- **Evaluation**: psychometric/chronometric/history metrics, HTML reports, comparison dashboards, NDJSON schema validator.
+- **Scripts**: train (baseline + hybrid curriculum), evaluate, report, dashboard, interactive experiment wizard.
+- **Data**: IBL mouse reference (10 sessions / 8,406 trials) + legacy single-session; macaque RDM reference (2,611 trials).
+- **Infrastructure**: Python 3.11 typing, deterministic seeding, schema-validated NDJSON logging, CPU-only (<20 min, <4 GB RAM), frozen CLI interfaces.
+- Tests: environments, agents, metrics, schema, CLI.
 
 ---
 
 ## Format
 
-- **Added** for new features
-- **Changed** for changes in existing functionality
-- **Deprecated** for soon-to-be removed features
-- **Removed** for now removed features
-- **Fixed** for any bug fixes
-- **Security** in case of vulnerabilities
+**Added** new features · **Changed** existing behavior · **Deprecated** soon-to-be-removed · **Removed** now-removed · **Fixed** bug fixes · **Security** vulnerabilities

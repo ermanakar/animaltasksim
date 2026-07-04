@@ -39,216 +39,26 @@ The supported result is narrow but real: **uncertainty-gated adaptive retry/pers
 
 ## Current Validation
 
-The main phase-1 matched validation suite spans 4 lesion conditions × 5 seeds × 1 task (IBL mouse 2AFC), for 20 independent runs. Every run produces a schema-validated trial log; metrics, dashboards, and per-seed reports live alongside the logs:
-
-```text
-runs/adaptive_control_validation_suite_phase1_exploration/
-```
-
-### How to read the numbers
-
-- **Retry gap** = P(retry | prior weak-evidence failure) − P(retry | prior strong-evidence failure). A positive gap means the agent specifically retries when the failure that just happened was *not* clearly disambiguated by its stimulus — the signature of uncertainty-gated persistence. A June 1, 2026 evaluator correction fixed older reports that accidentally binned by the next trial's stimulus.
-- **Stale-switch lift** = P(switch | stale state) − P(switch | fresh state). A positive lift means the agent samples alternatives more often when its recent action history has gone stale — the signature of rewarded-streak exploration.
-- **Unrewarded-switch lift** = P(switch | repeated weak failures) − P(switch | fresh weak evidence). This is a thin-count probe for failure-driven switching, not a claim by itself.
-- **Volatile-switch lift** = P(switch | locally mixed recent outcomes) − P(switch | locally stable recent outcomes). This is the more promising follow-up readout, but it must beat the persistence-only lesion to validate exploration.
-- **Block-switch adaptation lift** = P(choice follows the new hidden prior on trials 6-10 after a block switch) − P(choice follows the new hidden prior on trials 1-5). This bridges the stable IBL task to true reversal learning.
-- **PRL adaptation lift** = P(optimal choice on trials 6-10 after a hidden payout reversal) − P(optimal choice on trials 1-5). The PRL environment shows neutral options; the agent must infer change from reward outcomes rather than a visual cue.
-- **PRL block-learning lift** = P(optimal choice on the final 20 trials of a hidden-contingency block) − P(optimal choice on trials 1-5 after reversal). This captures slower outcome-driven learning that the immediate 10-trial window can miss.
-- **Paired Δ** = condition − no-control, computed seed-by-seed. Positive-seed counts (e.g. `5/5`) show how consistently the effect reproduces, not just whether the mean has the right sign.
-- **Lesion conditions.** *No control* disables all adaptive-control machinery; *persistence only* is the recommended/default validated profile; *exploration only* isolates the experimental exploration controller; *full control* enables both for comparison. The arbitration layer is uncertainty-gated so that none of these can overwrite strong sensory evidence.
-
----
-
-### Behavioral overlay vs. the IBL mouse
+The phase-1 matched suite spans 4 lesion conditions x 5 seeds on IBL mouse 2AFC (20 runs). Every run produces a schema-validated trial log; full per-seed dashboards live under `runs/adaptive_control_validation_suite_phase1_exploration/`.
 
 ![Adaptive-control agent vs. IBL mouse: psychometric, chronometric, and history](docs/figures/agent_vs_animal_full_control_seed42.png)
 
-> **Figure 1 | Full-control comparison run against the IBL mouse.**
-> **(a)** Psychometric curve, P(rightward choice) vs. signed stimulus contrast. Filled circles, agent (full-control, seed 42); open squares, IBL mouse aggregate (10 sessions, n = 8,406 trials). Solid blue and dashed gray curves are sigmoid fits with separate lapse parameters per side. The agent's slope (22.3 logits/contrast) sits inside the per-session IBL distribution (20.0 ± 5.7).
-> **(b)** Chronometric curve. Median reaction time vs. |stimulus contrast|, with error bars showing the standard error of the median. Both agent and mouse decline monotonically with stimulus strength; the agent matches the mouse at low contrast and commits faster than the mouse at the highest contrast.
-> **(c)** History effects (win-stay, lose-shift, sticky-choice). Hollow bars, mouse; filled blue bars, agent. Lose-shift is matched. Win-stay and sticky-choice are directionally correct (above 0.5) but trail the mouse by roughly 0.13 in this seed; this gap is the agent's main remaining behavioral deficit. This figure is a comparison view; the clean default claim remains persistence/retry.
+> **Figure 1 | Full-control comparison run vs. the IBL mouse.** (a) Psychometric: the agent slope (22.3) sits inside the per-session IBL distribution (20.0 +/- 5.7). (b) Chronometric: both decline monotonically with stimulus strength. (c) History: lose-shift matched; win-stay and sticky-choice are directionally correct but trail the mouse by ~0.13 in this seed. This is a comparison view; the clean default claim is persistence/retry.
 
----
+**Lesion suite (mean over 5 seeds).** *Retry gap* = P(retry | prior weak-evidence failure) - P(retry | prior strong-evidence failure); a positive gap is the signature of uncertainty-gated persistence. *Stale-switch lift* is the exploration controller's isolation probe.
 
-### Lesion suite summary
+| Condition | Psych slope | Chrono slope | Retry gap | Stale-switch lift |
+|-----------|------------:|-------------:|----------:|------------------:|
+| No control       | 27.71 | -48.54 | 0.019 | -0.073 |
+| Exploration only | 24.00 | -38.83 | 0.205 | -0.160 |
+| Persistence only | 21.75 | -33.47 | 0.120 | -0.160 |
+| Full control     | 22.26 | -33.97 | 0.175 | -0.152 |
 
-| Condition | Psych slope | Chrono slope | Retry gap | Stale-switch lift | RT ceiling warnings | Degenerate |
-|-----------|-------------|--------------|-----------|-------------------|---------------------|------------|
-| No control       | 27.71 | −48.54 |  0.019 | −0.073 | 0/5 | 0/5 |
-| Exploration only | 24.00 | −38.83 |  0.205 | −0.160 | 0/5 | 0/5 |
-| Persistence only | 21.75 | −33.47 |  0.120 | −0.160 | 1/5 | 0/5 |
-| Full control     | 22.26 | −33.97 |  0.175 | −0.152 | 0/5 | 0/5 |
+**The validated claim is uncertainty-gated adaptive retry / persistence** — a positive retry gap in every adaptive condition (4/5 seeds paired vs. no-control). `persistence_only` is the recommended default; full control is a comparison condition that also carries the unvalidated exploration controller. Rewarded-streak exploration fails its isolation probe (stale-switch lift negative in 0/5 seeds).
 
-![Per-condition behavioral readouts across the lesion suite](docs/figures/suite_validation_summary.png)
+On **PRL** (hidden-contingency reversal), the deficit was localized to `uncertain_retry` perseveration, and the flag-gated change-evidence recurrence (default off; lambda=0.9 opt-in) restores combined recovery. Absolute PRL performance is near chance: this is an isolated necessity/mechanism result, not "solves PRL" (no PRL animal reference dataset exists yet).
 
-> **Figure 2 | Per-condition behavioral readouts across the lesion suite.** Bars are means across n = 5 seeds; error bars are 1 s.d.
-> **(a)** Retry gap is positive in every adaptive condition, with full control highest in this suite.
-> **(b)** Stale-switch lift remains negative in every condition, and is more negative in the adaptive conditions than under no control — i.e. the exploration controller fails its isolation probe in this design.
-> **(c)** Psychometric slope. Shaded band marks the IBL per-session reference (20.0 ± 5.7). Adding adaptive control reduces slope from the no-control level into the animal's distribution, at the cost of evidence sensitivity.
-> **(d)** Chronometric slope. Dashed line marks the literature target (≈ −36 ms / unit |stimulus|). All adaptive conditions land near the target.
-
----
-
-### Necessity test: paired deltas vs. no control
-
-| Comparison                          | Δ retry gap | Retry positive seeds | Δ stale-switch lift | Stale-lift positive seeds |
-|-------------------------------------|------------:|---------------------:|--------------------:|--------------------------:|
-| Exploration only − no control       |      +0.186 |                  4/5 |              −0.087 |                       0/5 |
-| Persistence only − no control       |      +0.101 |                  4/5 |              −0.087 |                       0/5 |
-| Full control − no control           |      +0.157 |                  4/5 |              −0.078 |                       0/5 |
-
-![Paired lesion deltas vs. no control](docs/figures/suite_paired_deltas.png)
-
-> **Figure 3 | Paired lesion deltas vs. the no-control lesion** (n = 5 seeds, paired by seed). Each bar pair shows the per-condition mean change in retry gap (green) and stale-switch lift (purple) relative to the same seed's no-control run. Numbers above and below bars are positive-seed counts (n/N): how many of the five seeds showed an effect in the expected direction.
-> Full control produces a positive Δ retry gap in **4/5** seeds. In contrast, Δ stale-switch lift is negative in **0/5** seeds across every adaptive condition: rewarded-streak exploration is not validated by this probe.
-
----
-
-### Interpretation
-
-- The validated claim is persistence/retry: the persistence-only profile keeps the mechanism isolated from experimental exploration.
-- Full control is retained as a comparison condition and has the largest retry-gap mean in this suite, but it also includes the unvalidated exploration controller.
-- Rewarded-streak exploration fails its isolation probe in every condition (Fig 2b, Fig 3).
-- The honest claim is **uncertainty-gated adaptive retry / persistence**, not a general exploration breakthrough. The exploration mechanism needs a different probe, a different gate, or both.
-
-Full per-condition HTML dashboards (one per seed) live under `runs/adaptive_control_validation_suite_phase1_exploration/`.
-
-### Follow-up exploration probe screen
-
-A May 6, 2026 falsification screen tested the newer unrewarded-failure and local-volatility probes across the same four lesion conditions:
-
-```text
-runs/adaptive_control_exploration_probe_5seed/
-```
-
-This run used a lightweight budget (`episodes=3`, `epochs=1`) to check counts and directionality before spending a larger validation budget. All four conditions remained usable: 0/5 degenerate runs and 0/5 RT-ceiling warnings.
-
-The retry-gap columns in this May screen and the interaction table below
-predate the June 1 prior-trial correction. They are retained for provenance and
-must not be compared directly with the corrected current suite.
-
-| Comparison | Delta retry gap | Retry positive seeds | Delta unrewarded-switch lift | Unrewarded positive seeds | Delta volatile-switch lift | Volatile positive seeds |
-|------------|-----------------|----------------------|------------------------------|---------------------------|----------------------------|-------------------------|
-| Exploration only - no control | +0.038 | 3/5 | +0.037 | 4/5 | +0.054 | 3/5 |
-| Persistence only - no control | +0.082 | 5/5 | -0.143 | 2/5 | +0.040 | 3/5 |
-| Full control - no control | +0.082 | 5/5 | -0.008 | 4/5 | +0.071 | 4/5 |
-| Exploration only - persistence only | -0.044 | 2/5 | +0.180 | 4/5 | +0.014 | 3/5 |
-| Full control - persistence only | -0.000 | 2/5 | +0.135 | 4/5 | +0.032 | 4/5 |
-
-Interpretation: the unrewarded-failure probe has too few streak events to carry the claim. The local-volatility probe is more viable, but persistence-only also shows a positive volatility lift versus no-control, so the effect is not cleanly attributable to exploration. Exploration therefore remains experimental; the recommended/default profile stays `persistence_only`.
-
-### Block-switch adaptation screen
-
-A block-switch-focused suite then increased the rollout budget to 6 episodes x 800 trials per run, giving 30 biased block reversals per run:
-
-```text
-runs/adaptive_control_block_switch_focus_v1/
-```
-
-| Condition | Block-switch adaptation lift | Early new-prior choice | Late new-prior choice | Degenerate |
-|-----------|------------------------------|------------------------|-----------------------|------------|
-| No control | +0.033 | 0.711 | 0.744 | 0/5 |
-| Exploration only | +0.136 | 0.655 | 0.791 | 0/5 |
-| Persistence only | +0.099 | 0.669 | 0.768 | 0/5 |
-| Full control | +0.084 | 0.677 | 0.761 | 0/5 |
-
-Paired against no-control, exploration-only increased block-switch adaptation by `+0.103` in 5/5 seeds. Paired against persistence-only, exploration-only still improved adaptation by `+0.037` in 4/5 seeds. Full-control did not preserve the effect versus persistence-only (`-0.015`, 0/5 seeds), so this is a promising exploration-specific lead, not yet a clean full-control success.
-
-### Persistence/exploration interaction sweep
-
-We then prioritized the full-control arbitration question before PRL/DMS transfer by sweeping persistence and exploration scales:
-
-```text
-runs/adaptive_control_interaction_sweep_v1/
-```
-
-| Condition | Persistence scale | Exploration scale | Block-switch lift | Delta vs persistence-only | Positive seeds | Retry gap |
-|-----------|-------------------|-------------------|-------------------|---------------------------|----------------|-----------|
-| Persistence only | 1.6 | off | +0.099 | baseline | - | 0.091 |
-| Exploration only | off | 0.8 | +0.136 | +0.037 | 4/5 | 0.031 |
-| Full-control default | 1.6 | 0.8 | +0.084 | -0.015 | 0/5 | 0.067 |
-| Full-control persist-half | 0.8 | 0.8 | +0.136 | +0.037 | 5/5 | 0.067 |
-| Full-control explore-double | 1.6 | 1.6 | +0.103 | +0.004 | 3/5 | 0.094 |
-| Full-control explore-dominant | 0.4 | 1.6 | +0.112 | +0.013 | 4/5 | 0.103 |
-
-Interpretation: the default full-control setting was not broken, but it was over-arbitrated toward persistence for this hidden block-switch readout. Weakening persistence to `0.8` while keeping exploration at `0.8` restored the exploration-only block-switch gain over persistence-only (`+0.037`, 5/5 seeds), with 0/5 degenerate runs and 0/5 RT-ceiling warnings. It is a promising full-control comparison setting, not the new validated default, because its retry gap is weaker than persistence-only.
-
-### PRL transfer result
-
-The five-condition matched PRL suite then tested whether that exploration lead
-survives true hidden payout reversals:
-
-```text
-runs/prl_transfer_validation_suite/
-```
-
-All 25 runs were usable: 5 paired seeds per condition, 1,600 trials and 16
-reversals per run, 100% commit rate, and 0/25 degenerate runs.
-
-| Condition | Overall optimal choice | Reward rate | Early optimal choice | End-block optimal choice | Block-learning lift |
-|-----------|------------------------|-------------|----------------------|--------------------------|---------------------|
-| No control | 0.504 | 0.504 | 0.460 | 0.513 | +0.053 |
-| Exploration only | 0.579 | 0.549 | 0.322 | 0.683 | +0.360 |
-| Persistence only | 0.469 | 0.479 | 0.472 | 0.492 | +0.019 |
-| Full control default | 0.507 | 0.501 | 0.510 | 0.466 | -0.044 |
-| Full control persist-half | 0.510 | 0.502 | 0.478 | 0.543 | +0.066 |
-
-The exploration-only condition shows the clearest reversal-learning shape:
-strong early perseveration after the hidden swap, followed by recovery as reward
-evidence accumulates. Against no-control, end-block optimal choice improves by
-`+0.169` and block-learning lift by `+0.307`, both positive in 5/5 paired seeds.
-Against persistence-only, block-learning lift improves by `+0.341`, also
-positive in 5/5 seeds.
-
-Interpretation: exploration has a real task-transfer phenotype when isolated.
-The current combined controller is still unresolved: persistence suppresses
-most of the PRL benefit, and `full_control_persist_half` is not sufficient to
-rescue it. This is a useful mechanism result, not animal parity: the repository
-does not yet include a PRL animal reference dataset.
-
-### PRL arbitration scale sweep
-
-The follow-up interaction sweep tested whether global persistence/exploration
-scale changes were enough to rescue the combined controller:
-
-```text
-runs/prl_adaptive_control_interaction_sweep_v1/
-```
-
-All 50 runs were usable: 10 conditions x 5 paired seeds, 80,000 schema-valid
-trials, 100% commit rate, and 0/50 degenerate runs. The saved checkpoints stayed
-close to their configured scale values, so the negative result is not an
-artifact of training collapsing the grid back to one setting.
-
-| Full-control condition | Persistence scale | Exploration scale | End-block optimal choice | Block-learning lift |
-|------------------------|-------------------|-------------------|--------------------------|---------------------|
-| Default | 1.6 | 0.8 | 0.466 | -0.044 |
-| Persist-half | 0.8 | 0.8 | 0.543 | +0.066 |
-| Persist-quarter | 0.4 | 0.8 | 0.459 | -0.094 |
-| Explore-strong | 1.6 | 1.2 | 0.444 | -0.126 |
-| Explore-double | 1.6 | 1.6 | 0.534 | +0.057 |
-| Balanced | 0.8 | 1.2 | 0.445 | -0.080 |
-| Explore-dominant | 0.4 | 1.6 | 0.454 | -0.016 |
-
-For comparison, `exploration_only` reaches `0.683` end-block optimal choice and
-`+0.360` block-learning lift. Every full-control setting loses block-learning
-lift versus `exploration_only` in 5/5 paired seeds. The next step was therefore
-not another scalar sweep: inspect controller contributions around reversals and
-test a state-dependent arbitration rule that lets exploration act when hidden
-contingencies change without disabling the IBL retry phenotype.
-
-The checkpoint-reroll diagnostic used for that investigation is:
-
-```bash
-python scripts/prl_arbitration_diagnostic.py \
-  --source-root runs/prl_adaptive_control_interaction_sweep_v1 \
-  --output-root runs/prl_arbitration_diagnostic_v1
-```
-
-This reuses three informative saved profiles across the same five seeds and
-writes `control_diagnostics.ndjson` beside each diagnostic reroll. The sidecar
-contains internal controller traces for offline analysis; `trials.ndjson`
-remains the authoritative schema-validated behavioral log.
+**The full record** — paired-delta necessity tests, the exploration probe screens, block-switch adaptation, the interaction and PRL arbitration sweeps, and the change-evidence calibration — is in [FINDINGS.md](FINDINGS.md), with figures under `docs/figures/`.
 
 ## Architecture
 
@@ -389,7 +199,7 @@ IBL contrasts are `{0, 0.0625, 0.125, 0.25, 1.0}`. A previous extra `0.5` contra
 
 ## Roadmap
 
-A controlled ablation localized the PRL deficit: `uncertain_retry` (retry the failed action when uncertain) fires on every PRL failure because neutral options pin uncertainty at 1.0, producing perseveration. Disabling only that term recovers reversal learning (block-learning lift +0.019 → +0.302, 5/5 seeds), confirming `exploration_only` won by *removing* perseveration, not by exploring. The principled fix — a **change-evidence recurrence** that drives switching from accumulated failures instead of stimulus clarity — is implemented behind `change_evidence_enabled` (default off, flag-off verified bit-for-bit). Safety-gated calibration rejected λ=0.7 as too eager and selected λ=0.9 as a validated opt-in cross-task profile: with `uncertain_retry` still enabled, full-control PRL block-learning lift reached `+0.469` and optimal choice reached `0.706`; after the June 1 prior-trial retry-metric correction, IBL full-control retry gap is `0.158` versus the historical flag-off `0.175`. See [PRL Volatility-Uncertainty Design](docs/prl_volatility_uncertainty_design.md).
+A controlled ablation localized the PRL deficit: `uncertain_retry` fires on every PRL failure because neutral options pin uncertainty at 1.0, producing perseveration — so `exploration_only` won by *removing* perseveration, not by exploring. The principled fix is a **change-evidence recurrence** that drives switching from accumulated failures instead of stimulus clarity, implemented behind `change_evidence_enabled` (default off, flag-off verified bit-for-bit). λ=0.9 is the validated opt-in cross-task profile. Full numbers and calibration: [FINDINGS.md](FINDINGS.md); design: [PRL Volatility-Uncertainty Design](docs/prl_volatility_uncertainty_design.md).
 
 Near-term work:
 
