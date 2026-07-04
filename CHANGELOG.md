@@ -14,8 +14,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Adaptive-control agent**: a new agent archetype that adds persistence, exploration, and uncertainty-gated arbitration control on top of the hybrid evidence core (`agents/adaptive_control_*.py`, `scripts/train_adaptive_control.py`, `--control-profile {no_control, persistence_only, exploration_only, full_control}`). `persistence_only` is the validated default; the others are comparison/lesion conditions.
+- **Adaptive-control probe metrics** (`eval/metrics.py`): retry gap, stale-switch lift, unrewarded/volatile-switch lift, and block-switch adaptation lift, plus the matched validation-suite and interaction-sweep scripts (`scripts/adaptive_control_validation_suite.py`, `scripts/adaptive_control_interaction_sweep.py`, `scripts/adaptive_control_persistence_sweep.py`).
 - **Probabilistic Reversal Learning transfer path**: hidden-contingency PRL environment (`envs/prl_reversal.py`), PRL reversal metrics, HTML report visualization, registry metadata, and a matched transfer suite.
 - **Delayed Match-to-Sample scaffold**: schema-valid DMS environment (`envs/dms_match.py`) plus tests and a memory-fingerprint design note. Adaptive-control DMS rollout is intentionally unwired.
+- **Schema v0.2 optional fields** (`eval/schema_validator.py`, additive; `extra="forbid"` preserved): PRL (`reversal`, `block_index`, `contingency`) and DMS (`sample_stimulus`, `delay_ms`, `match`) trial fields. Registry gains PRL metadata and `prl`/`dms` task values.
 - **Adaptive-control lesion / recurrence flags**: `uncertain_retry_enabled` (default on) and the flag-gated change-evidence recurrence (`change_evidence_enabled` / `change_evidence_decay`, default off; verified flag-off bit-for-bit no-op). λ=0.9 is the validated opt-in cross-task profile.
 - **PRL arbitration diagnostic**: a checkpoint-reroll CLI writing a separate `control_diagnostics.ndjson` sidecar, leaving the frozen trial schema unchanged.
 - **Reproducible IBL reference fetcher** (`scripts/fetch_ibl_reference.py`): pulls multi-session `biasedChoiceWorld` data from the IBL public server (OpenAlyx) into the project schema, with convention-agnostic action derivation, choice-sign auto-calibration, a trained-performance QC gate, and an EID manifest. Requires `ONE-api` (kept out of `pyproject.toml`). Add-and-compare only; `reference.ndjson` is unchanged.
@@ -38,12 +41,14 @@ _Scientific results and validation numbers for all of the above live in [FINDING
 
 ### Fixed
 
+- **`prev_reward` rollout bug (critical)**: the outcome-phase check used `phase_step == 0`, but the environment returns reward *before* advancing the phase step and returns info *after* — corrected to `== 1`. `prev_reward` had always been 0.0, routing every trial through the lose-history pathway and pinning win-stay near 0.556. This single bug explained why prior history interventions had failed.
 - **Mixed-provenance behavioral targets**: all IBL targets now derived from per-session analysis of `data/ibl/reference.ndjson` (10 sessions, 8,406 trials); previously assembled from three independent sources.
 - **IBL contrast set**: removed the 0.5 contrast from `envs/ibl_2afc.py` (not part of the biased-blocks protocol).
 - **Reporting**: agent results now reported as 5-seed mean ± std instead of a single best seed.
 
 ### Added
 
+- **Co-evolution training** for the Hybrid agent: training from scratch with history injection active, so the evidence circuits learn alongside the history effects (post-hoc injection degraded psychometric slope). `drift_magnitude_target` recalibrated 6.0 → 9.0 to compensate; produces all six IBL behavioral fingerprints simultaneously (5-seed validation). Adds `scripts/run_5seed_validation.py` and history diagnostic/sweep scripts.
 - `scripts/compute_reference_targets.py`: per-session psychometric / chronometric / history metrics → `data/ibl/reference_targets.json`, the single source of truth for behavioral targets.
 
 ### Changed
