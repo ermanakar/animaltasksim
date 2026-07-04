@@ -1,0 +1,179 @@
+{
+  "source": "data/ibl/reference.ndjson",
+  "task": "ibl_2afc",
+  "n_sessions": 10,
+  "n_trials": 8406,
+  "degenerate_sessions": [
+    "014aaca9-b706-42ee-b552-e4b9d2e7c635"
+  ],
+  "per_session": [
+    {
+      "session_id": "014aaca9-b706-42ee-b552-e4b9d2e7c635",
+      "n_trials": 1071,
+      "psych_slope": 199.99857104837722,
+      "chrono_slope_ms_per_unit": -1.6780373832177027,
+      "win_stay": 0.9240687679083095,
+      "lose_shift": 0.21505376344086022,
+      "lapse_low": 0.23758059131881407,
+      "lapse_high": 0.4902685866575267,
+      "degenerate": true
+    },
+    {
+      "session_id": "01b4ba5c-d507-4f83-8775-ac5928009101",
+      "n_trials": 829,
+      "psych_slope": 23.799820922368625,
+      "chrono_slope_ms_per_unit": null,
+      "win_stay": 0.7328571428571429,
+      "lose_shift": 0.5078125,
+      "lapse_low": 0.07196556537767604,
+      "lapse_high": 0.006052453687432972,
+      "degenerate": false
+    },
+    {
+      "session_id": "0239e091-fccc-463f-880f-01bdad5a928c",
+      "n_trials": 620,
+      "psych_slope": 14.389463318926232,
+      "chrono_slope_ms_per_unit": -89.0810280373792,
+      "win_stay": 0.6343115124153499,
+      "lose_shift": 0.5454545454545454,
+      "lapse_low": 0.147039747827997,
+      "lapse_high": 0.051799716582142497,
+      "degenerate": false
+    },
+    {
+      "session_id": "02c96f8f-67ee-43dd-85c2-a1c9c7f07f8c",
+      "n_trials": 477,
+      "psych_slope": 15.043437729429316,
+      "chrono_slope_ms_per_unit": -202.12523364486768,
+      "win_stay": 0.707774798927614,
+      "lose_shift": 0.5436893203883495,
+      "lapse_low": 0.05956829476551482,
+      "lapse_high": 0.11664730516737087,
+      "degenerate": false
+    },
+    {
+      "session_id": "02e40e0b-6ec8-49b3-9d58-244c1d710597",
+      "n_trials": 448,
+      "psych_slope": 12.759735233925769,
+      "chrono_slope_ms_per_unit": -10.551682242988395,
+      "win_stay": 0.6624605678233438,
+      "lose_shift": 0.3923076923076923,
+      "lapse_low": 0.1057119836428326,
+      "lapse_high": 4.767076154048536e-27,
+      "degenerate": false
+    },
+    {
+      "session_id": "034940f7-d1a2-428e-8f60-eff0d6756fc4",
+      "n_trials": 1254,
+      "psych_slope": 24.337126112410214,
+      "chrono_slope_ms_per_unit": -5.669065420550027,
+      "win_stay": 0.699724517906336,
+      "lose_shift": 0.5060975609756098,
+      "lapse_low": 0.010708745686794491,
+      "lapse_high": 0.019273939288862566,
+      "degenerate": false
+    },
+    {
+      "session_id": "03d720c4-5aac-4427-a4ae-08f259173ce5",
+      "n_trials": 725,
+      "psych_slope": 20.328492358250266,
+      "chrono_slope_ms_per_unit": -52.60775700932931,
+      "win_stay": 0.6879194630872483,
+      "lose_shift": 0.4921875,
+      "lapse_low": 0.058920833672914355,
+      "lapse_high": 0.07117579748212907,
+      "degenerate": false
+    },
+    {
+      "session_id": "0586eabf-d4a0-43ee-bf2f-ac22bfbcea09",
+      "n_trials": 822,
+      "psych_slope": 23.761434289098073,
+      "chrono_slope_ms_per_unit": -44.33495327103125,
+      "win_stay": 0.7013574660633484,
+      "lose_shift": 0.5443037974683544,
+      "lapse_low": 0.07471603314443936,
+      "lapse_high": 0.0679531269779779,
+      "degenerate": false
+    },
+    {
+      "session_id": "0878d9b2-5bfe-4766-a318-50c5ac4be5b4",
+      "n_trials": 1084,
+      "psych_slope": 15.929900226945879,
+      "chrono_slope_ms_per_unit": -7.11504672897303,
+      "win_stay": 0.7629796839729119,
+      "lose_shift": 0.4517766497461929,
+      "lapse_low": 0.013212779374716693,
+      "lapse_high": 0.10396947869292116,
+      "degenerate": false
+    },
+    {
+      "session_id": "0b98e493-e9ae-44c6-8feb-a30a597fc73f",
+      "n_trials": 1076,
+      "psych_slope": 29.370729476457452,
+      "chrono_slope_ms_per_unit": -46.20682242988018,
+      "win_stay": 0.6721132897603486,
+      "lose_shift": 0.4713375796178344,
+      "lapse_low": 3.4811588324681713e-28,
+      "lapse_high": 0.08617470012147431,
+      "degenerate": false
+    }
+  ],
+  "per_session_stats": {
+    "psych_slope": {
+      "mean": 19.968904407534648,
+      "std": 5.704606066953202,
+      "median": 20.328492358250266,
+      "min": 12.759735233925769,
+      "max": 29.370729476457452,
+      "n": 9
+    },
+    "chrono_slope_ms_per_unit": {
+      "mean": -51.0410695742463,
+      "std": 63.64793123220824,
+      "median": -44.33495327103125,
+      "min": -202.12523364486768,
+      "max": -1.6780373832177027,
+      "n": 9
+    },
+    "win_stay": {
+      "mean": 0.7185567210721954,
+      "std": 0.08063600427211634,
+      "median": 0.7005409919848422,
+      "min": 0.6343115124153499,
+      "max": 0.9240687679083095,
+      "n": 10
+    },
+    "lose_shift": {
+      "mean": 0.46700209093994394,
+      "std": 0.10063539588521381,
+      "median": 0.4991425304878049,
+      "min": 0.21505376344086022,
+      "max": 0.5454545454545454,
+      "n": 10
+    },
+    "lapse_low": {
+      "mean": 0.07794245748116993,
+      "std": 0.07192651410395842,
+      "median": 0.06576693007159543,
+      "min": 3.4811588324681713e-28,
+      "max": 0.23758059131881407,
+      "n": 10
+    },
+    "lapse_high": {
+      "mean": 0.10133151046578379,
+      "std": 0.14232193996419668,
+      "median": 0.06956446223005348,
+      "min": 4.767076154048536e-27,
+      "max": 0.4902685866575267,
+      "n": 10
+    }
+  },
+  "aggregate": {
+    "psych_slope": 21.10423930220662,
+    "chrono_slope_ms_per_unit": -15.567570093446978,
+    "win_stay": 0.7246745473589705,
+    "lose_shift": 0.43374197314652657,
+    "lapse_low": 0.08433435872764905,
+    "lapse_high": 0.11755673713660685
+  }
+}

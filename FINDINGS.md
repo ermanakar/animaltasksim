@@ -7,7 +7,7 @@
 
 The **Decoupling Problem is architecturally solved**: the Hybrid DDM+LSTM (differentiable Euler-Maruyama DDM, asymmetric win/lose history networks, drift-rate bias, attention-gated history, fixed rollout lapse, co-evolution training) produces all six IBL behavioral fingerprints simultaneously. 5-seed co-evolution validation (win_t=0.30, lose_t=0.15, drift_magnitude_target=9.0): psych slope 12.38 ± 0.64, chrono slope -34.2 ± 1.8 ms/unit, win-stay 0.706 ± 0.008, lose-shift 0.457 ± 0.007, lapse ~0.075. History effects, chrono, lose-shift, and lapse fall within the reference per-session range; psych slope sits below the reference mean. History effects currently use **injected fixed values**, not values learned by the networks — that remains the open frontier.
 
-For **adaptive control**, `persistence_only` is the validated/default IBL profile (uncertainty-gated weak-failure retry, 5/5 seeds). Exploration is not independently validated on stable IBL. On **PRL** (hidden-contingency reversal), the deficit was localized to the `uncertain_retry` term firing at full strength because neutral options pin perceptual uncertainty at 1.0; the flag-gated **change-evidence recurrence** fixes the mechanism (verified flag-off bit-for-bit no-op). Safety-gated calibration rejected λ=0.7 and selected **λ=0.9 as the validated opt-in cross-task profile** (feature default off). The **DMS** memory fingerprint is defined but not yet wired for adaptive rollout. The **IBL reference expansion** (80 QC'd sessions, 57,888 trials) independently reproduces all six fingerprints under the correct `response_times` RT convention, but is add-and-compare only — the frozen 10-session `reference.ndjson` and its targets remain canonical.
+For **adaptive control**, `persistence_only` is the validated/default IBL profile (uncertainty-gated weak-failure retry, 5/5 seeds). Exploration is not independently validated on stable IBL. On **PRL** (hidden-contingency reversal), the deficit was localized to the `uncertain_retry` term firing at full strength because neutral options pin perceptual uncertainty at 1.0; the flag-gated **change-evidence recurrence** fixes the mechanism (verified flag-off bit-for-bit no-op). Safety-gated calibration rejected λ=0.7 and selected **λ=0.9 as the validated opt-in cross-task profile** (feature default off). The **DMS** memory fingerprint is defined but not yet wired for adaptive rollout. The **IBL reference has been expanded and adopted** (July 2026): `reference.ndjson` is now 120 QC'd public sessions / 86,648 trials, targets reported as median [IQR]; the legacy 10-session set is preserved as `reference_10session.ndjson`. Psychometric/history medians reproduced; the chronometric target was revised -44 → -21 ms/unit (the small set over-estimated it). The agent (not retrained on the new reference) sits within the interquartile range on psych/chrono/lose-shift, and just above the upper quartile on win-stay and lapse.
 
 ## How to read this document
 
@@ -888,3 +888,68 @@ Psychometric, history, and lapse fingerprints reproduce at scale (psych median 2
 ---
 
 *The full, unabridged chronological lab notebook — every original entry with all repetition preserved — is archived verbatim at `docs/archive/FINDINGS_raw_2026-07.md`.*
+
+## Reference Adoption — 120-Session IBL Reference Now Canonical (July 4, 2026)
+
+Following the add-and-compare validation, the expanded IBL reference is now the
+canonical `data/ibl/reference.ndjson`: **120 QC'd public sessions, 86,648 trials**
+(pulled with `scripts/fetch_ibl_reference.py`, `response_times` RT convention,
+trained-performance QC gate, choice-sign agreement 1.000 on every kept session).
+This is a deliberate, dated provenance change.
+
+**Supplement, not replace.** The legacy 10-session set is preserved verbatim as
+`data/ibl/reference_10session.ndjson` (with its targets as
+`reference_10session_targets.json`) so every earlier result stays reproducible.
+The EID manifest is committed at `data/ibl/reference.manifest.json`.
+
+**Targets are now reported as median [IQR]** (robust to the per-session
+psychometric fits that rail the slope bound on near-vertical proficient
+sessions). Re-derived canonical targets vs the legacy 10-session set:
+
+| metric | legacy 10-session median [IQR] | adopted 120-session median [IQR] |
+|---|---|---|
+| psych slope | 20.33 [15.04, 23.80] | 20.24 [12.14, 30.80] |
+| chrono slope (ms/unit) | -44.33 [-52.61, -7.12] | **-20.75 [-67.48, -8.69]** |
+| win-stay | 0.70 [0.68, 0.73] | 0.70 [0.66, 0.73] |
+| lose-shift | 0.50 [0.46, 0.53] | 0.46 [0.41, 0.51] |
+| lapse low / high | 0.07 / 0.07 | 0.04 / 0.04 |
+
+### What changed, and the one target that moved
+
+Psychometric and history medians reproduce almost exactly (psych 20.24 vs 20.33;
+win-stay 0.70 vs 0.70); lapse tightened lower (more trained sessions). The one
+material shift is the **chronometric slope target: -44 → -21 ms/unit (median)**.
+This is a provenance correction, not a new result: the 10-session median
+over-estimated the slope magnitude, and with 120 sessions the robust median is
+shallower with a wide IQR ([-67, -9]). Both are under the same `response_times`
+convention. The psych-slope IQR is genuinely wider ([12, 31] vs [15, 24]),
+reflecting real between-mouse variation the small set under-sampled.
+
+### Honest re-report of the flagship agent against the adopted bands
+
+The agent was **not retrained** on the 120-session reference; these are the
+existing contrast-corrected 5-seed numbers judged against the new bands. Any
+improved "fit" is because the reference is better-sampled, not because the agent
+changed:
+
+| metric | agent (5-seed) | adopted band (median [IQR]) | within IQR? |
+|---|---|---|---|
+| psych slope | 17.84 ± 2.08 | 20.24 [12.14, 30.80] | yes |
+| chrono slope | -37.7 ± 2.4 | -20.75 [-67.48, -8.69] | yes |
+| lose-shift | 0.444 ± 0.017 | 0.46 [0.41, 0.51] | yes |
+| win-stay | 0.734 ± 0.022 | 0.70 [0.66, 0.73] | just above the upper quartile (0.73) |
+| lapse | 0.086 ± 0.049 | 0.04 [0.02, 0.08] | just above the upper quartile (0.08) |
+
+Three of five fingerprints sit inside the interquartile range; win-stay and lapse
+sit just above the upper quartile by small margins. This is a fair position, not
+a parity claim.
+
+### Implication and follow-up
+
+Adoption changes `reference.ndjson`, which serves triple duty — evaluation
+targets, dashboard overlay, and training supervision (scripts auto-infer this
+path). Existing flagship runs were trained/validated against the legacy
+10-session set (preserved); **retraining the agent against the 120-session
+reference is future work**, as is regenerating the overlay figures (currently
+rendered against the legacy set). PRL animal parity remains out of scope (no PRL
+reference dataset). Macaque RDM is unchanged.
