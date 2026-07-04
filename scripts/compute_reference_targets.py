@@ -46,12 +46,20 @@ def _extract_scalar(metrics: dict, *keys: str) -> float | None:
 
 
 def _stats(values: list[float]) -> dict[str, float | int]:
-    """Compute mean, std, median, min, max for a list of finite floats."""
+    """Compute mean, std, median, IQR (p25/p75), min, max for finite floats.
+
+    Median and IQR are the robust statistics preferred for reporting: they are
+    insensitive to per-session psychometric fits that rail the slope bound on
+    highly proficient (near-vertical) sessions, which inflate the mean/std.
+    """
     arr = np.array(values, dtype=float)
     return {
         "mean": float(np.mean(arr)),
         "std": float(np.std(arr, ddof=1)) if len(arr) > 1 else 0.0,
         "median": float(np.median(arr)),
+        "p25": float(np.percentile(arr, 25)),
+        "p75": float(np.percentile(arr, 75)),
+        "iqr": float(np.percentile(arr, 75) - np.percentile(arr, 25)),
         "min": float(np.min(arr)),
         "max": float(np.max(arr)),
         "n": len(arr),
@@ -153,12 +161,15 @@ def main() -> None:
         "lapse_high": _stats(lapse_highs) if lapse_highs else None,
     }
 
-    print("Per-session targets (mean +/- std):")
+    print("Per-session targets (median [IQR] — robust; mean +/- std for reference):")
     for name, s in stats.items():
         if s is None:
             print(f"  {name:30s}  no data")
         else:
-            print(f"  {name:30s}  {s['mean']:8.2f} +/- {s['std']:6.2f}  (median {s['median']:8.2f}, range [{s['min']:.1f}, {s['max']:.1f}], n={s['n']})")
+            print(
+                f"  {name:30s}  median {s['median']:8.2f}  IQR [{s['p25']:.2f}, {s['p75']:.2f}]"
+                f"   (mean {s['mean']:.2f} +/- {s['std']:.2f}, range [{s['min']:.1f}, {s['max']:.1f}], n={s['n']})"
+            )
     print()
 
     # --- Aggregate (all trials pooled) ---
