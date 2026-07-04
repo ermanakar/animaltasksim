@@ -59,7 +59,9 @@ deliberately kept out of `pyproject.toml`. It derives each action from the
 stimulus side and `feedbackType` (convention-agnostic), auto-calibrates the IBL
 `choice` sign for zero-contrast trials and reports its agreement, filters to the
 biased-blocks contrast set (`0.5` excluded), and defaults RT to
-`firstMovement_times - stimOn_times` to match the existing reference. It applies
+`response_times - stimOn_times` (verified to match the baseline `reference.ndjson`
+RT distribution; `--rt-source firstMovement` gives the ~2.5x-faster movement-onset
+measure that does not match the project's calibrated targets). It applies
 a trained-performance QC gate (`--min-easy-accuracy`, default 0.85 on
 full-contrast trials) and shuffles the candidate list deterministically, because
 the Alyx search order front-loads early/low-performance sessions. It writes a

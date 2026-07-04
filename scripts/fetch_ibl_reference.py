@@ -24,10 +24,13 @@ Two correctness safeguards, deliberately stronger than the legacy
    trusted; it is only needed for zero-contrast trials (no correct side), and
    for those the sign is *auto-calibrated* from the non-zero trials and its
    agreement with the legacy ``-1=left/+1=right`` assumption is reported.
-2. **Reaction time matches the existing reference.** The default
-   ``firstMovement`` source (``firstMovement_times - stimOn_times``) reproduces
-   the ~378 ms median of ``reference.ndjson``. ``response`` uses
-   ``response_times - stimOn_times`` (a movement-completion measure, ~1 s+).
+2. **Reaction time matches the existing reference.** The default ``response``
+   source (``response_times - stimOn_times``) reproduces the baseline
+   ``reference.ndjson`` RT distribution (median ~379 ms, RT-vs-contrast 540->309,
+   chrono slope ~-16) — verified on a matched 15-session sample. ``firstMovement``
+   (``firstMovement_times - stimOn_times``) is the movement-onset measure and is
+   ~2.5x faster (~155 ms median); it is the more standard decision-RT for
+   chronometric analysis, but it does NOT match this project's calibrated targets.
    Choosing the wrong one silently shifts every chronometric target, so it is an
    explicit, logged choice.
 
@@ -75,7 +78,7 @@ class Args:
     manifest: Path | None = None  # default: <out>.manifest.json
     max_sessions: int = 40
     task_protocol: str = "biasedChoiceWorld"
-    rt_source: Literal["firstMovement", "response"] = "firstMovement"
+    rt_source: Literal["response", "firstMovement"] = "response"  # matches baseline reference.ndjson
     min_trials: int = 150  # drop short/aborted sessions
     min_easy_accuracy: float = 0.85  # trained-performance QC on |contrast|=1.0 trials
     min_full_contrast_trials: int = 20  # need enough easy trials to score QC reliably
