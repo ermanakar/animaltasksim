@@ -182,10 +182,12 @@ python scripts/make_dashboard.py \
 
 | Dataset | Trials | Use |
 |---------|--------|-----|
-| IBL mouse 2AFC | 8,406 trials, 10 sessions | Main perceptual decision-making reference |
+| IBL mouse 2AFC | 86,648 trials, 120 sessions | Main perceptual decision-making reference |
 | Macaque RDM | 2,611 trials | Random-dot-motion decision dynamics |
 | PRL transfer environment | No animal reference dataset yet | Hidden-contingency adaptation probe |
 | DMS environment scaffold | No animal reference dataset yet | Schema-valid memory-task scaffold; adaptive rollout not wired yet |
+
+The IBL reference was expanded from 10 to 120 QC'd public sessions in July 2026 (`scripts/fetch_ibl_reference.py`, `response_times` RT convention, trained-performance QC gate; EID manifest at `data/ibl/reference.manifest.json`). The legacy 10-session set is preserved as `data/ibl/reference_10session.ndjson` so earlier results stay reproducible, and targets are now reported as median [IQR]. See FINDINGS.md "Reference Adoption." Overlay figures above predate the expansion and are rendered against the legacy 10-session reference.
 
 IBL contrasts are `{0, 0.0625, 0.125, 0.25, 1.0}`. A previous extra `0.5` contrast was removed after it distorted psychometric fits. Macaque RDM data should not be treated as a history-effect target; the reference animal is overtrained and shows weak sequential effects.
 

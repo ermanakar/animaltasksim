@@ -63,5 +63,6 @@ data/ibl/reference_expanded*.manifest.json
 !runs/registry.json
 !runs/archive/
 !data/ibl/reference.ndjson
+!data/ibl/reference_10session.ndjson
 !data/ibl/reference_single_session.ndjson
 !out/ibl_reference_metrics.json
