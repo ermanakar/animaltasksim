@@ -144,3 +144,46 @@ def test_plastic_history_update_promotes_switch_after_loss() -> None:
 
     assert outputs["plastic_stay_tendency"].item() < 0.0
     assert outputs["lose_stay_tendency"].item() <= outputs["lose_shift_tendency"].item()
+
+
+def test_noise_floor_default_is_legacy_no_op() -> None:
+    """Default (noise_floor=0) must preserve the legacy log-floor of -5.0."""
+    default_model = HybridDDMModel(feature_dim=7, hidden_size=16, device=torch.device("cpu"))
+    zero_model = HybridDDMModel(
+        feature_dim=7, hidden_size=16, device=torch.device("cpu"), noise_floor=0.0
+    )
+    assert default_model._noise_log_floor == -5.0
+    assert zero_model._noise_log_floor == -5.0
+
+
+def test_noise_floor_clamps_forward_noise() -> None:
+    """A positive noise_floor sets log-floor=log(floor) and constrains forward noise.
+
+    Guards the 120-session recalibration: on clean reference data the choice loss
+    drives log_noise down; without the floor the DDM noise collapses and inflates
+    psychometric/chronometric slopes.  The floored model must not emit noise below
+    the floor even when log_noise is pushed far negative.
+    """
+    import math
+
+    floor = 0.85
+    features = torch.tensor([[0.1, 0.1, 1.0, 0.0, 0.0, 0.0, 0.5]], dtype=torch.float32)
+
+    floored = HybridDDMModel(
+        feature_dim=7, hidden_size=16, device=torch.device("cpu"), noise_floor=floor
+    )
+    assert floored._noise_log_floor == pytest.approx(math.log(floor))
+
+    unfloored = HybridDDMModel(feature_dim=7, hidden_size=16, device=torch.device("cpu"))
+
+    # Drive the noise parameter far below the floor.
+    with torch.no_grad():
+        floored.log_noise.data.fill_(-4.0)
+        unfloored.log_noise.data.fill_(-4.0)
+
+    floored_noise = floored(features, floored.init_state())[0]["noise"].item()
+    unfloored_noise = unfloored(features, unfloored.init_state())[0]["noise"].item()
+
+    # Floored model is pinned at the floor (+1e-3 numerical term); unfloored collapses.
+    assert floored_noise >= floor
+    assert unfloored_noise < floor

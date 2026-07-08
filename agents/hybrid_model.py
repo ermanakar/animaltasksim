@@ -1,5 +1,6 @@
 """PyTorch model for the hybrid DDM + LSTM agent."""
 from __future__ import annotations
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -18,6 +19,7 @@ class HybridDDMModel(nn.Module):
         drift_scale: float = 10.0,
         history_bias_scale: float = 2.0,
         history_drift_scale: float = 0.3,
+        noise_floor: float = 0.0,
     ) -> None:
         super().__init__()
         self.hidden_size = hidden_size
@@ -97,6 +99,14 @@ class HybridDDMModel(nn.Module):
         self._min_history_bias_scale = 1.0
         self._min_bound = 0.5
         self._min_non_decision = 150.0  # ms
+        # Floor on the DDM noise scale. Like the history-scale and bound floors,
+        # this prevents the optimizer from collapsing an unconstrained scale
+        # parameter: on clean (low-lapse) reference data the choice loss drives
+        # log_noise down to sharpen the psychometric fit, which inflates psych
+        # and chrono slopes (noise fell 0.94 -> 0.34 on the 120-session IBL set;
+        # see FINDINGS.md). noise_floor <= 0 disables the floor (legacy behavior,
+        # log-floor -5.0); noise_floor > 0 sets log-floor = log(noise_floor).
+        self._noise_log_floor = math.log(noise_floor) if noise_floor and noise_floor > 0.0 else -5.0
         
         # Initialize drift_head with stronger weights to enable evidence-dependent RTs
         with torch.no_grad():
@@ -235,7 +245,7 @@ class HybridDDMModel(nn.Module):
         critic_value = torch.sigmoid(self.critic_head(h))
         non_decision = F.softplus(self.non_decision_head(h)) + self._min_non_decision
         safe_log_noise = torch.nan_to_num(self.log_noise, nan=0.0, posinf=5.0, neginf=-5.0)
-        safe_log_noise = torch.clamp(safe_log_noise, -5.0, 5.0)
+        safe_log_noise = torch.clamp(safe_log_noise, self._noise_log_floor, 5.0)
         noise = torch.exp(safe_log_noise) + 1e-3
 
         # Asymmetric history pathways: route through win or lose network

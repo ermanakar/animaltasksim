@@ -47,6 +47,7 @@ class HybridDDMTrainer:
             drift_scale=self.config.drift_scale,
             history_bias_scale=self.config.history_bias_scale,
             history_drift_scale=self.config.history_drift_scale,
+            noise_floor=self.config.noise_floor,
         )
         self.model.to(self.device)
         if self.config.freeze_history_scales:
@@ -964,7 +965,7 @@ class HybridDDMTrainer:
                         posinf=5.0,
                         neginf=-5.0,
                     )
-                    self.model.log_noise.data.clamp_(-5.0, 5.0)
+                    self.model.log_noise.data.clamp_(self.model._noise_log_floor, 5.0)
 
                 epoch_choice += float(total_choice_loss.detach().cpu())
                 epoch_rt += float(total_rt_loss.detach().cpu())
