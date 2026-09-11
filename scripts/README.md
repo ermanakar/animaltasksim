@@ -1,84 +1,88 @@
-# Script Entry Points
+# Script guide
 
-Keep `scripts/` for runnable Python entrypoints that are still useful against
-the current schema, CLI contracts, and experiment registry workflow.
+## Active research workflow
 
-## Stable CLIs
+```bash
+python scripts/audit_ibl_history.py
+```
 
-- `train_agent.py`
-- `train_hybrid_curriculum.py`
-- `train_adaptive_control.py`
-- `train_r_ddm.py`
-- `evaluate_agent.py`
-- `make_report.py`
-- `make_dashboard.py`
+This is the September 2026 exploratory IBL history comparison. See
+[methods/results](../docs/HISTORY_AUDIT.md) and [next milestone](../docs/RESEARCH_PLAN.md).
+It validates the reference with the shared loader and writes separate analysis
+artifacts. The data were already inspected; session folds are not unseen animals.
 
-Do not rename flags or output paths for these without explicit approval.
+## Stable infrastructure
 
-`train_adaptive_control.py` defaults to the recommended `persistence_only`
-profile. Use `--control-profile full_control` only for explicitly labeled
-comparison runs because exploration is experimental/unvalidated.
-`adaptive_control_interaction_sweep.py` completed both the IBL bridge sweep and
-the follow-up PRL arbitration sweep. That PRL result was negative and useful:
-none of seven full-control scale variants preserved the exploration-only
-block-learning curve. The follow-up sidecar diagnostic localized the deficit
-to `uncertain_retry` firing after every failure under PRL's pinned perceptual
-uncertainty.
-`prl_arbitration_diagnostic.py` performs the sidecar step cheaply by rerolling
-selected saved PRL checkpoints and writing an offline
-`control_diagnostics.ndjson` sidecar. It does not change `trials.ndjson`.
+| Purpose | Entry points |
+|---|---|
+| Train comparison agents | `train_agent.py`, `train_r_ddm.py` |
+| Train experimental mechanisms | `train_hybrid_curriculum.py`, `train_adaptive_control.py` |
+| Evaluate and report | `evaluate_agent.py`, `make_report.py`, `make_dashboard.py` |
+| Inspect reference | `compute_reference_targets.py` |
+| Acquire reference | `fetch_ibl_reference.py`, `ibl_to_ndjson.py`, `roitman_csv_to_ndjson.py` |
+| Inspect existing experiments | `compare_runs.py`, `query_registry.py`, `scan_runs.py` |
 
-`prl_transfer_validation_suite.py` runs the matched hidden-contingency transfer test:
-five matched adaptive-control conditions in hidden-contingency probabilistic
-reversal learning. PRL uses the IBL reference log to train the shared evidence
-core, then evaluates zero-shot reward-driven adaptation. DMS remains an
-environment scaffold and is intentionally not accepted by the adaptive-control
-training CLI yet.
+Existing names, flags, and default output paths remain stable. `max_sessions`
+now counts sessions rather than training chunks in the shared Hybrid/adaptive
+loader, so historical commands may train longer and do not reproduce old runs.
+The `persistence_only` default is retained for compatibility; its positive retry
+signature is not validated against the adopted mouse reference.
 
-The May 30 matched run is complete under `runs/prl_transfer_validation_suite/`.
-Read `prl_block_learning_lift` alongside the original 10-trial
-`prl_adaptation_lift`: the exploration-only lesion learns slowly across each
-hidden-contingency block, and the shorter window under-reports that recovery.
-The follow-up PRL interaction sweep is complete under
-`runs/prl_adaptive_control_interaction_sweep_v1/`: 50 usable runs and 80,000
-schema-valid trials. The flag-gated change-evidence recurrence then tested the
-state-dependent fix. Safety-gated calibration rejected λ=0.7 as too eager and
-selected λ=0.9 as the validated opt-in cross-task profile: with `uncertain_retry`
-still enabled, full control reaches PRL block-learning lift `+0.469` and
-optimal choice `0.706`; after the June 1 prior-trial retry-metric correction,
-its IBL retry gap is `0.158` versus the historical flag-off `0.175`. The feature
-remains default off.
+`fetch_ibl_reference.py` requires the optional ONE-api client and writes an
+expanded candidate file without replacing the adopted reference. The adopted
+reference already contains 120 sessions. Verify raw choice/no-go semantics and
+recover subject/lab metadata before using a new pull for confirmatory research.
 
-## Data Acquisition
+## Historical experiments
 
-`fetch_ibl_reference.py` expands the animal reference set beyond the current
-10-session `data/ibl/reference.ndjson` by pulling `biasedChoiceWorld` sessions
-from the IBL public server (OpenAlyx, anonymous) into the project schema. It
-requires `ONE-api` (`pip install ONE-api`) installed in a throwaway env — it is
-deliberately kept out of `pyproject.toml`. It derives each action from the
-stimulus side and `feedbackType` (convention-agnostic), auto-calibrates the IBL
-`choice` sign for zero-contrast trials and reports its agreement, filters to the
-biased-blocks contrast set (`0.5` excluded), and defaults RT to
-`response_times - stimOn_times` (verified to match the baseline `reference.ndjson`
-RT distribution; `--rt-source firstMovement` gives the ~2.5x-faster movement-onset
-measure that does not match the project's calibrated targets). It applies
-a trained-performance QC gate (`--min-easy-accuracy`, default 0.85 on
-full-contrast trials) and shuffles the candidate list deterministically, because
-the Alyx search order front-loads early/low-performance sessions. It writes a
-manifest of session EIDs and does **not** overwrite `reference.ndjson`.
-Compare targets with `compute_reference_targets.py` before adopting anything.
+The sweep, calibration, injection, co-evolution, five-seed, PRL transfer, and
+arbitration scripts remain in place so recorded experiments and imports remain
+reproducible. They are not the recommended next workflow. Their scientific
+context is in [FINDINGS.md](../FINDINGS.md); old shell wrappers are under
+`docs/archive/commands/`.
 
-## Sweep And Validation Scripts
+No new scalar sweep or DMS architecture is planned before the replication gate.
+New analyses should share reusable evaluation functions, save configs and source
+hashes, and distinguish exploratory results from independent confirmation.
 
-Sweep scripts may encode a specific scientific hypothesis, but shared mechanics
-belong in `_sweep_utils.py` rather than being copied between files. Prefer this
-shape for new sweeps:
+## Source verification and prospective replication
 
-- typed `@dataclass(slots=True)` arguments
-- `tyro.cli(...)`
-- `run_root` under `runs/`
-- per-run `config.json`, `trials.ndjson`, and `metrics.json`
-- `sweep_summary.csv` or a named CSV/JSON summary
-- explicit notes in `FINDINGS.md` when the result changes the research state
+- `fetch_ibl_audit_sources.py`: retrieve the exact adopted sessions, with identities
+  and hashed raw ALF arrays. Requires the optional ONE-api environment.
+- `reconcile_ibl_reference.py`: independently check source fields, write a separate
+  omission-corrected candidate, and run subject-disjoint exploratory comparisons.
+- `prepare_ibl_replication.py`: metadata-only selection excluding animals from all
+  local IBL reference files, including legacy references.
+- `run_ibl_replication.py`: explicit freeze/download/score stages, sealed model
+  coefficients, fixed eligibility, subject-level bootstrap, and a single saved score.
 
-Historical shell wrappers belong in `docs/archive/commands/`.
+See [source audit](../docs/SOURCE_RECONCILIATION.md) and
+[frozen protocol](../docs/REPLICATION_PROTOCOL.md). The ONE environment needs
+NumPy, SciPy, pandas, Pydantic, tyro, and matplotlib because evaluation package
+imports include reporting; it does not need PyTorch. Use `PYTHONPATH=.` from the
+repository root when it is not installed into that environment.
+
+## Repaired architecture validation
+
+The full architecture and historical limitations are described in
+[the repair record](../docs/ARCHITECTURE_REPAIR.md). New training uses chronological
+session memory and calibrated Monte Carlo DDM expectations. Old outputs must not
+be treated as repaired results.
+
+```bash
+python3 -m scripts.calibrate_ddm_surrogate --output /tmp/ddm-calibration.json
+python3 -m scripts.checkpoint_ablation --source-run runs/YOUR_CHECKPOINT --output-root runs/NEW_ABLATION --reference-log runs/ibl_source_reconciled/reference.ndjson
+```
+
+The checkpoint command performs no optimization, applies four runtime profiles
+to identical weights with trial-aligned randomness, and requires a fresh output
+directory. Retrained validation suites now refuse stale or unverifiable results.
+
+## Exploratory animal-prediction gate
+
+`python3 -m scripts.validate_architecture_prediction` freezes a subject-disjoint
+plan before fitting, compares simple history prediction with reduced/full
+recurrent controllers, and writes per-trial and per-animal scores. Use a fresh
+`--output` directory. The first recorded run failed its superiority gate; see
+[the validation report](../docs/ARCHITECTURE_VALIDATION.md). Repeating or changing
+this development experiment does not create a new untouched test cohort.

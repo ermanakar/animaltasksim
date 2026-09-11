@@ -187,3 +187,22 @@ def test_noise_floor_clamps_forward_noise() -> None:
     # Floored model is pinned at the floor (+1e-3 numerical term); unfloored collapses.
     assert floored_noise >= floor
     assert unfloored_noise < floor
+
+
+def test_max_sessions_counts_animals_sessions_not_training_chunks(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Two five-trial sessions yield four chunks at chunk size three."""
+    import pandas as pd
+    from agents.hybrid_trainer import HybridDDMTrainer
+
+    rows = []
+    for sid, contrast in (("a", 0.125), ("b", 0.25), ("c", 1.0)):
+        for trial in range(5):
+            rows.append({"task": "ibl_2afc", "session_id": sid, "trial_index": trial,
+                         "stimulus_contrast": contrast, "action": "right", "correct": True,
+                         "rt_ms": None, "prev_action": None, "prev_reward": None, "prev_correct": None})
+    monkeypatch.setattr("agents.hybrid_trainer.load_trials", lambda _: pd.DataFrame(rows))
+    trainer = object.__new__(HybridDDMTrainer)
+    trainer.config = HybridTrainingConfig(task="ibl_2afc", max_sessions=2, max_trials_per_session=3)
+    batches = trainer._load_reference_sessions()
+    assert [len(batch.choice) for batch in batches] == [3, 2, 3, 2]
+    assert [float(batch.features[0, 0]) for batch in batches] == [0.125, 0.125, 0.25, 0.25]

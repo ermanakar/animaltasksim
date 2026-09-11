@@ -3,7 +3,74 @@
 **Benchmarking reinforcement-learning agents against rodent and primate decision-making fingerprints**
 *October 2025 – July 2026 · from v0.1.0 to the v0.2 adaptive-control/PRL/DMS scaffold*
 
-## Current State (July 2026)
+## Controlled fitting diagnosis — September 11
+
+Six fixed fits (three conditions, two seeds) show that longer training improves
+choice prediction. At six epochs, full joint-loss NLL is 0.47900; removing timing
+loss gives 0.44654, compared with simple history's 0.46450. The choice-only gain
+against simple history is 0.01797 nats/trial (exploratory animal-bootstrap 95%
+interval 0.00169–0.03470). Mean timing error worsens. Reduced joint-loss NLL is
+0.46973, so added adaptive control is not supported by this matched comparison.
+These are reused development animals, not fresh confirmation; a choice-only
+reduced control is missing. [Complete diagnosis](docs/FITTING_DIAGNOSIS.md).
+
+## Exploratory architecture validation — September 11
+
+The repaired architecture did not clear the recorded subject-disjoint prediction
+gate (12 training mice, eight evaluation mice, two training seeds). Equal-animal
+choice NLL: simple history 0.46450, no-control recurrent 0.54314, full control 0.52579.
+Full control improved on its recurrent core but lost to simple history. RT MSE
+advantages were not established; seven mice had valid timing data. The run used
+two epochs and previously inspected development animals, so it is a bounded
+viability result, not prospective confirmation. Full protocol, intervals and
+portable scores: [architecture validation](docs/ARCHITECTURE_VALIDATION.md).
+
+## Architecture repair — September 11
+
+The full architecture review found hidden optimality feedback in PRL, deterministic
+zero-contrast rewards in IBL, inconsistent optional DDM likelihood conventions,
+disconnected history objectives, and training/rollout differences. The repair
+changes these semantics; historical checkpoint scores are not results of the
+repaired implementation. See [repair record](docs/ARCHITECTURE_REPAIR.md).
+The completed frozen cohort test remains a separate, unchanged behavioral result.
+
+## Frozen reserved-cohort test — September 11
+
+The internal prospective test passed: 45 of 60 animals met the fixed QC gates,
+with no replacements. Evidence interactions improved fixed-model prediction
+for 32/45 animals; equal-animal NLL gain 0.001598 nats/trial, subject-bootstrap
+95% interval [0.000821, 0.002437]. This is a small predictive finding under the
+specified controls, not validation of the earlier adaptive mechanism or a
+novelty claim. See [complete result](docs/REPLICATION_RESULT.md). Models/rules
+were frozen September 6 before downloads; their hashes matched on September 11.
+
+## Source correction and subject-disjoint analysis — September 6
+
+All 120 adopted sessions were reconciled against public ALF arrays: 83 mice,
+9 labs, 255 misclassified omissions in 49 sessions. Corrected raw retry gap
+is -0.08532. Evidence interactions add 0.001184 nats/trial with equal-mouse
+averaging in subject-disjoint exploratory folds (58/83 mice improve).
+See [source reconciliation](docs/SOURCE_RECONCILIATION.md). A 60-animal
+new-to-reference cohort was reserved and a hash-bound internal test frozen
+before trial download; [protocol](docs/REPLICATION_PROTOCOL.md).
+
+## Current interpretation — September 2026
+
+The historical claims below are an experiment record, not the current scientific
+conclusion. The adopted mouse reference has a negative weak-minus-strong failure
+retry gap, opposite to the positive signature targeted by adaptive control.
+A new controlled, session-held-out analysis finds a small predictive benefit
+from evidence-dependent history, with a negative weak-failure interaction.
+See [the dated audit](docs/HISTORY_AUDIT.md) and [research plan](docs/RESEARCH_PLAN.md).
+This is exploratory; subject-level replication and competing mechanisms remain
+open. "Architecturally solved" and "necessary" below describe historical model
+interpretations and must not be used as evidence of biological necessity.
+
+The September evaluator excludes omissions from directional psychometric and
+stay/switch metrics. The shared trainer now limits actual sessions before
+chunking. Historical metrics and checkpoints have not been rewritten.
+
+## Historical state (July 2026)
 
 The **Decoupling Problem is architecturally solved**: the Hybrid DDM+LSTM (differentiable Euler-Maruyama DDM, asymmetric win/lose history networks, drift-rate bias, attention-gated history, fixed rollout lapse, co-evolution training) produces all six IBL behavioral fingerprints simultaneously. 5-seed co-evolution validation (win_t=0.30, lose_t=0.15, drift_magnitude_target=9.0): psych slope 12.38 ± 0.64, chrono slope -34.2 ± 1.8 ms/unit, win-stay 0.706 ± 0.008, lose-shift 0.457 ± 0.007, lapse ~0.075. History effects, chrono, lose-shift, and lapse fall within the reference per-session range; psych slope sits below the reference mean. History effects currently use **injected fixed values**, not values learned by the networks — that remains the open frontier.
 

@@ -714,3 +714,31 @@ def test_chrono_overshoot_absent_for_unknown_task():
     quality = metrics.get("quality", {})
     assert "chrono_overshoot" not in quality
     assert "chrono_target_ms_per_unit" not in quality
+
+
+def test_omissions_do_not_change_psychometric_choices() -> None:
+    """Abstention must not masquerade as a directional lapse."""
+    from dataclasses import asdict
+
+    committed = _make_psychometric_df()
+    omissions = committed.copy()
+    omissions["action"] = "no-op"
+    combined = pd.concat([committed, omissions], ignore_index=True)
+    assert asdict(compute_psychometric(combined)) == pytest.approx(asdict(compute_psychometric(committed)))
+    assert np.isnan(compute_psychometric(omissions).slope)
+
+
+def test_omissions_are_not_history_switches() -> None:
+    """Current or prior omissions have no stay/switch interpretation."""
+    from dataclasses import asdict
+
+    committed = _make_history_df()
+    omissions = committed.copy()
+    omissions["action"] = "no-op"
+    prior_omissions = committed.copy()
+    prior_omissions["prev_action"] = "no-op"
+    combined = pd.concat([committed, omissions, prior_omissions], ignore_index=True)
+    expected = asdict(compute_history_metrics(committed))
+    actual = asdict(compute_history_metrics(combined))
+    for key in ("win_stay", "lose_shift", "sticky_choice"):
+        assert actual[key] == pytest.approx(expected[key])

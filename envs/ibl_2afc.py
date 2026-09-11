@@ -152,6 +152,7 @@ class IBL2AFCEnv(Env):
         self._trial_reward: float = 0.0
         self._rt_steps: int | None = None
         self._stimulus: dict[str, object] = {}
+        self._target_action: int = ACTION_LEFT
         self._block_prior: float = 0.5
         self._prev_action: str | None = None
         self._prev_reward: float | None = None
@@ -256,6 +257,7 @@ class IBL2AFCEnv(Env):
         self._block_prior = block.p_right
         magnitude = float(self._rng.choice(self._contrast_magnitudes)) if self._rng else 0.0
         side = "right" if self._rng.random() < block.p_right else "left"
+        self._target_action = ACTION_RIGHT if side == "right" else ACTION_LEFT
         sign = 1.0 if side == "right" else -1.0
         contrast_value = magnitude * sign
         if magnitude == 0.0:
@@ -295,12 +297,9 @@ class IBL2AFCEnv(Env):
         self._response_captured = True
         self._rt_steps = self._phase_step + 1
 
-        contrast = float(self._stimulus.get("contrast", 0.0))
-        expected = ACTION_RIGHT if contrast > 0 else ACTION_LEFT
-        if contrast == 0.0:
-            # On zero-contrast trials, reward choice towards the high-probability side
-            expected = ACTION_RIGHT if self._block_prior > 0.5 else ACTION_LEFT
-        self._correct = action == expected
+        # The sampled target remains latent when contrast is zero. The prior
+        # controls its distribution; it does not deterministically choose it.
+        self._correct = action == self._target_action
         self._trial_reward = 1.0 if self._correct else -0.1
 
         # Jump to outcome on the next step.
@@ -316,8 +315,6 @@ class IBL2AFCEnv(Env):
         self._rt_steps = None
 
     def _log_trial(self) -> None:
-        if self._logger is None:
-            return
         phase_times = {
             f"{name}_ms": self.config.step_ms * steps
             for name, steps in self._phase_step_counts.items()
@@ -339,7 +336,8 @@ class IBL2AFCEnv(Env):
             "seed": int(self._seed or 0),
             "agent": self.config.agent.to_dict(),
         }
-        self._logger.log(record)
+        if self._logger is not None:
+            self._logger.log(record)
         self._prev_action = self._response_action
         self._prev_reward = float(self._trial_reward)
         self._prev_correct = self._correct

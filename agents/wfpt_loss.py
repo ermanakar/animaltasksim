@@ -1,8 +1,10 @@
 """
 Wiener First Passage Time (WFPT) likelihood loss for DDM training.
 
-This implements the statistically correct objective for DDM parameter estimation:
+Continuous-time, uncensored DDM auxiliary objective:
     Loss = -log p(choice, RT | drift, bound, bias, noise, non_decision)
+
+It does not model finite response windows, RT clipping, or lapse mixtures.
 
 Based on the Ratcliff/HDDM formulation. Uses infinite series approximation
 for the WFPT density, truncated to sufficient terms for numerical stability.
@@ -47,25 +49,24 @@ def wfpt_log_likelihood(
         Log-likelihood for each trial, shape [batch]
         More negative = less likely, higher = more likely
     """
-    # Convert RT from milliseconds to seconds if needed (assume input is seconds)
-    # Subtract non-decision time to get decision time
+    # Inputs to this low-level function use seconds.
     decision_time = torch.clamp(rt - non_decision, min=eps)
     
     # Standardize parameters (divide by noise for numerical stability)
     # This is the standard parameterization in DDM literature
     v = drift / (noise + eps)  # drift rate
     a = bound / (noise + eps)  # boundary separation
-    z = torch.clamp(bias, min=0.01, max=0.99)  # starting bias (fraction)
+    z = torch.clamp(bias, min=1e-6, max=1.0 - 1e-6)  # starting bias (fraction)
     t = decision_time  # decision time
     
-    # For upper boundary responses (choice=1), flip sign of drift
-    # This is because WFPT is defined for absorption at upper boundary
-    v_effective = torch.where(choice == 1, v, -v)
-    z_effective = torch.where(choice == 1, z, 1.0 - z)
+    # The series describes absorption at the LOWER boundary. Reflect both
+    # drift and starting point for right/upper responses.
+    v_effective = torch.where(choice == 1, -v, v)
+    z_effective = torch.where(choice == 1, 1.0 - z, z)
     
     # Compute WFPT density using infinite series
     # Two formulations: small-time and large-time
-    # Use small-time for t*a^2 < 1, large-time otherwise
+    # Use the dimensionless time t/a^2 to select a convergent series.
     
     # Small-time series (good for fast RTs)
     log_p_small = _wfpt_small_time(v_effective, a, z_effective, t, n_terms, eps)
@@ -73,12 +74,12 @@ def wfpt_log_likelihood(
     # Large-time series (good for slow RTs)
     log_p_large = _wfpt_large_time(v_effective, a, z_effective, t, n_terms, eps)
     
-    # Choose based on t*a^2
-    use_small = (t * a ** 2) < 1.0
+    # Choose based on t/a^2
+    use_small = (t / a ** 2) < 0.25
     log_p = torch.where(use_small, log_p_small, log_p_large)
     
-    # Clamp to prevent NaN/Inf
-    log_p = torch.clamp(log_p, min=-1000.0, max=10.0)
+    # No support before Ter; use an explicit numerical likelihood floor.
+    log_p = torch.where(rt > non_decision, log_p, torch.full_like(log_p, np.log(eps)))
     
     return log_p
 
@@ -93,15 +94,15 @@ def _wfpt_small_time(
 ) -> torch.Tensor:
     """
     Small-time series for WFPT density.
-    Good for t*a^2 < 1 (fast responses).
+    Good for t/a^2 < 1 (fast responses).
     
     Formula:
         p(t) = (1/√(2πt³)) * exp(-v*a*z - v²*t/2) * 
                Σ_k (z + 2ka) * exp(-(z + 2ka)²/(2t))
     """
     # Compute base term
-    sqrt_2pi_t3 = torch.sqrt(2.0 * np.pi * t ** 3 + eps)
-    base = torch.exp(-v * a * z - (v ** 2) * t / 2.0)
+    log_base = -v * a * z - (v ** 2) * t / 2.0
+    log_normalizer = 0.5 * (np.log(2.0 * np.pi) + 3.0 * torch.log(t))
     
     # Sum over k terms
     k_values = torch.arange(-n_terms, n_terms + 1, device=v.device, dtype=v.dtype)
@@ -116,16 +117,13 @@ def _wfpt_small_time(
     z_k = a_exp * (z_exp + 2.0 * k_values)  # [batch, 2*n_terms+1]
     
     # Compute exponential term
-    exp_term = torch.exp(-(z_k ** 2) / (2.0 * t_exp + eps))  # [batch, 2*n_terms+1]
+    exp_term = torch.exp(-(z_k ** 2) / (2.0 * t_exp))  # [batch, 2*n_terms+1]
     
     # Sum over k (weighted by z_k)
     summation = torch.sum(z_k * exp_term, dim=-1)  # [batch]
     
     # Combine
-    density = (base / (sqrt_2pi_t3 + eps)) * summation
-    
-    # Log density
-    log_p = torch.log(torch.clamp(density, min=eps))
+    log_p = log_base - log_normalizer + torch.log(torch.clamp(summation, min=torch.finfo(t.dtype).tiny))
     
     return log_p
 
@@ -140,14 +138,14 @@ def _wfpt_large_time(
 ) -> torch.Tensor:
     """
     Large-time series for WFPT density.
-    Good for t*a^2 > 1 (slow responses).
+    Good for t/a^2 > 1 (slow responses).
     
     Formula:
         p(t) = (π/a²) * exp(-v*a*z - v²*t/2) *
                Σ_k k * sin(π*k*z) * exp(-k²*π²*t/(2*a²))
     """
     # Compute base term
-    base = (np.pi / (a ** 2 + eps)) * torch.exp(-v * a * z - (v ** 2) * t / 2.0)
+    log_base = np.log(np.pi) - 2.0 * torch.log(a) - v * a * z - (v ** 2) * t / 2.0
     
     # Sum over k terms (k=1,2,3,...)
     k_values = torch.arange(1, n_terms + 1, device=v.device, dtype=v.dtype)
@@ -161,16 +159,13 @@ def _wfpt_large_time(
     sin_term = k_values * torch.sin(np.pi * k_values * z_exp)  # [batch, n_terms]
     
     # Compute exponential term
-    exp_term = torch.exp(-(k_values ** 2) * (np.pi ** 2) * t_exp / (2.0 * a_exp ** 2 + eps))
+    exp_term = torch.exp(-(k_values ** 2) * (np.pi ** 2) * t_exp / (2.0 * a_exp ** 2))
     
     # Sum over k
     summation = torch.sum(sin_term * exp_term, dim=-1)  # [batch]
     
     # Combine
-    density = base * summation
-    
-    # Log density
-    log_p = torch.log(torch.clamp(density, min=eps))
+    log_p = log_base + torch.log(torch.clamp(summation, min=torch.finfo(t.dtype).tiny))
     
     return log_p
 
@@ -192,8 +187,8 @@ def wfpt_loss(
         choice: Binary choice (0=left, 1=right), shape [batch]
         rt_ms: Reaction time in milliseconds, shape [batch]
         drift: Drift rate, shape [batch]
-        bound: Boundary separation, shape [batch]
-        bias: Starting bias, shape [batch] (will be converted to fraction)
+        bound: Positive half-bound B, with absorbing boundaries at -B and +B.
+        bias: Physical starting position between -bound and +bound.
         noise: Diffusion coefficient, shape [batch]
         non_decision_ms: Non-decision time in milliseconds, shape [batch]
         weight: Loss weight multiplier
@@ -205,18 +200,16 @@ def wfpt_loss(
     rt_sec = rt_ms / 1000.0
     non_decision_sec = non_decision_ms / 1000.0
     
-    # Convert bias from [-1, 1] to [0, 1] (fraction of bound)
-    # bias=0 means start at midpoint (0.5)
-    # bias>0 means start closer to upper bound
-    # bias<0 means start closer to lower bound
-    bias_frac = 0.5 + 0.5 * torch.tanh(bias)  # Map to (0, 1)
+    # Match the simulator: boundaries +/-B and absolute starting position.
+    separation = 2.0 * bound
+    bias_frac = (bias + bound) / separation
     
     # Compute log-likelihood
     log_p = wfpt_log_likelihood(
         choice=choice,
         rt=rt_sec,
         drift=drift,
-        bound=bound,
+        bound=separation,
         bias=bias_frac,
         noise=noise,
         non_decision=non_decision_sec,

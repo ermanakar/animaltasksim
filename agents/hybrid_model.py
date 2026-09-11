@@ -45,19 +45,14 @@ class HybridDDMModel(nn.Module):
         self.critic_head = nn.Linear(hidden_size, 1)
 
         # History bias head (legacy, kept for backward compat with saved models):
-        # Reads LSTM hidden state → history bias. Phase 6 experiments showed this
-        # cannot learn due to gradient instability. Outputs ~0 at zero init.
+        # Retained for loading historical checkpoints; not an identified mechanism.
         self.history_bias_head = nn.Linear(hidden_size, 1)
         nn.init.zeros_(self.history_bias_head.weight)
         nn.init.zeros_(self.history_bias_head.bias)
 
-        # Asymmetric History Networks: separate win/lose pathways model the
-        # dopaminergic asymmetry between reward and punishment processing.
-        # Animals show win-stay >> lose-shift (e.g., IBL mouse: 0.724 vs 0.427).
-        # A single network produces symmetric effects; splitting allows
-        # independent learning of win-stay and lose-shift tendencies.
-        # Both bypass LSTM — models PFC/basal ganglia history circuits.
-        # Zero-initialized output layers → no effect until history training.
+        # Separate signed outcome-history pathways allow asymmetric effects.
+        # Their names do not impose stay/shift signs or establish brain mappings.
+        # Zero-initialized output layers have no initial effect.
         self.win_history_network = nn.Sequential(
             nn.Linear(2, 8),   # (prev_action, prev_reward) → 8 hidden
             nn.ReLU(),

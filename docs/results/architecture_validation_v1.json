@@ -1,0 +1,354 @@
+{
+  "prediction": {
+    "comparisons": {
+      "full_control_vs_simple_history": {
+        "choice_nll": {
+          "mean_improvement": -0.06129138589609586,
+          "subject_bootstrap_95": [
+            -0.10318344953042362,
+            -0.0263332470807969
+          ],
+          "subjects_improved": 1,
+          "subjects": 8
+        },
+        "rt_squared_error_seconds": {
+          "mean_improvement": -0.3807454787723673,
+          "subject_bootstrap_95": [
+            -1.9707426087353423,
+            0.7152736317088085
+          ],
+          "subjects_improved": 5,
+          "subjects": 7
+        },
+        "exploratory_gate_pass": false
+      },
+      "full_control_vs_no_control": {
+        "choice_nll": {
+          "mean_improvement": 0.017349689423868657,
+          "subject_bootstrap_95": [
+            0.0023726570243792697,
+            0.03176585945818575
+          ],
+          "subjects_improved": 6,
+          "subjects": 8
+        },
+        "rt_squared_error_seconds": {
+          "mean_improvement": -0.04712319495112827,
+          "subject_bootstrap_95": [
+            -0.1506263710661005,
+            0.03984700827033029
+          ],
+          "subjects_improved": 5,
+          "subjects": 7
+        },
+        "exploratory_gate_pass": false
+      }
+    },
+    "train_trials": 14655,
+    "test_trials": 6505,
+    "train_sessions": 20,
+    "test_sessions": 9,
+    "test_omissions": 41,
+    "test_rt_outside_window": 348,
+    "subject_mean_scores": {
+      "full_control": {
+        "choice_nll": 0.5257949137005539,
+        "rt_squared_error_seconds": 11.62659663139243
+      },
+      "no_control": {
+        "choice_nll": 0.5431446031244225,
+        "rt_squared_error_seconds": 11.579473436441301
+      },
+      "simple_history": {
+        "choice_nll": 0.46450352780445797,
+        "rt_squared_error_seconds": 11.24585115262006
+      }
+    },
+    "plan_sha256": "1eb963210998d980a489b5fc5f579f03b83cc97070007ea42e28a58097ec1f00",
+    "interpretation": [
+      "Previously inspected development animals: exploratory, not a fresh prospective replication.",
+      "Teacher-forced one-step predictions use observed previous feedback, not current outcomes or block priors.",
+      "Choice NLL is finite-Monte-Carlo approximate; RT score tests mean prediction, not full joint likelihood.",
+      "Two epochs is a bounded viability gate, not equal convergence or exhaustive tuning.",
+      "Single split, eight evaluation subjects and two seeds cannot establish general robustness.",
+      "Reported intervals omit Monte Carlo and training-population uncertainty; no novelty or neural claim."
+    ]
+  },
+  "pipeline": {
+    "validation": "architecture_validation_20260911",
+    "experiment_kind": "fixed_checkpoint_runtime_ablation",
+    "source_run": "/tmp/animaltasksim-repaired-training-20260911/trained",
+    "reference_log": "runs/ibl_source_reconciled/reference.ndjson",
+    "parameters": {
+      "profiles": [
+        "full_control",
+        "persistence_only",
+        "exploration_only",
+        "no_control"
+      ],
+      "episodes": 3,
+      "trials_per_episode": 400,
+      "paired_trial_seed": 42
+    },
+    "gates": {
+      "pytest": "238 passed",
+      "ruff": "passed",
+      "frozen_code_hashes": "all match frozen_plan.json",
+      "frozen_models_hash": "matches frozen_plan.json",
+      "source_hashes_unchanged_during_ablation": true
+    },
+    "source_checkpoint_sha256": "31e7eda3bcc3ac6352acfb2c1cd46a2b53ffc35fade5a1e3fa617e93b24a337a",
+    "source_config_sha256": "1b754d27bb84c7274a717774d8653fa00080418e542b018eac669d7a7f0cd9db",
+    "reference_sha256": "a45e9043b373310c40456fb25fe938d388b68e95e74628b5197e403c53a742dd",
+    "profiles": {
+      "full_control": {
+        "prl_optimal_choice_rate": 0.5516666667,
+        "reward_rate": 0.5491666667,
+        "reversal_early_optimal_rate": 0.4666666667,
+        "reversal_late_optimal_rate": 0.4666666667,
+        "reversal_adaptation_lift": 0.0,
+        "end_block_optimal_rate": 0.5458333333,
+        "counts": {
+          "trials": 1200,
+          "reversals": 12,
+          "post_reversal": 120,
+          "early": 60,
+          "late": 60,
+          "end_block": 240
+        },
+        "schema": {
+          "records": 1200,
+          "errors": 0
+        },
+        "parameters_equal_source": true
+      },
+      "persistence_only": {
+        "prl_optimal_choice_rate": 0.5533333333,
+        "reward_rate": 0.5508333333,
+        "reversal_early_optimal_rate": 0.4666666667,
+        "reversal_late_optimal_rate": 0.4833333333,
+        "reversal_adaptation_lift": 0.0166666667,
+        "end_block_optimal_rate": 0.5458333333,
+        "counts": {
+          "trials": 1200,
+          "reversals": 12,
+          "post_reversal": 120,
+          "early": 60,
+          "late": 60,
+          "end_block": 240
+        },
+        "schema": {
+          "records": 1200,
+          "errors": 0
+        },
+        "parameters_equal_source": true
+      },
+      "exploration_only": {
+        "prl_optimal_choice_rate": 0.6258333333,
+        "reward_rate": 0.5858333333,
+        "reversal_early_optimal_rate": 0.35,
+        "reversal_late_optimal_rate": 0.45,
+        "reversal_adaptation_lift": 0.1,
+        "end_block_optimal_rate": 0.6625,
+        "counts": {
+          "trials": 1200,
+          "reversals": 12,
+          "post_reversal": 120,
+          "early": 60,
+          "late": 60,
+          "end_block": 240
+        },
+        "schema": {
+          "records": 1200,
+          "errors": 0
+        },
+        "parameters_equal_source": true
+      },
+      "no_control": {
+        "prl_optimal_choice_rate": 0.5233333333,
+        "reward_rate": 0.5241666667,
+        "reversal_early_optimal_rate": 0.5,
+        "reversal_late_optimal_rate": 0.5833333333,
+        "reversal_adaptation_lift": 0.0833333333,
+        "end_block_optimal_rate": 0.5041666667,
+        "counts": {
+          "trials": 1200,
+          "reversals": 12,
+          "post_reversal": 120,
+          "early": 60,
+          "late": 60,
+          "end_block": 240
+        },
+        "schema": {
+          "records": 1200,
+          "errors": 0
+        },
+        "parameters_equal_source": true
+      }
+    },
+    "claim_boundary": "These are one-checkpoint acute runtime effects under paired randomness; they are not retraining effects, animal generalization, or evidence of biological necessity."
+  },
+  "plan": {
+    "settings": {
+      "output": "runs/architecture_validation_20260911/prediction",
+      "reference": "runs/ibl_source_reconciled/reference.ndjson",
+      "identities": "runs/ibl_source_audit/source_manifest.json",
+      "train_subjects": 12,
+      "test_subjects": 8,
+      "split_seed": 20260911,
+      "seeds": [
+        42,
+        123
+      ],
+      "epochs": 2,
+      "prediction_samples": 512
+    },
+    "train_subjects": [
+      "CSHL055",
+      "IBL-T1",
+      "CSP004",
+      "NYU-09",
+      "SWC_NM_072",
+      "CSHL054",
+      "NYU-56",
+      "ibl_witten_07",
+      "SWC_NM_081",
+      "KS005",
+      "NYU-43",
+      "NYU-28"
+    ],
+    "test_subjects": [
+      "SWC_NM_057",
+      "IBL-T4",
+      "CSH_ZAD_005",
+      "ZM_1898",
+      "SH020",
+      "ZFM-04122",
+      "NYU-12",
+      "CSHL053"
+    ],
+    "source_sha256": {
+      "agents/__init__.py": "053f31e6ede20aab69dd4a3f075f82babbb16f495c9bf8912818b43f61539009",
+      "agents/_init_utils.py": "71b408e956be5bad23732a121419fdc95c2345d0669475b7775c492537e403ec",
+      "agents/adaptive_control_agent.py": "b921c99af13da209ffc909929a983996f08482bfc3e6124843b589e00155fcd4",
+      "agents/adaptive_control_config.py": "a75c60b260511ccedcdcf08d86fee117056cac7b14ffe81aeda1ffeaeb463ebf",
+      "agents/adaptive_control_model.py": "a99e77866d4e7d5afc2ab2feda59ca18831e19cf5acd36f2e3c17c6e65927fd2",
+      "agents/adaptive_control_trainer.py": "d3f0cec8f548410b8d61465e1b0a4c1fc890a6355f4d17756b976f34ef520967",
+      "agents/bayes_observer.py": "99eac9ec4e751403e08fa665b2d85122e806c70a7606da3befd44b9592af436a",
+      "agents/curriculum.py": "d5bccd45297973246f972e406866583a4ebe8b26bf584d44c9d9ac069ece45db",
+      "agents/ddm_baseline.py": "ba437360183c7ff301d78f99d3636861e77778936d95e330daa8ec4f98acd604",
+      "agents/ddm_simulation.py": "4d424316361780fa04ff32d3c3d55543ac32c821bd0ab98cbbb21fb1329f9d91",
+      "agents/hybrid_config.py": "aac6293f6c4c5f32dd6e56e0a94d7211f9258308acb203ae411ea01a44f52cc9",
+      "agents/hybrid_ddm_lstm.py": "59538617ea94f3ba6c0092a61b4e1c80205f49a040f74706d5e521750cdc870d",
+      "agents/hybrid_model.py": "9c9e9bfa9b91899751891325b4ec2a2165320b701f6803f6592ce4f2a5f946fa",
+      "agents/hybrid_trainer.py": "3fa0bf9121f0ed8bc3ee4e76b405cd0315441a4b46d36c6c487b7d4ae0806f0b",
+      "agents/losses.py": "c55e1067a3ee610e2cf7592dd32dafaee3c16a68f7511cc3a2de72eef3391943",
+      "agents/ppo_baseline.py": "6d78953b0e02aed54d60272d052e2f29b0b3dd0d1438ce6eb30fca96383abbe0",
+      "agents/r_ddm/__init__.py": "792f6fb369e616a58daeab29210b39742b74076948ac52061b30d9e6ec704aae",
+      "agents/r_ddm/config.py": "d14eba364f14264d8ed93265083527bd96a88d809b43a861a36290b1c0a502d6",
+      "agents/r_ddm/dataset.py": "52a939b56ea54e034a73e3919d048f79539b32a4db9e09878fd5305a4209db7a",
+      "agents/r_ddm/model.py": "75c32cfc99c5936f19581dd1f18235a60ecb2fd2078223303a3988b50f934a2c",
+      "agents/r_ddm/trainer.py": "fa6784dc7fbaaf2aed81a47af4072920fbd803a1de736bda4a5eefa12bc62a87",
+      "agents/sticky_q.py": "c8f78baaabb1a36aa3e2ccc5922a639b68ed3ef27b6f72cb37310b75a4b47143",
+      "agents/synthetic_ddm.py": "0098933b1284a7983b44f27c87b87de4e98b436c0bdd8117ace3df115a19b470",
+      "agents/wfpt_loss.py": "6d97ec29d76bc94704824076e0762946e0bc48565a8f7b9dd9e235425a684464",
+      "envs/__init__.py": "e06241963a918a3aa9709644dfcb2917f44f48eacd520c3a5b519420b9f1f975",
+      "envs/dms_match.py": "e231730a6f948099b09dd3353c74b44a01cf72fe549d3b049220468d6543d584",
+      "envs/ibl_2afc.py": "61f683ccf432817c3866a67028b74da18778a1101b9f2bc41a6156997c9b1ddf",
+      "envs/prl_reversal.py": "01b04b905cf6aef8fd8f6b8b48a14344a71575974d11e6bb52e012f392c7ab33",
+      "envs/rdm_macaque.py": "0892ebdb9c10f8b6d22a58248c8c99c585393c00b9f27f24d18470a4641a9e68",
+      "envs/utils_timing.py": "00b4b4a066c7132774d28f6cffda89a76a1ad38c7a1aaa3464fdb5cbeb4e537f",
+      "eval/__init__.py": "2a035597b8010bfefdf14f2028eafdb7105fc73de8852f03ca0a21f9155de6b0",
+      "eval/dashboard.py": "49b2e993df65419daa0d06cfeefd411a9924d54399709cd4bdd803ddebf1910d",
+      "eval/history_audit.py": "97504c8b7ab23d72d71e8fd9d9459d1a0dd6a1b2427a60dfcb1e2f6ac0153969",
+      "eval/ibl_replication.py": "14d4b696143a7a3b73defb1d4d8897e3ab1061975989af66d8af799ec02ee35a",
+      "eval/ibl_source_audit.py": "7da7cec42b4de006069bb6b06e693143fea07760522eeb5dc69aeb5627fc090d",
+      "eval/metrics.py": "7a2f9c63198dae60cc401138d8c41c255dbd7d09d51cf31227f3fad9d69dfce2",
+      "eval/report.py": "4b74b0fccc8bf118ec1d3ba6f45a6e5cb690f369df3327dfb0cd6205d87a3531",
+      "eval/schema_validator.py": "09ba2e04018acce8c285a4ab348abbad4a7ae9e3eeea41f4d3aae56785a0a15c",
+      "animaltasksim/__init__.py": "46534309954b2a84d03ecfd20707f98716cdbd8f05ad48f188f3f75707dc8654",
+      "animaltasksim/config.py": "1d38da70306f0a3697c9116c34faf5f93dee0f5ef789ce5dedae8554d337df8c",
+      "animaltasksim/logging.py": "0cfed52cebd9bdafa66e34f7d6adf8eb06710fab47ab6109ea496983a488ba9e",
+      "animaltasksim/registry.py": "cfbde58181fe18b7918376cad31cd0261a62406d018cd84ee6ea6855bb571d2b",
+      "animaltasksim/seeding.py": "001b92ebab65ad1b735faa4c812a530641256c2a3039a485e94e178b8876f63f",
+      "animaltasksim/time_cost.py": "80742c762384c44b0d9635f03548f55ca31c3237e92a6e846b3c3509b705ff5d",
+      "scripts/__init__.py": "221edf584daccf478137ecc2a5d9d08cbfc793e1e74114f914a4031e46daa3ec",
+      "scripts/_figure_style.py": "2a41c947fd4f2336d36f7faf9e583b92b80f7ed0a76ec46d4e5ed1a4fcd18a30",
+      "scripts/_sweep_utils.py": "ff56b136e9639e3d9c9b0c7f0fd681402d0ef9dc9e6d2cffc9f422cd4251172a",
+      "scripts/adaptive_control_candidate_compare.py": "e6468d7822987daaebd4193c454e1e44eedf0d21dc3a53bcbd2caaf7a25c3385",
+      "scripts/adaptive_control_interaction_sweep.py": "5cea95ab8b52561a44de27d4b92edc2ba25030241857f06be9b71dd93568a44c",
+      "scripts/adaptive_control_persistence_sweep.py": "59c312b4d44a26e31292af2889f6b13d0ee548ce2b73f1397dc71aad7876ecb2",
+      "scripts/adaptive_control_validation_suite.py": "2087ab5dffb789e65f46ae3d4086983f5143ca8ea98c9a401d5aab18678d63ff",
+      "scripts/audit_ibl_history.py": "3dd954dafc2f289a7d7d5cba9b0b941b26666f69bf75bd907dcd82a55156ead8",
+      "scripts/calibrate_ddm_surrogate.py": "bfbee11331a0777ff3b7c60ab0d76cc13ea6c39f95581eb2de9908cfddd85412",
+      "scripts/calibration_sweep.py": "6cecf4b4543c053e09c27644ba31cb9f0132178273e62e44193c58faba32dd71",
+      "scripts/checkpoint_ablation.py": "4e8722ed24354f9b358ee354bf1c5a7d4776b4d141d664938019f1c5caf05f20",
+      "scripts/cleanup_runs.py": "9df44ccbf1f19aa1a2802eb5971c3320924aa7897049937487f10bfb16170123",
+      "scripts/compare_runs.py": "2904defb5cec49731da83e79803d84cc44357baa1edde0c32573c5ac6ee6638f",
+      "scripts/compute_reference_targets.py": "7b6c98621072622eb99d8a454bffa3e64a861ca531fbc6df4faa622b2853d50b",
+      "scripts/drift_calibration_sweep.py": "e09a21cf30a0dc393351020bea50c75343023714c2239bdfc7af889bd3e7c8ee",
+      "scripts/evaluate_agent.py": "7c7a6b2c745259847295e72915234a93e6908015d6adc57a474c0257d4596987",
+      "scripts/fetch_ibl_audit_sources.py": "9bfad66a18aace3ec424b46778bcba314f37456ea416921752b0a29a82971119",
+      "scripts/fetch_ibl_reference.py": "c0f02e96add8f5874e05597f82ba85e3db4cd8ddff2a214b7975fb4a21b4b465",
+      "scripts/finetune_sweep.py": "4ce2161923a8f045f8fffab938a63de4f3764efc64b755d5cc509d95860ff37d",
+      "scripts/generate_readme_figures.py": "7fb45c54f2840eb823c1f16e5b2a1e550c344820619aaa9fafc0ce622ae79cf6",
+      "scripts/history_finetune_sweep.py": "bc5ea696758f5b7b9a2ced2d23141be570453bf97e6a180b8eb20eeffa072435",
+      "scripts/history_injection_diagnostic.py": "edbcd8c04daefea3cc6600f18c938c1b1e2fe9905ac83e732dc847700eff90c3",
+      "scripts/history_scale_sweep.py": "7632d447cb52bda48a0b46bb52b691a734e34e548e0cebc6778765345af3f74e",
+      "scripts/hybrid_sweep.py": "546cb052804c7bb97b8a7383d94d8585e733f50d44b69e79f71e155d4c5450b2",
+      "scripts/ibl_to_ndjson.py": "37c239b63cdca7146a8bfad1aa7e0af4dfd2c5e4562f3fedeaa6831c694a96c9",
+      "scripts/make_dashboard.py": "f079c88b5213b7c2ce8a03970159135025ec3c392c698fe3c5d0e2f8d22595cb",
+      "scripts/make_report.py": "f8548149fd4982b6f694af0284689fda3a866a324ba7f229d985fac5f80e8941",
+      "scripts/organize_runs.py": "2d9f7b609b578c4e9c314f5818d2a3c4cc39f772b3a1299be335ed862c240543",
+      "scripts/prepare_ibl_replication.py": "a0ef02c7c600128bad1bd8d8df1ffe1de111c69f5aeabef770328d1e85f4ef32",
+      "scripts/prl_arbitration_diagnostic.py": "51e985001b66ef22f062470e8b5a34bf05136dfcadb482fa54996c97c2c53fb9",
+      "scripts/prl_transfer_validation_suite.py": "ec4386b5559e63d7e7952fb5a5e589038460944900d37eb7efa7ef01f261d53f",
+      "scripts/query_registry.py": "5262c868e58cee507ca9b709a1218e8025d99cc643a58564966eb4f48c334747",
+      "scripts/rddm_sweep.py": "75cd627d8154ab8fce09bad5796bd2eac42baa18dcf3419255b66d7cc1554c77",
+      "scripts/reconcile_ibl_reference.py": "1bcd23d6d2ffff07f507d323b641a8771c57c4e53d2efd3c7aee33ecefcbdadb",
+      "scripts/render_agent_vs_animal_figure.py": "56ea32e81d7807e20e5687a35259c3f8bfa524fbba7b1526557727ac7755c9a7",
+      "scripts/render_ibl_replication_figure.py": "55aa97856b79647e5f05232befa967fbe8ac4c3c606c8be458fbc71ddc117e12",
+      "scripts/render_validation_suite_figures.py": "8a4039ec8983f45210b0a3597bdec8c6b3984111821b0ef8b1a0316eb8e12579",
+      "scripts/roitman_csv_to_ndjson.py": "ff092c858370f2c0e1cdd79e57eea0682d820d2db41fd1f83509326ca1a686d1",
+      "scripts/run_5seed_plastic_history_validation.py": "457c3b0b14b0ef78fad0a194d7c251374937335a04d73f73e44fe257e9d1b55d",
+      "scripts/run_5seed_teacher_forcing_validation.py": "a90e008944d05ef15163f880051484c3270208408dc6250973216273ba936669",
+      "scripts/run_5seed_validation.py": "d922ba8f46f20cec1d58aacb7d3ade3cb1cb49653bc44f0dbe8f63d5c69a023a",
+      "scripts/run_experiment.py": "7e4e1c46f24ea6f78e319b56c4d81c26a896c29afd1fcdbe29d5ada3474e3e6e",
+      "scripts/run_ibl_replication.py": "f9eb102ca561063d546b76b1f72c708d9435eb142a275c9254a2c3d46af5b109",
+      "scripts/scan_runs.py": "ff13c2d11ae6cad9216348ee8f71053eafe30e12228fe2041b20576f3b204ddc",
+      "scripts/seed_sweep.py": "cf7c92b7abf62229d5b8cc417cbc9653f32d7fe04dbdea03374fd1207c0c02fa",
+      "scripts/stage1_sweep.py": "556172d55b09a4f05e6f3abeff1ccec1753be680a0bdbd922ac2b12812955973",
+      "scripts/train_adaptive_control.py": "d768b01c0c35360db9405a35beacf98e82082d87ae8dddba861be0525d3a8533",
+      "scripts/train_agent.py": "7ad0b01359c54f11634ad07a21a89cf3d3aec3945eca3cac93c085fe954da135",
+      "scripts/train_choice_only.py": "47676ca9fb10cf91a372de033a62967513f08feef4706508ccbf7ce18c8efa91",
+      "scripts/train_hybrid_curriculum.py": "0f8d301ca6601dfdd318384aa708d8d7b6b3f7c170a8cfadd93276c268e6e03c",
+      "scripts/train_r_ddm.py": "a9eb5180fdbbfae30f9ba551a083236321fbd522f99e5fa0d4569b969b37ea96",
+      "scripts/validate_architecture_prediction.py": "329ffba19467f538fa0e2b6f3690ddad014f082d00e17efff2615892040fe5ae"
+    },
+    "reference_sha256": "a45e9043b373310c40456fb25fe938d388b68e95e74628b5197e403c53a742dd",
+    "identity_sha256": "c189b72eb3dbd5ed1120d6e6dde8ff265fc68a56d21f7ad6bc6288be13bf3945",
+    "models": [
+      "simple_history",
+      "no_control",
+      "full_control"
+    ],
+    "training": "Two epochs, seeds42/123, same full training sessions, hidden16, chunk64, 32 paths; no validation tuning.",
+    "primary": "Equal-subject held-out choice NLL improvement; secondary RT MSE in seconds squared, all valid RTs retained.",
+    "gate": "Full model needs positive subject-bootstrap lower limits for both choice and RT improvements against both alternatives.",
+    "limits": [
+      "Previously inspected development animals: exploratory, not a fresh prospective replication.",
+      "Teacher-forced one-step predictions use observed previous feedback, not current outcomes or block priors.",
+      "Choice NLL is finite-Monte-Carlo approximate; RT score tests mean prediction, not full joint likelihood.",
+      "Two epochs is a bounded viability gate, not equal convergence or exhaustive tuning.",
+      "Single split, eight evaluation subjects and two seeds cannot establish general robustness.",
+      "Reported intervals omit Monte Carlo and training-population uncertainty; no novelty or neural claim."
+    ]
+  },
+  "verification": {
+    "full_test_suite": "242 passed",
+    "lint": "passed",
+    "root_raw_source_score_reconciliation_rows": 32525,
+    "rt_subjects": 7,
+    "subject_without_valid_rt": "SWC_NM_057"
+  }
+}

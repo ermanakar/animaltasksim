@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import math
 import subprocess
@@ -18,6 +19,32 @@ from agents.adaptive_control_agent import (
     RECOMMENDED_ADAPTIVE_CONTROL_PROFILE,
     AdaptiveControlProfile,
 )
+
+
+PROVENANCE_FILENAME = "suite_provenance.json"
+RUN_ARTIFACTS = ("config.json", "model.pt", "trials.ndjson", "metrics.json", "training_metrics.json")
+
+
+def _file_hash(path: Path) -> str:
+    """Hash complete artifact bytes without loading a trial log into memory."""
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _validate_reuse(run_dir: Path, expected: dict[str, object]) -> None:
+    """Reject historical, modified, partial, or differently configured runs."""
+    manifest_path = run_dir / PROVENANCE_FILENAME
+    if not manifest_path.exists():
+        raise RuntimeError(f"Unverified existing run {run_dir}; use a new run root.")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if manifest.get("inputs") != expected:
+        raise RuntimeError(f"Provenance mismatch in {run_dir}; use a new run root.")
+    actual = {name: _file_hash(run_dir / name) for name in RUN_ARTIFACTS if (run_dir / name).is_file()}
+    if len(actual) != len(RUN_ARTIFACTS) or manifest.get("outputs") != actual:
+        raise RuntimeError(f"Incomplete or changed artifacts in {run_dir}; use a new run root.")
 
 
 SUMMARY_METRICS: tuple[str, ...] = (
@@ -179,17 +206,28 @@ class ValidationSuiteArgs:
         for condition in conditions:
             for seed in self.seeds:
                 run_dir = self.run_root / f"{condition.label}_seed{seed}"
-                metrics_path = run_dir / "metrics.json"
-                if self.skip_existing and metrics_path.exists():
-                    print(f"[SKIP] {condition.label} seed={seed}: metrics already exist")
+                command = self._build_train_command(run_dir, seed, condition)
+                if self.dry_run:
+                    self._run_command(command)
+                    self._run_command(self._build_eval_command(run_dir))
                     continue
-                print(f"\n{'=' * 80}")
+                expected = self._run_provenance(command)
+                if run_dir.exists() and any(run_dir.iterdir()):
+                    if not self.skip_existing:
+                        raise RuntimeError(f"Refusing to overwrite {run_dir}; use a new run root.")
+                    _validate_reuse(run_dir, expected)
+                    print(f"[SKIP] {condition.label} seed={seed}: verified provenance")
+                    continue
                 print(f"Running {condition.label} | seed={seed}")
-                print(condition.description)
-                print(f"Output: {run_dir}")
-                print(f"{'=' * 80}")
-                self._run_command(self._build_train_command(run_dir, seed, condition))
+                self._run_command(command)
                 self._run_command(self._build_eval_command(run_dir))
+                if self._run_provenance(command) != expected:
+                    raise RuntimeError("Source or reference changed during execution; run is unverified.")
+                manifest = {
+                    "inputs": expected,
+                    "outputs": {name: _file_hash(run_dir / name) for name in RUN_ARTIFACTS},
+                }
+                (run_dir / PROVENANCE_FILENAME).write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
         if self.dry_run:
             return
@@ -209,6 +247,22 @@ class ValidationSuiteArgs:
         _write_csv(self.run_root / "paired_delta_summary.csv", paired_summary_rows)
         self._write_json_summary(conditions, aggregate_rows, paired_summary_rows)
         self._print_summary(aggregate_rows, paired_summary_rows)
+
+    def _run_provenance(self, command: list[str]) -> dict[str, object]:
+        """Bind retrained comparisons to source, input bytes, and exact command."""
+        root = Path.cwd()
+        source_files = sorted(path for folder in ("agents", "animaltasksim", "envs", "eval", "scripts")
+                              for path in (root / folder).rglob("*.py"))
+        reference = root / "data" / ("macaque" if self.task == "rdm" else "ibl") / "reference.ndjson"
+        if "--reference-log" in command:
+            reference = Path(command[command.index("--reference-log") + 1]).resolve()
+        return {
+            "experiment_kind": "retrained_profile_ablation",
+            "command": command,
+            "python": sys.version,
+            "reference": {"path": str(reference), "sha256": _file_hash(reference)},
+            "source": {str(path.relative_to(root)): _file_hash(path) for path in source_files},
+        }
 
     def _conditions(self) -> list[ValidationCondition]:
         conditions = [
@@ -385,6 +439,8 @@ class ValidationSuiteArgs:
         paired_summary_rows: list[dict[str, object]],
     ) -> None:
         payload = {
+            "experiment_kind": "retrained_profile_ablation",
+            "causal_limit": "Each profile is trained separately; paired seeds are not fixed-checkpoint lesions.",
             "config": {
                 "seeds": list(self.seeds),
                 "task": self.task,

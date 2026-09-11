@@ -1,5 +1,37 @@
 # Changelog
 
+## September 11 — architecture repair
+
+- Corrected IBL blank-trial reward sampling and removed PRL hidden-optimality inputs.
+- Repaired DDM likelihood conventions, time-loss units, history-loss gradients,
+  session continuity, training RT targets, and finite-window/lapse simulation.
+- Added calibrated soft first-passage helper and Monte Carlo training expectations.
+- Added provenance-checked experiment reuse and fixed-checkpoint paired ablations.
+- Preserved historical runs and frozen replication artifacts; new runs have changed semantics.
+
+## September 11 — source audit and frozen replication
+
+- Independently reconciled all 120 reference sessions; recovered animal/lab
+  identities and corrected 255 misclassified omissions in a separate candidate.
+- Corrected importer no-go handling and original-index/adjacency preservation.
+- Added subject-disjoint analysis and a hash-bound prospective replication
+  workflow. The fixed reserved-cohort test passed on 45 eligible animals;
+  full exclusions, scores, and limits are in `docs/REPLICATION_RESULT.md`.
+- Preserved adopted data, historical results, and the completed test against overwrite.
+
+## September 2026 research refresh
+
+- Recentered the active workflow on a controlled IBL history comparison and
+  subject-disjoint replication; retained historical agents, sweeps, and artifacts.
+- Added a provenance-bound exploratory analysis with session folds and synthetic
+  recovery checks. Raw mouse retry gap is negative; evidence interactions add a
+  small predictive gain, without validating the existing adaptive mechanism.
+- Excluded omitted choices from psychometric fits and stay/switch denominators.
+- Corrected shared Hybrid/adaptive `max_sessions` to count sessions before
+  chunking. Old commands can now train on more data and take longer; historical
+  saved results remain unchanged. No existing CLI names, schema keys, or paths changed.
+
+
 All notable changes to AnimalTaskSim are documented here. This file tracks
 **releases and contract-affecting changes** — CLI arguments, schema keys, file
 paths, environment behavior — plus headline features. For the scientific record

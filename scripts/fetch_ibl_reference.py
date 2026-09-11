@@ -7,7 +7,7 @@ This is a one-time data-acquisition tool, not a runtime dependency: it requires
 into a throwaway environment rather than the project env — it is intentionally
 kept out of ``pyproject.toml``.
 
-It expands the animal reference set beyond the current 10-session
+It expands the animal reference set beyond the adopted 120-session
 ``data/ibl/reference.ndjson`` by pulling ``biasedChoiceWorld`` sessions from the
 IBL public server (OpenAlyx, anonymous access) and converting each trial into
 the project's ``TrialRecord`` schema, matching the conventions of the existing
@@ -17,7 +17,10 @@ reference (``task="IBL2AFC"``, signed ``contrast``, integer actions, per-session
 Two correctness safeguards, deliberately stronger than the legacy
 ``scripts/ibl_to_ndjson.py``:
 
-1. **Action is derived convention-agnostically.** For non-zero contrast the
+1. **No-go and source adjacency are preserved.** Raw choice zero is an omission,
+   including when feedbackType is -1; its RT is missing rather than a timeout.
+   Unknown choices are excluded, original trial indices are retained, and prev
+   resets after exclusions. For committed non-zero-contrast trials the
    chosen side follows unambiguously from the stimulus side and
    ``feedbackType`` (correct → chose the stimulus side; error → chose the other
    side). The notoriously confusing IBL ``choice`` sign is therefore *not*
@@ -158,6 +161,13 @@ def derive_action(
     correctness. For zero-contrast trials (no correct side) the calibrated
     ``choice`` sign is used. Returns None if the trial cannot be classified.
     """
+    # IBL feedbackType=-1 includes no-go trials; feedback cannot identify a choice.
+    if choice is None or _is_nan(choice):
+        return None
+    if float(choice) == 0.0:
+        return ACTION_NO_OP
+    if float(choice) not in (-1.0, 1.0):
+        return None
     if _is_nan(feedback_type) or feedback_type is None:
         return None
     ft = int(feedback_type)
@@ -167,8 +177,8 @@ def derive_action(
             chose_right = stim_is_right
         elif ft == -1:  # error → chose the other side
             chose_right = not stim_is_right
-        else:  # no-go / no feedback
-            return ACTION_NO_OP
+        else:  # No classifiable outcome for a committed response.
+            return None
         return ACTION_RIGHT if chose_right else ACTION_LEFT
     # Zero-contrast: fall back to the (auto-calibrated) choice sign.
     if choice is None or _is_nan(choice) or float(choice) == 0.0:
@@ -198,7 +208,7 @@ def calibrate_choice_sign(trials: dict, n: int) -> tuple[float | None, float, in
             continue
         if ft is None or _is_nan(ft) or int(ft) not in (1, -1):
             continue
-        if ch is None or _is_nan(ch) or float(ch) == 0.0:
+        if ch is None or _is_nan(ch) or float(ch) not in (-1.0, 1.0):
             continue
         stim_is_right = signed > 0.0
         chose_right = stim_is_right if int(ft) == 1 else not stim_is_right
@@ -243,25 +253,27 @@ def session_to_records(
         signed = signed_contrast(trials, i)
         if not in_biased_block_contrast_set(signed):
             dropped_contrast += 1
+            prev = None
             continue
         action = derive_action(
             signed, _get(trials, "feedbackType", i), _get(trials, "choice", i), right_value
         )
         if action is None:
             dropped_unclassified += 1
+            prev = None
             continue
         ft = _get(trials, "feedbackType", i)
         correct = bool(ft is not None and not _is_nan(ft) and int(ft) == 1)
         record = {
             "task": "IBL2AFC",
             "session_id": session_id,
-            "trial_index": len(records),
+            "trial_index": i,
             "stimulus": {"contrast": float(signed)},
             "block_prior": {"p_right": p_right(trials, i)},
             "action": _REFERENCE_ACTION[action],
             "correct": correct,
             "reward": 1.0 if correct else 0.0,
-            "rt_ms": reaction_time_ms(trials, i, rt_source),
+            "rt_ms": None if action == ACTION_NO_OP else reaction_time_ms(trials, i, rt_source),
             "phase_times": {},
             "prev": prev,
             "seed": 0,
