@@ -32,6 +32,12 @@ increases, and the adaptive controller's added value remains unestablished.
 This reuses development animals and does not replace the original failed gate.
 [Controlled diagnosis, curves and limitations](docs/FITTING_DIAGNOSIS.md).
 
+The matched choice-only follow-up finds similar average errors for reduced and
+full models (**0.44585 vs 0.44654**), with uncertainty spanning either direction;
+controller superiority remains unresolved. [Matched comparison](docs/MATCHED_CHOICE_CONTROL.md).
+A separate 83-animal development analysis finds a small residual evidence-history
+gain after stronger history controls. [Competing explanations](docs/COMPETING_HISTORY.md).
+
 ## Current result
 
 A frozen internal replication **passed on 45 eligible mice** from a cohort of

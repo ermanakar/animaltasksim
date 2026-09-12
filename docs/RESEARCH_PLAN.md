@@ -54,6 +54,27 @@ external-preregistration milestone had been met.
 This closes the first source-verification and prospective prediction milestone.
 It does not validate the adaptive controller or establish a novel mechanism.
 
+## Development follow-up — September 12
+
+A fixed eight-model comparison now tests evidence history against five-trial
+outcome history and two simple leaky correct-side estimates. All models use the
+same 84,674 eligible trials from 83 development animals, with animal-disjoint
+folds and leave-one-lab-out sensitivity. The combined-control evidence gain is
+0.000445 nats/trial; longer history accounts for much more predictive improvement.
+See [the competing-history report](COMPETING_HISTORY.md). This is development
+evidence; the completed reserved cohort remains excluded and unchanged.
+
+The matched choice-only architecture follow-up yields reduced/full mean NLL
+0.445847/0.446538 with no resolved superiority. The extra controller remains a
+hypothesis, and both models remain comparators. See
+[the matched result](MATCHED_CHOICE_CONTROL.md).
+
+Synthetic positive controls recover lag-only and lag-plus-evidence generators,
+but a complete model-recovery confusion matrix remains future work. The learning
+alternatives are deliberately simple and use analyst block controls, so they do
+not exhaust animal inference explanations. Do not compare these absolute scores
+with architecture scores from different cohorts and information access.
+
 ## Next milestone: distinguish explanations
 
 1. Compare the result with prior evidence-dependent history literature before
@@ -71,6 +92,15 @@ It does not validate the adaptive controller or establish a novel mechanism.
 
 Keep the completed score, source hashes, exclusions, and frozen coefficients.
 Any follow-up using its outcomes is exploratory and must be labeled accordingly.
+
+## Remaining discriminator after stronger history controls
+
+Before a new confirmation cohort, test whether recent choices are estimating
+persistent animal/session side preferences or slow behavioral state. Any
+held-out animal's bias/state must be estimated causally from preceding trials
+or a predeclared prefix, never by fitting its intercept to the full scored
+session. Compare added lags on identical subsequent trials. This remains a
+future comparison; the September 12 study did not fit hierarchical bias models.
 
 ## Decision rule
 
