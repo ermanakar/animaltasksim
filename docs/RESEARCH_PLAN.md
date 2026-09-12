@@ -99,8 +99,13 @@ Before a new confirmation cohort, test whether recent choices are estimating
 persistent animal/session side preferences or slow behavioral state. Any
 held-out animal's bias/state must be estimated causally from preceding trials
 or a predeclared prefix, never by fitting its intercept to the full scored
-session. Compare added lags on identical subsequent trials. This remains a
-future comparison; the September 12 study did not fit hierarchical bias models.
+session. Compare added lags on identical subsequent trials. The completed [causal preference diagnostic](BIAS_HISTORY.md) now adds a
+prefix-only session intercept and slow residual filters, but not hierarchical
+animal or explicit switching-state models. History/evidence gains survive these
+controls, while synthetic counterexamples show that lag gains can arise from
+drift alone. Therefore the next gate is published generative drift/switching vs
+history model recovery and realistic power simulation, before reserving a new
+confirmation cohort. [Focused literature comparison](NOVELTY_REVIEW.md).
 
 ## Decision rule
 

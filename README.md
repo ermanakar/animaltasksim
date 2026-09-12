@@ -38,6 +38,11 @@ controller superiority remains unresolved. [Matched comparison](docs/MATCHED_CHO
 A separate 83-animal development analysis finds a small residual evidence-history
 gain after stronger history controls. [Competing explanations](docs/COMPETING_HISTORY.md).
 
+A subsequent causal-preference diagnostic retains a small evidence gain, but
+simulated drift can still yield apparent history benefits. A fresh confirmation
+cohort is deferred pending stronger generative-model recovery.
+[Bias controls and recovery](docs/BIAS_HISTORY.md) · [Literature comparison](docs/NOVELTY_REVIEW.md).
+
 ## Current result
 
 A frozen internal replication **passed on 45 eligible mice** from a cohort of

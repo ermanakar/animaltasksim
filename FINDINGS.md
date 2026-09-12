@@ -3,6 +3,18 @@
 **Benchmarking reinforcement-learning agents against rodent and primate decision-making fingerprints**
 *October 2025 – July 2026 · from v0.1.0 to the v0.2 adaptive-control/PRL/DMS scaffold*
 
+## Causal preference controls and synthetic limits — September 12
+
+Prefix-only session preference and causal slow residual traces improve prediction
+on 73,332 post-prefix trials from 83 development animals. Added evidence beyond
+these controls and long history yields 0.000421 nats/trial (descriptive interval
+0.000155–0.000695); 54/83 animals improve. However, 2/5 drift-only simulations
+show positive lower intervals for added lags without true history updating;
+small genuine evidence effects often lack a positive lower interval in the
+12-animal synthetic samples. These illustrative runs do not estimate real-study
+power or specificity. Defer a fresh cohort and mechanistic claims. See
+[bias results](docs/BIAS_HISTORY.md) and [novelty review](docs/NOVELTY_REVIEW.md).
+
 ## Matched controls and competing history — September 12
 
 Choice-only reduced/full fitting is now matched at six epochs and two seeds.

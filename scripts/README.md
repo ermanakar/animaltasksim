@@ -101,3 +101,11 @@ completes the matched choice-only reduced-model fit against saved full-model
 predictions. Seeds, checkpoints and prediction paths are fixed; prior artifacts
 are hash-checked and output must be fresh. See
 [the matched result](../docs/MATCHED_CHOICE_CONTROL.md).
+
+### Causal preference controls and synthetic recovery
+
+`OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 -m scripts.diagnose_bias_history`
+uses a new frozen plan, excludes prefix trials from all scores, and runs fixed
+bias/drift/history synthetic diagnostics after the development comparison.
+`MPLBACKEND=Agg python3 -m scripts.render_bias_history_figure` renders the saved
+snapshot. See [results and identification limits](../docs/BIAS_HISTORY.md).
