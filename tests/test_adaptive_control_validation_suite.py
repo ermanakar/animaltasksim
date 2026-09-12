@@ -162,3 +162,36 @@ def test_validation_suite_paired_delta_summary() -> None:
     assert full_control_delta["delta_unrewarded_switch_lift_weak_mean"] == pytest.approx(0.055)
     assert full_control_delta["delta_volatile_switch_lift_weak_mean"] == pytest.approx(0.005)
     assert full_control_delta["delta_psychometric_slope_mean"] == pytest.approx(-3.5)
+
+
+def test_reuse_rejects_unverified_and_tampered_runs(tmp_path: Path) -> None:
+    import json
+
+    from scripts.adaptive_control_validation_suite import (
+        PROVENANCE_FILENAME, RUN_ARTIFACTS, _file_hash, _validate_reuse,
+    )
+
+    expected = {"command": ["train", "--seed", "42"]}
+    with pytest.raises(RuntimeError, match="Unverified"):
+        _validate_reuse(tmp_path, expected)
+    for name in RUN_ARTIFACTS:
+        (tmp_path / name).write_text("original")
+    manifest = {"inputs": expected, "outputs": {name: _file_hash(tmp_path / name) for name in RUN_ARTIFACTS}}
+    (tmp_path / PROVENANCE_FILENAME).write_text(json.dumps(manifest))
+    _validate_reuse(tmp_path, expected)
+    with pytest.raises(RuntimeError, match="Provenance mismatch"):
+        _validate_reuse(tmp_path, {"command": ["different"]})
+    (tmp_path / "trials.ndjson").write_text("changed")
+    with pytest.raises(RuntimeError, match="changed artifacts"):
+        _validate_reuse(tmp_path, expected)
+
+
+def test_suite_refuses_overwrite_even_when_skip_disabled(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    args = ValidationSuiteArgs(run_root=tmp_path, seeds=(42,), skip_existing=False)
+    run = tmp_path / "true_no_control_seed42"
+    run.mkdir()
+    (run / "metrics.json").write_text("{}")
+    monkeypatch.setattr(ValidationSuiteArgs, "_run_provenance", lambda self, cmd: {})
+    with pytest.raises(RuntimeError, match="Refusing to overwrite"):
+        args.run()
+    assert (run / "metrics.json").read_text() == "{}"

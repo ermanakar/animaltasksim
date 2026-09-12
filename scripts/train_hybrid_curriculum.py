@@ -48,6 +48,7 @@ class TrainCurriculumArgs:
     max_commit_steps: int = 300
     drift_scale: float = 14.0
     drift_magnitude_target: float = 12.0  # Target drift_gain for regularization (controls psych slope)
+    noise_floor: float = 0.0  # Floor on DDM noise scale (0 = legacy/no floor); >0 stops noise collapse on clean reference data
 
     # Curriculum configuration
     use_default_curriculum: bool = True
@@ -247,6 +248,7 @@ def main(args: TrainCurriculumArgs) -> None:
         max_commit_steps=args.max_commit_steps,
         drift_scale=args.drift_scale,
         drift_magnitude_target=args.drift_magnitude_target,
+        noise_floor=args.noise_floor,
         curriculum=curriculum,
         history_bias_scale=args.history_bias_scale,
         history_drift_scale=args.history_drift_scale,

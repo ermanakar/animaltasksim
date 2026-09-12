@@ -2,11 +2,21 @@
 
 ## Mission Context
 
-- AnimalTaskSim benchmarks AI agents against rodent/primate behavioral fingerprints using task-faithful environments, baseline agents, and a shared evaluation stack.
-- Current scope: IBL mouse 2AFC and macaque RDM tasks with Sticky-Q, Bayesian observer, PPO baselines, Hybrid DDM+LSTM, R-DDM, and adaptive-control agents. The PRL transfer path is wired end to end; DMS has a schema-valid environment scaffold. 176 tests pass.
-- Current PRL result: a 10-condition, 50-run scale sweep showed scalar tuning alone was insufficient, then the sidecar diagnostic localized the deficit to `uncertain_retry` firing after every failure under PRL's pinned perceptual uncertainty. The flag-gated change-evidence recurrence restores combined PRL recovery: λ=0.9 full control reaches block-learning lift `+0.469` and optimal choice `0.706` with `uncertain_retry` still enabled. A June 1 evaluator correction now bins retry by the prior failed trial's stimulus strength; under that corrected metric, λ=0.9 full control nearly preserves the historical flag-off IBL retry gap (`0.158` vs `0.175`). Treat λ=0.9 as a validated opt-in cross-task profile, not a default.
-- Roadmap: preserve `persistence_only` as the conservative IBL default while the corrected retry baseline is re-reported, use λ=0.9 for explicitly labeled cross-task runs, then implement **Delayed Match-to-Sample** metrics and a memoryless baseline from the defined memory fingerprint before wiring adaptive rollout. Keep all diagnostics compatible with the frozen shared pipeline.
-- Every contribution should strengthen the `.ndjson`-driven comparison pipeline between agents and animal data.
+- AnimalTaskSim tests explanations of animal choices using task environments,
+  comparison agents, and a shared schema-validated NDJSON evaluation pipeline.
+- Current priority: the September 2026 IBL history audit and subject-disjoint
+  replication plan in `docs/HISTORY_AUDIT.md` and `docs/RESEARCH_PLAN.md`.
+- The adopted 120-session reference has a negative failure retry gap; do not
+  portray the adaptive controller's positive gap as animal-validated. Software
+  lesions establish within-model effects, not neural or biological necessity.
+- Keep `persistence_only` and all frozen defaults for compatibility. PRL remains
+  an experimental simulation probe; DMS remains a scaffold. Defer architectural
+  expansion and scalar sweeps until the IBL measurement/prediction milestone.
+- Historical claims and experiments remain in FINDINGS.md; current claims are
+  governed by the dated audit. Do not equate seed replication, session folds,
+  matching IQRs, or green tests with generalization to unseen animals.
+- The shared Hybrid/adaptive `max_sessions` now counts source sessions before
+  chunking; historical commands can train longer and are new experiments.
 
 ## Build & Test
 

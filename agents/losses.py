@@ -76,7 +76,7 @@ def choice_loss(probs: torch.Tensor, targets: torch.Tensor, mask: torch.Tensor |
 
 def rt_loss(predicted: torch.Tensor, targets: torch.Tensor, mask: torch.Tensor | None = None) -> torch.Tensor:
     """Mean-squared error loss on reaction times (scaled to seconds)."""
-    loss = (predicted - targets) ** 2
+    loss = ((predicted - targets) / 1000.0) ** 2
     if mask is not None:
         loss = loss * mask
     normaliser = loss.numel() if mask is None else torch.clamp(mask.sum(), min=1.0)

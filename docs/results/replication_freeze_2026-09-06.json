@@ -1,0 +1,2246 @@
+{
+  "plan": {
+    "frozen_at": "2026-09-06T06:11:43.258256+00:00",
+    "status": "internal_freeze_before_reserved_trial_download",
+    "cohort": [
+      {
+        "id": "3ce03802-3d01-4018-adf9-b079ccbbd0f1",
+        "subject": "CSP027",
+        "lab": "angelakilab",
+        "start_time": "2021-06-07T10:18:34.382127",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "32c99b3a-e85a-4504-b0b6-d8fdc513a70e",
+        "subject": "NYU-11",
+        "lab": "angelakilab",
+        "start_time": "2020-02-13T15:31:39.496886",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "d9977d2e-4432-4d34-bd5e-2c139cb9e33e",
+        "subject": "NYU-02",
+        "lab": "angelakilab",
+        "start_time": "2019-09-04T09:37:08.690358",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.3.0"
+      },
+      {
+        "id": "e314d967-147d-4d24-89d0-a419c51c1f56",
+        "subject": "SH014",
+        "lab": "angelakilab",
+        "start_time": "2020-07-10T10:37:07.104517",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.0"
+      },
+      {
+        "id": "609912f0-3273-4516-96a2-37bfb6791347",
+        "subject": "SH006",
+        "lab": "angelakilab",
+        "start_time": "2020-02-20T09:18:48.292015",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "6db4c530-1246-4ffe-a9cc-1a538f4c104f",
+        "subject": "DY_013",
+        "lab": "danlab",
+        "start_time": "2020-03-13T12:21:47.873678",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.0"
+      },
+      {
+        "id": "129953d8-5d84-473b-b82a-170619870318",
+        "subject": "NYU-13",
+        "lab": "angelakilab",
+        "start_time": "2020-01-29T13:02:24.365906",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "72aec869-c328-4fc3-8cb7-a0cdf7b9abe2",
+        "subject": "FMR030",
+        "lab": "angelakilab",
+        "start_time": "2022-03-28T08:38:07.295424",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.5.3"
+      },
+      {
+        "id": "7b709ec6-6e43-4c0d-b927-e0c87ee8693f",
+        "subject": "KS024",
+        "lab": "cortexlab",
+        "start_time": "2020-02-06T17:20:45.391000",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "5eeb2609-97e7-443e-a7ff-ce3abbd584c3",
+        "subject": "NYU-50",
+        "lab": "angelakilab",
+        "start_time": "2021-08-16T10:34:39.611347",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "d1e4f2db-8d01-4d78-9d6d-14a3372c5b6b",
+        "subject": "CSHL051",
+        "lab": "churchlandlab",
+        "start_time": "2020-02-04T09:12:29.393811",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "ca856c40-5bb5-457a-b800-5be423d71ebf",
+        "subject": "KS017",
+        "lab": "cortexlab",
+        "start_time": "2020-01-28T10:42:51.313000",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "ba1ef9d5-4bf7-4308-907a-869ebd564f21",
+        "subject": "NYU-08",
+        "lab": "angelakilab",
+        "start_time": "2020-03-13T10:08:45.685161",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "1a2fbb95-2dcd-4da8-80e9-06dafe1174dc",
+        "subject": "SH024",
+        "lab": "angelakilab",
+        "start_time": "2021-09-27T10:18:34.483525",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "7ac31e24-d94b-4dfc-9e8d-5a6b209c1ed3",
+        "subject": "SH022",
+        "lab": "angelakilab",
+        "start_time": "2021-10-11T14:08:38.464331",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "c6d7bab1-4c27-4c01-b63c-49259c4d0997",
+        "subject": "IBL-T3",
+        "lab": "angelakilab",
+        "start_time": "2019-09-17T10:40:31.059952",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.3.0"
+      },
+      {
+        "id": "e2e9bdf7-abc7-4f1f-8100-5ac2fd5722ae",
+        "subject": "IBL_002",
+        "lab": "mrsicflogellab",
+        "start_time": "2019-07-03T10:02:15.561153",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld4.1.3"
+      },
+      {
+        "id": "fea777ab-ec8c-4cba-8286-dbf39dee35ce",
+        "subject": "CSHL058",
+        "lab": "churchlandlab",
+        "start_time": "2020-03-16T13:31:27.714234",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.0"
+      },
+      {
+        "id": "e97aa981-67e2-459b-9ea2-8e4e980321c3",
+        "subject": "SH016",
+        "lab": "angelakilab",
+        "start_time": "2020-11-02T10:25:34.668864",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "45e903d9-b15d-4185-8343-65abaaec653c",
+        "subject": "CSHL046",
+        "lab": "churchlandlab",
+        "start_time": "2020-03-13T09:23:07.419209",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.0"
+      },
+      {
+        "id": "7036d946-447a-4dde-85c9-50034cceae0e",
+        "subject": "ZM_3004",
+        "lab": "mainenlab",
+        "start_time": "2020-03-13T10:48:51",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.0"
+      },
+      {
+        "id": "11f14e9e-5273-4e44-b99c-dccd7ec25c76",
+        "subject": "ibl_witten_18",
+        "lab": "wittenlab",
+        "start_time": "2020-03-19T15:21:21.101549",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.0"
+      },
+      {
+        "id": "c2530751-2af6-4883-af56-91eefd544422",
+        "subject": "CSHL045",
+        "lab": "churchlandlab",
+        "start_time": "2020-02-21T09:24:34.009653",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "d7c82a00-025e-46e3-813f-f12beec5753d",
+        "subject": "FMR031",
+        "lab": "angelakilab",
+        "start_time": "2022-03-21T10:07:54.947352",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.5.3"
+      },
+      {
+        "id": "8302e783-b1f4-475f-96a8-4f15639e92f7",
+        "subject": "CSP003",
+        "lab": "angelakilab",
+        "start_time": "2019-11-14T12:09:45.005579",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.0.6"
+      },
+      {
+        "id": "1b8ec0cd-7d11-4b55-9494-4ece99b4b124",
+        "subject": "SWC_017",
+        "lab": "mrsicflogellab",
+        "start_time": "2020-02-24T13:13:08.238154",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "07fd1697-1987-4b49-8fd6-ac1891da2d38",
+        "subject": "CSHL_003",
+        "lab": "churchlandlab",
+        "start_time": "2019-08-16T15:03:09.719052",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.2.9"
+      },
+      {
+        "id": "dd7f7ce9-7821-4843-8e87-e549d20f33b0",
+        "subject": "CSP005",
+        "lab": "angelakilab",
+        "start_time": "2019-12-03T16:35:27.570716",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.0"
+      },
+      {
+        "id": "0b33e2c9-faaf-4886-8269-7c2c0de52096",
+        "subject": "CSH_ZAD_003",
+        "lab": "zadorlab",
+        "start_time": "2019-11-12T15:00:35.512977",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.1.3"
+      },
+      {
+        "id": "7aef2e2e-5cf0-440f-8e4f-21aacf4a6b64",
+        "subject": "ZM_2245",
+        "lab": "mainenlab",
+        "start_time": "2020-01-17T16:33:34.664260",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "9585dc6d-3d9b-49d5-9510-4e168759510e",
+        "subject": "ibl_witten_15",
+        "lab": "wittenlab",
+        "start_time": "2019-12-20T15:16:23.107099",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.3.1"
+      },
+      {
+        "id": "ad8e6a6e-5e9c-4ad3-9af2-228a53e813fa",
+        "subject": "ibl_witten_04",
+        "lab": "wittenlab",
+        "start_time": "2019-08-06T19:47:11.478197",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.2.5"
+      },
+      {
+        "id": "2719c66f-02f5-433a-b338-b5c7bb8fba78",
+        "subject": "ZM_1745",
+        "lab": "mainenlab",
+        "start_time": "2019-11-25T10:33:55.488972",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.1.3"
+      },
+      {
+        "id": "3800d0f1-adce-44cf-a341-ecd03467ceea",
+        "subject": "FMR015",
+        "lab": "angelakilab",
+        "start_time": "2021-02-22T11:29:38.565659",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "8749091c-3f45-4495-a8bc-838ebeaff6fa",
+        "subject": "CSHL_007",
+        "lab": "churchlandlab",
+        "start_time": "2019-11-06T15:46:02.639568",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.0.6"
+      },
+      {
+        "id": "1e3ed1bd-8260-47c3-9682-40d2f8f82657",
+        "subject": "SH027",
+        "lab": "angelakilab",
+        "start_time": "2022-01-24T12:23:23.341284",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "07c4cce6-171c-4f05-b107-3d81e170857a",
+        "subject": "SH013",
+        "lab": "angelakilab",
+        "start_time": "2020-07-17T11:58:34.445021",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.0"
+      },
+      {
+        "id": "587b2a9a-e9c7-470e-9ce2-d4f9178fa121",
+        "subject": "CSHL049",
+        "lab": "churchlandlab",
+        "start_time": "2020-01-06T13:18:39.737340",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.3.1"
+      },
+      {
+        "id": "43c8d641-7cb1-4875-8b3e-9864f9c2f9ac",
+        "subject": "CSHL059",
+        "lab": "churchlandlab",
+        "start_time": "2020-02-28T13:42:46.001818",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.0"
+      },
+      {
+        "id": "84dff038-18a6-479b-926c-55ad95d53f7f",
+        "subject": "ZM_2240",
+        "lab": "mainenlab",
+        "start_time": "2020-01-17T10:12:48.837521",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "5e45deab-73d7-4b00-a196-1b394b9855d1",
+        "subject": "CSHL_013",
+        "lab": "churchlandlab",
+        "start_time": "2019-07-15T15:59:43",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.1.0"
+      },
+      {
+        "id": "dd06d85d-12df-417c-b167-9ec2517a0523",
+        "subject": "DY_005",
+        "lab": "danlab",
+        "start_time": "2019-07-06T11:10:02.019874",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld4.1.3"
+      },
+      {
+        "id": "5628ef35-98df-4a04-857e-e058d6db7ab9",
+        "subject": "CSHL_011",
+        "lab": "churchlandlab",
+        "start_time": "2019-09-13T12:56:39.323572",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.3.0"
+      },
+      {
+        "id": "9d06a1f7-e44c-492a-b8bd-ef3e6f9de2f2",
+        "subject": "SH004",
+        "lab": "angelakilab",
+        "start_time": "2020-02-07T14:19:45.502105",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.3.1"
+      },
+      {
+        "id": "d9bc7e39-4bdd-4e0c-9117-151ab351a14f",
+        "subject": "FMR032",
+        "lab": "angelakilab",
+        "start_time": "2022-03-14T09:32:59.349279",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.5.3"
+      },
+      {
+        "id": "a03a02ed-645f-40e4-a762-d9916a35f28c",
+        "subject": "CSP026",
+        "lab": "angelakilab",
+        "start_time": "2022-01-28T11:14:55.353706",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "67f31ddc-853c-4aec-90d5-311774be0415",
+        "subject": "CSH_ZAD_011",
+        "lab": "zadorlab",
+        "start_time": "2020-03-20T11:11:16.438300",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.0"
+      },
+      {
+        "id": "fb8d9c99-ccee-4ae3-8404-d9f150f0bbbe",
+        "subject": "NYU-49",
+        "lab": "angelakilab",
+        "start_time": "2021-07-19T10:27:29.014651",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "ef74c681-86ce-498e-9e65-05e8d92b1d70",
+        "subject": "FMR024",
+        "lab": "angelakilab",
+        "start_time": "2021-04-05T08:55:04.129109",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "1e47ab6e-8424-4827-8d0a-170745798d72",
+        "subject": "SWC_030",
+        "lab": "mrsicflogellab",
+        "start_time": "2020-03-23T13:56:38.687730",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.0"
+      },
+      {
+        "id": "70131f8f-2f16-4128-9273-a41d99fdb73d",
+        "subject": "SWC_029",
+        "lab": "mrsicflogellab",
+        "start_time": "2020-03-23T12:31:56.845792",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.0"
+      },
+      {
+        "id": "ee755a8c-4246-448f-a066-15097d0e5afe",
+        "subject": "SWC_AY_018",
+        "lab": "hoferlab",
+        "start_time": "2025-04-28T10:40:04.906499",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld8.27.4"
+      },
+      {
+        "id": "5e0f903d-7d46-4529-a9a5-b83bcf916fe8",
+        "subject": "SWC_AY_005",
+        "lab": "hoferlab",
+        "start_time": "2025-02-04T12:14:22.034279",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld8.27.1"
+      },
+      {
+        "id": "c91f605d-eb58-4a90-8d76-39b8df150574",
+        "subject": "NYU-58",
+        "lab": "angelakilab",
+        "start_time": "2021-12-13T10:18:39.480901",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "ea436c57-944a-4cbd-af90-31e3c35e9116",
+        "subject": "KS014",
+        "lab": "cortexlab",
+        "start_time": "2019-12-02T17:06:30.027000",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.1.3"
+      },
+      {
+        "id": "2c12856d-114f-4494-9b06-eda40dd413ee",
+        "subject": "DY_014",
+        "lab": "danlab",
+        "start_time": "2020-03-13T10:56:31.577297",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.0"
+      },
+      {
+        "id": "ace69ac2-7500-4ee6-89ac-d37c6552258b",
+        "subject": "CSP031",
+        "lab": "angelakilab",
+        "start_time": "2022-01-31T10:01:55.183802",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "4622c40b-0aa0-4db1-93da-4f739ed5e99f",
+        "subject": "NYU-57",
+        "lab": "angelakilab",
+        "start_time": "2021-11-15T11:30:55.521761",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "5960c8a4-8491-4e54-a06c-5a3a7712510e",
+        "subject": "CSH_ZAD_022",
+        "lab": "zadorlab",
+        "start_time": "2020-03-20T11:13:27.755727",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.0"
+      },
+      {
+        "id": "350c8cde-c909-4efe-88ad-e2284ab82ba7",
+        "subject": "SH025",
+        "lab": "angelakilab",
+        "start_time": "2022-01-31T11:40:18.986248",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      }
+    ],
+    "excluded_subjects": [
+      "CSHL047",
+      "CSHL052",
+      "CSHL053",
+      "CSHL054",
+      "CSHL055",
+      "CSHL_014",
+      "CSHL_015",
+      "CSH_ZAD_001",
+      "CSH_ZAD_002",
+      "CSH_ZAD_004",
+      "CSH_ZAD_005",
+      "CSH_ZAD_007",
+      "CSP001",
+      "CSP004",
+      "CSP012",
+      "CSP013",
+      "CSP015",
+      "CSP028",
+      "CSP029",
+      "DY_006",
+      "DY_009",
+      "DY_010",
+      "DY_011",
+      "FMR009",
+      "FMR010",
+      "FMR011",
+      "FMR014",
+      "FMR019",
+      "FMR020",
+      "FMR025",
+      "FMR028",
+      "IBL-T1",
+      "IBL-T2",
+      "IBL-T4",
+      "KS002",
+      "KS004",
+      "KS005",
+      "KS015",
+      "KS019",
+      "KS021",
+      "KS022",
+      "KS023",
+      "NR_0027",
+      "NYU-04",
+      "NYU-06",
+      "NYU-09",
+      "NYU-12",
+      "NYU-14",
+      "NYU-28",
+      "NYU-32",
+      "NYU-38",
+      "NYU-41",
+      "NYU-43",
+      "NYU-44",
+      "NYU-56",
+      "SH002",
+      "SH008",
+      "SH011",
+      "SH020",
+      "SH023",
+      "SWC_001",
+      "SWC_013",
+      "SWC_014",
+      "SWC_015",
+      "SWC_018",
+      "SWC_021",
+      "SWC_022",
+      "SWC_NM_057",
+      "SWC_NM_058",
+      "SWC_NM_071",
+      "SWC_NM_072",
+      "SWC_NM_081",
+      "SWC_NM_085",
+      "SWC_NM_086",
+      "SWC_NM_091",
+      "ZFM-02600",
+      "ZFM-03324",
+      "ZFM-04122",
+      "ZM_1372",
+      "ZM_1743",
+      "ZM_1897",
+      "ZM_1898",
+      "ZM_2241",
+      "ibl_witten_06",
+      "ibl_witten_07",
+      "ibl_witten_12",
+      "ibl_witten_13",
+      "ibl_witten_14",
+      "ibl_witten_16",
+      "ibl_witten_19"
+    ],
+    "analysis": {
+      "seed": 20260905,
+      "folds": 5,
+      "weak_threshold": 0.125,
+      "min_failures_per_bin": 10,
+      "l2": 1.0
+    },
+    "rules": {
+      "min_trials": 150,
+      "min_full_contrast_trials": 20,
+      "min_easy_accuracy": 0.85,
+      "min_eligible_subjects": 40,
+      "minimum_nll_gain": 0.0005,
+      "bootstrap_samples": 10000,
+      "bootstrap_seed": 20260906
+    },
+    "training_reference_sha256": "a45e9043b373310c40456fb25fe938d388b68e95e74628b5197e403c53a742dd",
+    "cohort_manifest_sha256": "3782297708435f15527d8ebbaaf08bdea5db7a390c78e06b2fd448cd62c04951",
+    "identity_manifest_sha256": "c189b72eb3dbd5ed1120d6e6dde8ff265fc68a56d21f7ad6bc6288be13bf3945",
+    "models_sha256": "daafcfb6d97992c44f4b04f32e0f27b29dc56ac8045a41e467512dbecd8710c8",
+    "code_sha256": {
+      "scripts/run_ibl_replication.py": "f9eb102ca561063d546b76b1f72c708d9435eb142a275c9254a2c3d46af5b109",
+      "eval/ibl_replication.py": "14d4b696143a7a3b73defb1d4d8897e3ab1061975989af66d8af799ec02ee35a",
+      "eval/history_audit.py": "97504c8b7ab23d72d71e8fd9d9459d1a0dd6a1b2427a60dfcb1e2f6ac0153969",
+      "eval/metrics.py": "7a2f9c63198dae60cc401138d8c41c255dbd7d09d51cf31227f3fad9d69dfce2",
+      "eval/schema_validator.py": "09ba2e04018acce8c285a4ab348abbad4a7ae9e3eeea41f4d3aae56785a0a15c",
+      "docs/REPLICATION_PROTOCOL.md": "a4a30072bbbb4c32b1f778fb38b62500b934d18249e4c428d8ffe180e6b69b72"
+    },
+    "versions": {
+      "numpy": "2.3.4",
+      "scipy": "1.16.3",
+      "pandas": "2.3.3",
+      "pydantic": "2.12.3"
+    },
+    "primary": "Mean across test subjects of outcome_history NLL minus evidence_history NLL; lower NLL is better.",
+    "decision": "At least 40 eligible subjects, mean gain >= 0.0005 nats/trial, and subject bootstrap 95% lower bound > 0.",
+    "threshold_rationale": "A fixed practical screen around half the exploratory gain, not an established biological threshold.",
+    "sampling": "60 reserved subjects, one latest standard biased session each; no replacements after QC.",
+    "exclusions": "Preset trial/easy-trial/accuracy gates; source-integrity errors exclude a session and are reported.",
+    "no_tuning": "No hyperparameter selection, retraining, threshold changes, or replacement cohort based on test outcomes.",
+    "limits": "Internal prospective freeze only; no external preregistration or committed-protocol claim."
+  },
+  "models": {
+    "stimulus_block": {
+      "features": [
+        "intercept",
+        "stimulus_-1.0_prior_0.2",
+        "stimulus_-1.0_prior_0.5",
+        "stimulus_-1.0_prior_0.8",
+        "stimulus_-0.25_prior_0.2",
+        "stimulus_-0.25_prior_0.5",
+        "stimulus_-0.25_prior_0.8",
+        "stimulus_-0.125_prior_0.2",
+        "stimulus_-0.125_prior_0.5",
+        "stimulus_-0.125_prior_0.8",
+        "stimulus_-0.0625_prior_0.2",
+        "stimulus_-0.0625_prior_0.5",
+        "stimulus_-0.0625_prior_0.8",
+        "stimulus_0.0_prior_0.2",
+        "stimulus_0.0_prior_0.8",
+        "stimulus_0.0625_prior_0.2",
+        "stimulus_0.0625_prior_0.5",
+        "stimulus_0.0625_prior_0.8",
+        "stimulus_0.125_prior_0.2",
+        "stimulus_0.125_prior_0.5",
+        "stimulus_0.125_prior_0.8",
+        "stimulus_0.25_prior_0.2",
+        "stimulus_0.25_prior_0.5",
+        "stimulus_0.25_prior_0.8",
+        "stimulus_1.0_prior_0.2",
+        "stimulus_1.0_prior_0.5",
+        "stimulus_1.0_prior_0.8"
+      ],
+      "coefficients": [
+        0.183977316868478,
+        -3.5830481493993376,
+        -3.2097132958845562,
+        -2.5158046096878666,
+        -2.899500838454231,
+        -2.1235808901863873,
+        -1.6560196987776765,
+        -2.151444632890251,
+        -1.371103231682455,
+        -1.047665177479955,
+        -1.476761127891559,
+        -0.9108337669333302,
+        -0.33010440869628654,
+        -0.7569295187738924,
+        0.6040534793830415,
+        0.09295490843851993,
+        0.6419679865521123,
+        1.3087636044615336,
+        0.7552889799594622,
+        1.2630809738624995,
+        1.9468944056783664,
+        1.3850940704057233,
+        1.7867388824072046,
+        2.5001503213912795,
+        2.5605520232071184,
+        2.6824773481544653,
+        3.51932483294451
+      ]
+    },
+    "outcome_history": {
+      "features": [
+        "intercept",
+        "stimulus_-1.0_prior_0.2",
+        "stimulus_-1.0_prior_0.5",
+        "stimulus_-1.0_prior_0.8",
+        "stimulus_-0.25_prior_0.2",
+        "stimulus_-0.25_prior_0.5",
+        "stimulus_-0.25_prior_0.8",
+        "stimulus_-0.125_prior_0.2",
+        "stimulus_-0.125_prior_0.5",
+        "stimulus_-0.125_prior_0.8",
+        "stimulus_-0.0625_prior_0.2",
+        "stimulus_-0.0625_prior_0.5",
+        "stimulus_-0.0625_prior_0.8",
+        "stimulus_0.0_prior_0.2",
+        "stimulus_0.0_prior_0.8",
+        "stimulus_0.0625_prior_0.2",
+        "stimulus_0.0625_prior_0.5",
+        "stimulus_0.0625_prior_0.8",
+        "stimulus_0.125_prior_0.2",
+        "stimulus_0.125_prior_0.5",
+        "stimulus_0.125_prior_0.8",
+        "stimulus_0.25_prior_0.2",
+        "stimulus_0.25_prior_0.5",
+        "stimulus_0.25_prior_0.8",
+        "stimulus_1.0_prior_0.2",
+        "stimulus_1.0_prior_0.5",
+        "stimulus_1.0_prior_0.8",
+        "previous_success",
+        "rewarded_choice",
+        "unrewarded_choice",
+        "previous_strength_0.0625",
+        "previous_strength_0.0625_success",
+        "previous_strength_0.125",
+        "previous_strength_0.125_success",
+        "previous_strength_0.25",
+        "previous_strength_0.25_success",
+        "previous_strength_1.0",
+        "previous_strength_1.0_success"
+      ],
+      "coefficients": [
+        0.11403227177459686,
+        -3.487313000161313,
+        -3.3719229435756564,
+        -2.930807605816039,
+        -2.7790295552847493,
+        -2.289274912201449,
+        -2.0503557898794273,
+        -1.990046181386522,
+        -1.4576495402772478,
+        -1.420720403355145,
+        -1.293486924759663,
+        -0.9667168465096413,
+        -0.6468628769003516,
+        -0.506900586895563,
+        0.3742690598844392,
+        0.3982861585796763,
+        0.7131114012718821,
+        1.136062622095381,
+        1.1058207214200064,
+        1.409628656521753,
+        1.7978135747378188,
+        1.7633487269772932,
+        1.9697825833504714,
+        2.394969245209606,
+        2.938669057975061,
+        2.9134179254421366,
+        3.416876022563309,
+        0.06482012128049155,
+        0.6160866037850182,
+        0.780652296792916,
+        -0.011606607805755197,
+        0.008243184498501305,
+        -0.03963705917064433,
+        0.04133556829108787,
+        0.025647163341535453,
+        -0.02402276542009593,
+        0.30151917101030273,
+        -0.29405507779307627
+      ]
+    },
+    "evidence_history": {
+      "features": [
+        "intercept",
+        "stimulus_-1.0_prior_0.2",
+        "stimulus_-1.0_prior_0.5",
+        "stimulus_-1.0_prior_0.8",
+        "stimulus_-0.25_prior_0.2",
+        "stimulus_-0.25_prior_0.5",
+        "stimulus_-0.25_prior_0.8",
+        "stimulus_-0.125_prior_0.2",
+        "stimulus_-0.125_prior_0.5",
+        "stimulus_-0.125_prior_0.8",
+        "stimulus_-0.0625_prior_0.2",
+        "stimulus_-0.0625_prior_0.5",
+        "stimulus_-0.0625_prior_0.8",
+        "stimulus_0.0_prior_0.2",
+        "stimulus_0.0_prior_0.8",
+        "stimulus_0.0625_prior_0.2",
+        "stimulus_0.0625_prior_0.5",
+        "stimulus_0.0625_prior_0.8",
+        "stimulus_0.125_prior_0.2",
+        "stimulus_0.125_prior_0.5",
+        "stimulus_0.125_prior_0.8",
+        "stimulus_0.25_prior_0.2",
+        "stimulus_0.25_prior_0.5",
+        "stimulus_0.25_prior_0.8",
+        "stimulus_1.0_prior_0.2",
+        "stimulus_1.0_prior_0.5",
+        "stimulus_1.0_prior_0.8",
+        "previous_success",
+        "rewarded_choice",
+        "unrewarded_choice",
+        "previous_strength_0.0625",
+        "previous_strength_0.0625_success",
+        "previous_strength_0.125",
+        "previous_strength_0.125_success",
+        "previous_strength_0.25",
+        "previous_strength_0.25_success",
+        "previous_strength_1.0",
+        "previous_strength_1.0_success",
+        "rewarded_choice_weak",
+        "unrewarded_choice_weak"
+      ],
+      "coefficients": [
+        0.10869077003500219,
+        -3.480262420329079,
+        -3.3717948985610766,
+        -2.9370777835394457,
+        -2.770079270863591,
+        -2.291371863196534,
+        -2.056596975221474,
+        -1.981184677508147,
+        -1.4552503922469864,
+        -1.4265266952545408,
+        -1.2836364554890713,
+        -0.9660391070006369,
+        -0.6516894617929242,
+        -0.4925128852574074,
+        0.37947623051459073,
+        0.4177085204238229,
+        0.7202703725461312,
+        1.140579491010608,
+        1.1315532366341912,
+        1.4230948876582434,
+        1.8040843603903949,
+        1.7846635440032166,
+        1.978372311532484,
+        2.401848883401158,
+        2.9604773641874242,
+        2.92372926332092,
+        3.4272231130095436,
+        0.05517877339518296,
+        0.47745324788628307,
+        1.1849148713761675,
+        -0.01076069622957432,
+        0.01358774179386772,
+        -0.039806527074172995,
+        0.04593075399134389,
+        0.03378816570833909,
+        -0.026163229017443237,
+        0.28102937750879753,
+        -0.2678596087743251,
+        0.2692672139406385,
+        -0.4655797831993549
+      ]
+    }
+  },
+  "plan_sha256": "d7af52e560b7a32693e2ad1ef2716ca6bb719bc049f8cefafdbdba0f79d8bb56",
+  "cohort": {
+    "status": "metadata_only_reserved_not_downloaded_or_scored",
+    "created_at": "2026-09-06T06:06:18.922450+00:00",
+    "seed": 20260906,
+    "requested_subjects": 60,
+    "selected_subjects": 60,
+    "source": "https://openalyx.internationalbrainlab.org",
+    "sampling_frame_sessions": 5217,
+    "sampling_frame_sha256": "91e7fb04a214803466515d1b1e72fe26a93b49dd441fadd7f81560d2867353d9",
+    "reference_hashes": {
+      "data/ibl/reference.ndjson": "8c2d753b165baf60199a6230851224346fe96a5028c4ec0980124ee11af8c44a",
+      "data/ibl/reference_10session.ndjson": "c5b8ebe140d9aa7f7343467fd235d90e9a1d9130835b08b370ee0854fad889f9",
+      "data/ibl/reference_single_session.ndjson": "0d2cb7d64f7c5be60ebb8ae23b6b5c6ff9610a6b17d35f31eaff30ed89656c43"
+    },
+    "excluded_subjects": [
+      "CSHL047",
+      "CSHL052",
+      "CSHL053",
+      "CSHL054",
+      "CSHL055",
+      "CSHL_014",
+      "CSHL_015",
+      "CSH_ZAD_001",
+      "CSH_ZAD_002",
+      "CSH_ZAD_004",
+      "CSH_ZAD_005",
+      "CSH_ZAD_007",
+      "CSP001",
+      "CSP004",
+      "CSP012",
+      "CSP013",
+      "CSP015",
+      "CSP028",
+      "CSP029",
+      "DY_006",
+      "DY_009",
+      "DY_010",
+      "DY_011",
+      "FMR009",
+      "FMR010",
+      "FMR011",
+      "FMR014",
+      "FMR019",
+      "FMR020",
+      "FMR025",
+      "FMR028",
+      "IBL-T1",
+      "IBL-T2",
+      "IBL-T4",
+      "KS002",
+      "KS004",
+      "KS005",
+      "KS015",
+      "KS019",
+      "KS021",
+      "KS022",
+      "KS023",
+      "NR_0027",
+      "NYU-04",
+      "NYU-06",
+      "NYU-09",
+      "NYU-12",
+      "NYU-14",
+      "NYU-28",
+      "NYU-32",
+      "NYU-38",
+      "NYU-41",
+      "NYU-43",
+      "NYU-44",
+      "NYU-56",
+      "SH002",
+      "SH008",
+      "SH011",
+      "SH020",
+      "SH023",
+      "SWC_001",
+      "SWC_013",
+      "SWC_014",
+      "SWC_015",
+      "SWC_018",
+      "SWC_021",
+      "SWC_022",
+      "SWC_NM_057",
+      "SWC_NM_058",
+      "SWC_NM_071",
+      "SWC_NM_072",
+      "SWC_NM_081",
+      "SWC_NM_085",
+      "SWC_NM_086",
+      "SWC_NM_091",
+      "ZFM-02600",
+      "ZFM-03324",
+      "ZFM-04122",
+      "ZM_1372",
+      "ZM_1743",
+      "ZM_1897",
+      "ZM_1898",
+      "ZM_2241",
+      "ibl_witten_06",
+      "ibl_witten_07",
+      "ibl_witten_12",
+      "ibl_witten_13",
+      "ibl_witten_14",
+      "ibl_witten_16",
+      "ibl_witten_19"
+    ],
+    "historical_identities": [
+      {
+        "id": "c6c2c98e-6d3e-435f-994d-7900e3e3cefd",
+        "subject": "CSHL_014",
+        "lab": "churchlandlab",
+        "start_time": "2019-07-15T14:31:13.410081",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.1.0"
+      },
+      {
+        "id": "6f9c36b4-ee4e-492d-b794-6fe866411d94",
+        "subject": "FMR014",
+        "lab": "angelakilab",
+        "start_time": "2021-03-08T12:43:27.349835",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "996c7370-fef7-44ef-b1d6-c5e2a913361b",
+        "subject": "KS022",
+        "lab": "cortexlab",
+        "start_time": "2019-11-12T11:19:30.285000",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.0.6"
+      },
+      {
+        "id": "12e01061-9552-4a28-bd04-22441d45f86a",
+        "subject": "NYU-56",
+        "lab": "angelakilab",
+        "start_time": "2021-12-03T11:40:40.827496",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "77ff40d6-ecb9-4426-85d8-1d069d1382d6",
+        "subject": "CSH_ZAD_005",
+        "lab": "zadorlab",
+        "start_time": "2019-09-24T16:14:43.865092",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.3.1"
+      },
+      {
+        "id": "61684f6c-a7db-4f5a-a95d-67fd132d3ca2",
+        "subject": "NYU-12",
+        "lab": "angelakilab",
+        "start_time": "2020-01-03T11:48:22.434860",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.3.1"
+      },
+      {
+        "id": "00c4ee96-3b51-4d6a-a3cc-442b637c9de1",
+        "subject": "ZFM-02600",
+        "lab": "mainenlab",
+        "start_time": "2021-08-18T13:16:43.980063",
+        "task_protocol": "_iblrig_tasks_opto_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "e3e3bffc-0098-47bd-ad97-1ea9dea8dc69",
+        "subject": "NYU-38",
+        "lab": "angelakilab",
+        "start_time": "2021-01-14T12:49:47.517547",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "d671c9bd-0f32-4e44-89f6-d4e1ba31f579",
+        "subject": "CSP012",
+        "lab": "angelakilab",
+        "start_time": "2020-09-01T11:32:42.265116",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "c4fe0315-e35d-4a03-997a-4c0f02b13a20",
+        "subject": "CSHL047",
+        "lab": "churchlandlab",
+        "start_time": "2020-01-06T14:38:29.692781",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.3.1"
+      },
+      {
+        "id": "94adaf4a-f52d-4bb0-ae4c-54f235379e3d",
+        "subject": "SWC_NM_072",
+        "lab": "hoferlab",
+        "start_time": "2024-03-13T12:55:39.463406",
+        "task_protocol": "nate_optoBiasedChoiceWorld8.16.0"
+      },
+      {
+        "id": "dc979e40-fbb7-4d1c-8025-a7592cbee535",
+        "subject": "ibl_witten_07",
+        "lab": "wittenlab",
+        "start_time": "2019-08-26T09:15:22.181672",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.2.9"
+      },
+      {
+        "id": "c46963a4-af45-4945-8c85-247321523498",
+        "subject": "IBL-T2",
+        "lab": "angelakilab",
+        "start_time": "2019-07-26T11:24:48.755978",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.2.3"
+      },
+      {
+        "id": "cc930af5-0246-4eb7-ae73-0c825fc035ed",
+        "subject": "SWC_NM_081",
+        "lab": "hoferlab",
+        "start_time": "2024-06-25T13:12:24.160006",
+        "task_protocol": "nate_optoBiasedChoiceWorld8.19.6"
+      },
+      {
+        "id": "7cc330fb-5a0d-4876-a673-396ccb3b0dc5",
+        "subject": "ibl_witten_06",
+        "lab": "wittenlab",
+        "start_time": "2019-09-16T09:31:35.006773",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.3.0"
+      },
+      {
+        "id": "80ddf223-6922-412d-a743-8a76b6603afa",
+        "subject": "ZM_1897",
+        "lab": "mainenlab",
+        "start_time": "2019-10-15T16:12:21.155566",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.0.5"
+      },
+      {
+        "id": "f47332ef-da79-4bc5-8573-bb3484192f80",
+        "subject": "NYU-06",
+        "lab": "angelakilab",
+        "start_time": "2019-06-13T12:08:23.984041",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld4.1.3"
+      },
+      {
+        "id": "fe8ee170-6c0c-4485-9bcf-0197feb72fd2",
+        "subject": "CSH_ZAD_007",
+        "lab": "zadorlab",
+        "start_time": "2019-09-17T18:14:17.925439",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.3.0"
+      },
+      {
+        "id": "5bbf9511-c953-4749-b5e7-64e27ddd83e9",
+        "subject": "ZM_1743",
+        "lab": "mainenlab",
+        "start_time": "2019-07-22T09:44:29.068204",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.2.1"
+      },
+      {
+        "id": "2ff35407-813a-4010-8387-874ea76a198b",
+        "subject": "CSHL_015",
+        "lab": "churchlandlab",
+        "start_time": "2019-11-04T09:46:10.634061",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.0.6"
+      },
+      {
+        "id": "19ac7a10-f083-4a60-bfd7-2fd4b0020cce",
+        "subject": "FMR020",
+        "lab": "angelakilab",
+        "start_time": "2021-03-22T14:27:44.284846",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "e43e1d20-802b-4fd6-8326-333800d93c00",
+        "subject": "ibl_witten_07",
+        "lab": "wittenlab",
+        "start_time": "2019-08-28T09:10:54.029256",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.3.0"
+      },
+      {
+        "id": "cc20d9f4-396e-4819-b3db-8529fbfcfe30",
+        "subject": "SH011",
+        "lab": "angelakilab",
+        "start_time": "2020-01-23T10:29:05.578562",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.3.1"
+      },
+      {
+        "id": "66fbd2a6-d6f6-4ad6-bb4c-9c7b98eaa3df",
+        "subject": "ibl_witten_19",
+        "lab": "wittenlab",
+        "start_time": "2020-03-08T19:38:49.937937",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.0"
+      },
+      {
+        "id": "6c8697e7-6750-4898-ae6e-558c7cf4aa55",
+        "subject": "CSHL053",
+        "lab": "churchlandlab",
+        "start_time": "2020-01-27T09:42:54.016575",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "b4219809-cc90-461d-aa02-0ee3eed8074f",
+        "subject": "SH002",
+        "lab": "angelakilab",
+        "start_time": "2019-10-22T08:41:47.466089",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.0.5"
+      },
+      {
+        "id": "6b4ff99a-c71b-4611-bc36-5912e199c671",
+        "subject": "NYU-56",
+        "lab": "angelakilab",
+        "start_time": "2021-11-19T12:39:15.443519",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "7e0fb31a-9606-4427-99df-86239710050e",
+        "subject": "FMR028",
+        "lab": "angelakilab",
+        "start_time": "2021-09-07T10:18:16.885856",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "33477eeb-a7c7-4ab7-89d4-381f84001788",
+        "subject": "SH020",
+        "lab": "angelakilab",
+        "start_time": "2021-09-03T09:48:20.216509",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "44ecc7ea-4449-4914-84ab-a33d93030c7c",
+        "subject": "NYU-43",
+        "lab": "angelakilab",
+        "start_time": "2021-05-04T10:55:39.608390",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "98243708-bb82-4cb4-9a17-68210cb3a77c",
+        "subject": "FMR025",
+        "lab": "angelakilab",
+        "start_time": "2021-08-18T10:41:17.364782",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "845cad26-1547-4fac-b498-e5842ff34197",
+        "subject": "SH023",
+        "lab": "angelakilab",
+        "start_time": "2021-09-21T09:53:39.287837",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "6fcbb3b5-7315-4471-80b8-16c2e8387b32",
+        "subject": "ZFM-04122",
+        "lab": "mainenlab",
+        "start_time": "2022-04-13T12:04:20.551026",
+        "task_protocol": "_iblrig_tasks_opto_biasedChoiceWorld6.5.3"
+      },
+      {
+        "id": "0f68abee-fd40-4d88-a24a-199526441b6f",
+        "subject": "FMR014",
+        "lab": "angelakilab",
+        "start_time": "2021-03-15T12:52:08.024944",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "1a26686c-d967-4f46-bd39-280b1b3725e0",
+        "subject": "NYU-41",
+        "lab": "angelakilab",
+        "start_time": "2021-03-09T12:27:30.945594",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "d84fc179-00c8-460e-b474-f0de3a51bed9",
+        "subject": "DY_010",
+        "lab": "danlab",
+        "start_time": "2020-01-02T13:12:27.866623",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.1.3"
+      },
+      {
+        "id": "4dceadd5-e931-43d7-b154-4270a926f152",
+        "subject": "NYU-06",
+        "lab": "angelakilab",
+        "start_time": "2019-08-02T11:42:22.410177",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.2.5"
+      },
+      {
+        "id": "c81da928-a152-453f-85c8-6b9d4fbe0da3",
+        "subject": "FMR019",
+        "lab": "angelakilab",
+        "start_time": "2021-04-26T14:13:29.924101",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "4513ca43-092c-4d70-89f9-f431b281fe8c",
+        "subject": "SWC_NM_091",
+        "lab": "hoferlab",
+        "start_time": "2025-01-31T12:58:24.318640",
+        "task_protocol": "nate_optoBiasedChoiceWorld8.24.7"
+      },
+      {
+        "id": "8c049001-df8d-47b1-86cc-7cc0b1c56243",
+        "subject": "CSH_ZAD_002",
+        "lab": "zadorlab",
+        "start_time": "2019-12-09T12:57:03.462475",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.4"
+      },
+      {
+        "id": "faaad637-354a-45d5-83ab-2641a1d9f7c7",
+        "subject": "ibl_witten_12",
+        "lab": "wittenlab",
+        "start_time": "2019-10-08T08:54:33.374809",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.0.3"
+      },
+      {
+        "id": "17fb2205-0d91-4f13-ac8c-31317315560a",
+        "subject": "NYU-14",
+        "lab": "angelakilab",
+        "start_time": "2020-02-12T12:01:55.129218",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "2622435f-deeb-49ec-94c2-b4c57c3282bf",
+        "subject": "SWC_NM_081",
+        "lab": "hoferlab",
+        "start_time": "2024-08-15T12:35:15.090369",
+        "task_protocol": "nate_optoBiasedChoiceWorld8.22.0"
+      },
+      {
+        "id": "87aec2ee-10a4-4ab1-bda8-b0a68cec16dd",
+        "subject": "ZM_1372",
+        "lab": "mainenlab",
+        "start_time": "2019-08-30T14:46:08.740090",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorldRPE"
+      },
+      {
+        "id": "47f84c09-8549-4717-9961-130866f7f93a",
+        "subject": "KS005",
+        "lab": "cortexlab",
+        "start_time": "2019-08-06T11:39:04.990000",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.2.5"
+      },
+      {
+        "id": "88abe954-66c8-40f4-905e-a4518a77c284",
+        "subject": "CSP013",
+        "lab": "angelakilab",
+        "start_time": "2020-09-18T11:12:51.842123",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "8e1bdd51-fbf3-43c4-aa77-e1d4cab0d388",
+        "subject": "ZM_1898",
+        "lab": "mainenlab",
+        "start_time": "2019-11-29T11:59:07.610024",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.1.3"
+      },
+      {
+        "id": "8b4fa11b-1472-474e-8a88-b7049c903ef7",
+        "subject": "KS019",
+        "lab": "cortexlab",
+        "start_time": "2019-11-29T09:22:34.857000",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.1.3"
+      },
+      {
+        "id": "2abb1a0c-f6d1-417d-a398-963ea38eb54a",
+        "subject": "SH008",
+        "lab": "angelakilab",
+        "start_time": "2020-02-25T09:55:06.840415",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.3.1"
+      },
+      {
+        "id": "14837037-8db0-4eba-a476-915ea5039639",
+        "subject": "CSHL052",
+        "lab": "churchlandlab",
+        "start_time": "2020-02-07T10:16:41.693707",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.3.1"
+      },
+      {
+        "id": "74314ceb-4f67-4da1-9e61-d92577a9d795",
+        "subject": "DY_006",
+        "lab": "danlab",
+        "start_time": "2019-06-12T09:37:49.846296",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld4.1.3"
+      },
+      {
+        "id": "0c956752-20c2-4f77-9b39-324df61480dd",
+        "subject": "DY_010",
+        "lab": "danlab",
+        "start_time": "2019-12-20T10:55:59.238632",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.1.3"
+      },
+      {
+        "id": "52945e01-92a8-4c5c-8367-2af6b0aa7a19",
+        "subject": "ZFM-03324",
+        "lab": "mainenlab",
+        "start_time": "2022-04-05T10:58:57.162966",
+        "task_protocol": "_iblrig_tasks_opto_biasedChoiceWorld6.5.3"
+      },
+      {
+        "id": "c83ee46f-ef38-4c07-9215-5ab809ce585b",
+        "subject": "FMR019",
+        "lab": "angelakilab",
+        "start_time": "2021-04-02T15:14:50.874509",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "1ee2c79a-9e98-44bf-aeef-61a8d9734abb",
+        "subject": "KS015",
+        "lab": "cortexlab",
+        "start_time": "2019-08-27T11:24:04.255000",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.2.9"
+      },
+      {
+        "id": "88e813ec-20d9-4b88-b955-60c58aae0551",
+        "subject": "ibl_witten_14",
+        "lab": "wittenlab",
+        "start_time": "2019-10-15T09:08:43.552982",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.0.5"
+      },
+      {
+        "id": "0b97de19-cfcc-45c0-9938-aaaaf33edb18",
+        "subject": "NYU-38",
+        "lab": "angelakilab",
+        "start_time": "2021-01-29T09:38:07.812725",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "1ab2012c-7e74-4167-a001-39b1d58c3adb",
+        "subject": "ZM_2241",
+        "lab": "mainenlab",
+        "start_time": "2020-01-20T14:01:06.211411",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "653eeb6a-f364-4c7c-ac32-0c0c4b7d4bfa",
+        "subject": "ibl_witten_13",
+        "lab": "wittenlab",
+        "start_time": "2019-09-09T09:40:50.193410",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.3.0"
+      },
+      {
+        "id": "e9d576a2-b28c-4dcb-95fb-9d1e80712e6c",
+        "subject": "SWC_018",
+        "lab": "mrsicflogellab",
+        "start_time": "2020-03-02T10:29:56.960954",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "a56e21bd-c5a7-43b0-9956-c816b6bc158d",
+        "subject": "ibl_witten_14",
+        "lab": "wittenlab",
+        "start_time": "2019-11-18T10:52:04.590025",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.1.3"
+      },
+      {
+        "id": "b798453a-a3de-4d14-92ec-9f361b45d3c5",
+        "subject": "FMR025",
+        "lab": "angelakilab",
+        "start_time": "2021-07-19T10:32:45.502400",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "14f94cfa-502c-4f47-862f-e4ad9e2ff857",
+        "subject": "CSP028",
+        "lab": "angelakilab",
+        "start_time": "2021-04-22T11:17:17.875898",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "a7348711-bbef-4928-a073-10a982490b7a",
+        "subject": "FMR010",
+        "lab": "angelakilab",
+        "start_time": "2020-12-30T09:23:03.013022",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "ecbc6cfb-a420-4025-bc8c-9059b8505999",
+        "subject": "SWC_NM_071",
+        "lab": "hoferlab",
+        "start_time": "2024-03-28T14:08:16.936892",
+        "task_protocol": "nate_optoBiasedChoiceWorld8.16.0"
+      },
+      {
+        "id": "6a213250-c709-47c0-9015-001ee085f01a",
+        "subject": "ibl_witten_12",
+        "lab": "wittenlab",
+        "start_time": "2019-11-19T10:27:37.915771",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.1.3"
+      },
+      {
+        "id": "bb16ba38-34f1-452c-84a5-ca910b49b2cb",
+        "subject": "SWC_NM_058",
+        "lab": "hoferlab",
+        "start_time": "2024-04-04T13:24:25.501229",
+        "task_protocol": "nate_optoBiasedChoiceWorld8.16.0"
+      },
+      {
+        "id": "fc47f370-617b-45dd-95d1-7afe5c0fa579",
+        "subject": "KS023",
+        "lab": "cortexlab",
+        "start_time": "2019-11-14T11:48:43.119000",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.0.6"
+      },
+      {
+        "id": "a8176cbd-5e62-4aee-98bc-f3a918b7ef2b",
+        "subject": "CSH_ZAD_004",
+        "lab": "zadorlab",
+        "start_time": "2019-09-24T15:05:28.560646",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.3.1"
+      },
+      {
+        "id": "8ef52e70-7841-43dc-916a-454f4cad53b9",
+        "subject": "NYU-44",
+        "lab": "angelakilab",
+        "start_time": "2021-04-29T11:21:52.863731",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "6d0257a4-076b-41e2-bf17-acb781f9c173",
+        "subject": "NYU-56",
+        "lab": "angelakilab",
+        "start_time": "2021-11-12T10:44:58.743310",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "4368d209-d0b2-45c1-a2ca-3b092a0efe28",
+        "subject": "CSHL047",
+        "lab": "churchlandlab",
+        "start_time": "2019-12-20T09:26:01.561051",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "7014511e-9e01-457d-99cc-9e065b861d3a",
+        "subject": "NYU-32",
+        "lab": "angelakilab",
+        "start_time": "2020-12-07T13:41:50.398215",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "c4d7c6fd-db05-4b39-8c3e-f8b55ed8f682",
+        "subject": "IBL-T4",
+        "lab": "angelakilab",
+        "start_time": "2019-07-30T15:06:40.899416",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.2.5"
+      },
+      {
+        "id": "354470ec-7adf-43e5-bb1a-e5dcd17c5c20",
+        "subject": "NYU-43",
+        "lab": "angelakilab",
+        "start_time": "2021-04-12T12:17:25.547988",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "f598edff-0673-441a-bd86-241f8a9ca967",
+        "subject": "DY_011",
+        "lab": "danlab",
+        "start_time": "2020-01-02T13:12:55.336636",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.1.3"
+      },
+      {
+        "id": "2842c33b-371a-4f12-98ff-2602b64368d9",
+        "subject": "FMR025",
+        "lab": "angelakilab",
+        "start_time": "2021-08-24T11:24:08.619281",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "dab3d729-8983-4431-9d88-0640b8ba4fdd",
+        "subject": "CSHL_014",
+        "lab": "churchlandlab",
+        "start_time": "2019-07-24T13:20:04.136949",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.2.2"
+      },
+      {
+        "id": "48ca3344-ab56-49d9-a574-8d4e1e88e084",
+        "subject": "DY_009",
+        "lab": "danlab",
+        "start_time": "2020-02-18T11:10:57.191399",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "52904256-af63-41a3-bfaf-2838e3a0a3df",
+        "subject": "NYU-28",
+        "lab": "angelakilab",
+        "start_time": "2020-09-17T09:39:44.693732",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "276368bd-7416-4c78-8b3a-5ba4031dbaf3",
+        "subject": "SH002",
+        "lab": "angelakilab",
+        "start_time": "2019-11-19T16:06:13.295175",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.1.3"
+      },
+      {
+        "id": "5e405d28-9f66-44fc-ae24-cfbbd6d0cef2",
+        "subject": "KS019",
+        "lab": "cortexlab",
+        "start_time": "2019-11-18T14:54:59.464000",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.1.3"
+      },
+      {
+        "id": "3f0da859-c1d8-417c-9e4b-73cfafae636f",
+        "subject": "NYU-28",
+        "lab": "angelakilab",
+        "start_time": "2020-09-29T09:24:17.641635",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "1e525c65-81b0-43ff-a38e-0948589b075f",
+        "subject": "SH020",
+        "lab": "angelakilab",
+        "start_time": "2021-08-24T12:55:45.902256",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "9bbfa6c6-8f98-425d-911e-bc6b32ed7407",
+        "subject": "FMR011",
+        "lab": "angelakilab",
+        "start_time": "2021-02-18T09:47:39.761303",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "8ad0b793-0faf-4ee6-ba4e-fd0ac99f14bf",
+        "subject": "SWC_NM_058",
+        "lab": "hoferlab",
+        "start_time": "2024-04-22T14:31:03.849201",
+        "task_protocol": "nate_optoBiasedChoiceWorld8.16.0"
+      },
+      {
+        "id": "f43e59b2-85a1-49c3-b344-037435fed190",
+        "subject": "NYU-28",
+        "lab": "angelakilab",
+        "start_time": "2020-09-09T11:22:18.957098",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "160ecd5f-aa15-4b56-89d3-61f72c21a18a",
+        "subject": "CSP029",
+        "lab": "angelakilab",
+        "start_time": "2021-05-25T12:21:32.447042",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "2782a3de-c1c3-4c4e-8c26-56de794f4946",
+        "subject": "KS015",
+        "lab": "cortexlab",
+        "start_time": "2019-09-12T14:16:06.147000",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.3.0"
+      },
+      {
+        "id": "16b7956c-2992-4860-9f7d-304f02f02464",
+        "subject": "CSP015",
+        "lab": "angelakilab",
+        "start_time": "2020-11-20T10:42:51.983799",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "a060a8ad-a8ce-4a95-8397-29b16ae7f023",
+        "subject": "NYU-09",
+        "lab": "angelakilab",
+        "start_time": "2020-01-28T13:31:30.759684",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.3.1"
+      },
+      {
+        "id": "0a41b38c-53da-4056-96b3-5e06dd483f8a",
+        "subject": "FMR019",
+        "lab": "angelakilab",
+        "start_time": "2021-05-17T13:00:27.333377",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "42dce5ee-7f50-43b0-8151-4ecb0fae98ca",
+        "subject": "CSH_ZAD_002",
+        "lab": "zadorlab",
+        "start_time": "2019-12-12T14:20:41.562798",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "4292f625-2ae8-402e-832f-e06ed5eb767f",
+        "subject": "CSP001",
+        "lab": "angelakilab",
+        "start_time": "2019-10-01T09:45:46.439412",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.3.0"
+      },
+      {
+        "id": "418c75ea-b8da-49d3-960b-def38d6d122f",
+        "subject": "KS004",
+        "lab": "cortexlab",
+        "start_time": "2019-08-16T15:19:31.373000",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.2.7"
+      },
+      {
+        "id": "6bee56ef-1617-493d-8f08-314d2d44588a",
+        "subject": "CSHL055",
+        "lab": "churchlandlab",
+        "start_time": "2020-01-28T11:43:46.633738",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.3.1"
+      },
+      {
+        "id": "b9a32401-388a-4776-b4e4-ad7567d74aaa",
+        "subject": "CSHL_014",
+        "lab": "churchlandlab",
+        "start_time": "2019-08-21T08:58:42.869212",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.2.9"
+      },
+      {
+        "id": "4234bb64-5beb-4688-8b18-9b06988f9bf1",
+        "subject": "SWC_NM_058",
+        "lab": "hoferlab",
+        "start_time": "2024-03-12T14:24:41.348971",
+        "task_protocol": "nate_optoBiasedChoiceWorld8.16.0"
+      },
+      {
+        "id": "6829c64f-65fd-4f4a-ab8d-d30944b932fb",
+        "subject": "SWC_013",
+        "lab": "hoferlab",
+        "start_time": "2019-09-26T09:12:51.569285",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.3.1"
+      },
+      {
+        "id": "53061b6e-a6b9-485d-83d1-13f8b4fced4e",
+        "subject": "KS021",
+        "lab": "cortexlab",
+        "start_time": "2020-01-24T09:54:50.133000",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.3.1"
+      },
+      {
+        "id": "c94ef787-1054-4f6f-936e-d42a2077d606",
+        "subject": "SWC_001",
+        "lab": "hoferlab",
+        "start_time": "2019-08-08T11:42:48.458615",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.2.5"
+      },
+      {
+        "id": "cc8f1e95-424a-4fb5-8e17-a0c681c08e32",
+        "subject": "KS002",
+        "lab": "cortexlab",
+        "start_time": "2019-08-09T13:12:32.807000",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.2.7"
+      },
+      {
+        "id": "f5a77da9-3613-4b14-b5e7-0c537e4ecb7a",
+        "subject": "SWC_NM_057",
+        "lab": "hoferlab",
+        "start_time": "2024-04-09T14:32:47.197988",
+        "task_protocol": "nate_optoBiasedChoiceWorld8.16.0"
+      },
+      {
+        "id": "d4626789-9e81-483b-804a-70eee4c8e061",
+        "subject": "CSP004",
+        "lab": "angelakilab",
+        "start_time": "2019-11-22T15:34:49.444076",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.1.3"
+      },
+      {
+        "id": "bcbcb727-5731-482a-8b4a-da3d0420c2fb",
+        "subject": "SH011",
+        "lab": "angelakilab",
+        "start_time": "2020-01-30T15:33:21.795549",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.3.1"
+      },
+      {
+        "id": "a61ec24b-6085-4f3d-9f51-4cbbce4ea8be",
+        "subject": "SWC_NM_086",
+        "lab": "hoferlab",
+        "start_time": "2024-12-05T13:52:44.753791",
+        "task_protocol": "nate_optoBiasedChoiceWorld8.24.7"
+      },
+      {
+        "id": "129a74a4-8890-4267-9577-66e737981743",
+        "subject": "IBL-T1",
+        "lab": "angelakilab",
+        "start_time": "2019-09-13T10:59:15.314540",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.3.0"
+      },
+      {
+        "id": "3f1e4ee2-787b-4d6f-8929-f652378cd173",
+        "subject": "SH002",
+        "lab": "angelakilab",
+        "start_time": "2019-10-23T08:46:31.688541",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.0.5"
+      },
+      {
+        "id": "1c5e1a51-fff2-4c79-ae0c-2e70ac5c4777",
+        "subject": "CSH_ZAD_001",
+        "lab": "zadorlab",
+        "start_time": "2020-01-02T14:47:40.635544",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.3.1"
+      },
+      {
+        "id": "632ce799-4023-4c4b-9fda-21825edbf287",
+        "subject": "SWC_NM_085",
+        "lab": "hoferlab",
+        "start_time": "2024-10-08T11:06:48.916468",
+        "task_protocol": "nate_optoBiasedChoiceWorld8.22.1+dirty"
+      },
+      {
+        "id": "31a321ee-ba70-4f5f-82c4-38e17572acf9",
+        "subject": "FMR009",
+        "lab": "angelakilab",
+        "start_time": "2021-03-31T11:37:37.986350",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "5780dfe6-bbf6-41a5-b54d-278356097032",
+        "subject": "SWC_013",
+        "lab": "hoferlab",
+        "start_time": "2019-10-10T12:52:46.309569",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.0.3"
+      },
+      {
+        "id": "06dda5a6-d286-4d45-939b-fc909ae2b1b7",
+        "subject": "IBL-T1",
+        "lab": "angelakilab",
+        "start_time": "2019-07-17T10:15:07.898717",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.1.2"
+      },
+      {
+        "id": "c809a32d-c97f-4ae2-a06d-89d53c717562",
+        "subject": "CSHL054",
+        "lab": "churchlandlab",
+        "start_time": "2020-02-03T11:11:16.418944",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "24145406-79cf-4684-8c75-3c0e29030c86",
+        "subject": "SWC_013",
+        "lab": "hoferlab",
+        "start_time": "2019-11-13T13:41:35.700933",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.0.6"
+      },
+      {
+        "id": "e4919fbb-1053-4f05-acc4-c10dcda8ac0c",
+        "subject": "CSH_ZAD_002",
+        "lab": "zadorlab",
+        "start_time": "2019-09-18T14:17:52.845209",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.3.0"
+      },
+      {
+        "id": "31a35db2-0a67-4f87-84e1-ab1e946805ea",
+        "subject": "CSP028",
+        "lab": "angelakilab",
+        "start_time": "2021-06-11T12:12:40.505354",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "b3581ea4-db8f-4a8d-992f-db9ef268e93a",
+        "subject": "CSH_ZAD_001",
+        "lab": "zadorlab",
+        "start_time": "2019-12-19T14:02:48.851762",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.3.1"
+      },
+      {
+        "id": "caa7e3f9-3096-43d6-957d-6c9fa5f0b4b3",
+        "subject": "IBL-T2",
+        "lab": "angelakilab",
+        "start_time": "2019-08-06T10:00:24.371487",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.2.5"
+      },
+      {
+        "id": "c15de630-9202-4810-bc48-d138bbbe839f",
+        "subject": "ZM_1372",
+        "lab": "mainenlab",
+        "start_time": "2019-09-09T15:49:19.344872",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorldRPE"
+      },
+      {
+        "id": "014aaca9-b706-42ee-b552-e4b9d2e7c635",
+        "subject": "NYU-04",
+        "lab": "angelakilab",
+        "start_time": "2019-08-02T13:40:10.274539",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.2.5"
+      },
+      {
+        "id": "01b4ba5c-d507-4f83-8775-ac5928009101",
+        "subject": "SWC_022",
+        "lab": "mrsicflogellab",
+        "start_time": "2019-11-20T14:01:16.991149",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.0.6"
+      },
+      {
+        "id": "0239e091-fccc-463f-880f-01bdad5a928c",
+        "subject": "SWC_021",
+        "lab": "hoferlab",
+        "start_time": "2019-11-07T10:51:45.009639",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.0.6"
+      },
+      {
+        "id": "02c96f8f-67ee-43dd-85c2-a1c9c7f07f8c",
+        "subject": "SWC_013",
+        "lab": "hoferlab",
+        "start_time": "2019-10-08T12:13:49.148345",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.0.3"
+      },
+      {
+        "id": "02e40e0b-6ec8-49b3-9d58-244c1d710597",
+        "subject": "SWC_021",
+        "lab": "hoferlab",
+        "start_time": "2019-12-06T14:16:34.244748",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.1.3"
+      },
+      {
+        "id": "034940f7-d1a2-428e-8f60-eff0d6756fc4",
+        "subject": "ibl_witten_12",
+        "lab": "wittenlab",
+        "start_time": "2019-11-06T09:58:19.710972",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.0.6"
+      },
+      {
+        "id": "03d720c4-5aac-4427-a4ae-08f259173ce5",
+        "subject": "SWC_015",
+        "lab": "hoferlab",
+        "start_time": "2019-12-06T15:09:07.064620",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.1.3"
+      },
+      {
+        "id": "0586eabf-d4a0-43ee-bf2f-ac22bfbcea09",
+        "subject": "SWC_014",
+        "lab": "hoferlab",
+        "start_time": "2019-11-19T14:42:07.745994",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.0.6"
+      },
+      {
+        "id": "0878d9b2-5bfe-4766-a318-50c5ac4be5b4",
+        "subject": "SWC_022",
+        "lab": "mrsicflogellab",
+        "start_time": "2019-11-04T14:27:52.481394",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.0.6"
+      },
+      {
+        "id": "0b98e493-e9ae-44c6-8feb-a30a597fc73f",
+        "subject": "ibl_witten_16",
+        "lab": "wittenlab",
+        "start_time": "2019-11-07T13:36:31.509046",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.0.6"
+      },
+      {
+        "id": "ae8787b1-4229-4d56-b0c2-566b61a25b77",
+        "subject": "NR_0027",
+        "lab": "steinmetzlab",
+        "start_time": "2022-08-23T08:26:09",
+        "task_protocol": "_iblrig_tasks_ephysChoiceWorld6.6.2"
+      }
+    ],
+    "sessions": [
+      {
+        "id": "3ce03802-3d01-4018-adf9-b079ccbbd0f1",
+        "subject": "CSP027",
+        "lab": "angelakilab",
+        "start_time": "2021-06-07T10:18:34.382127",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "32c99b3a-e85a-4504-b0b6-d8fdc513a70e",
+        "subject": "NYU-11",
+        "lab": "angelakilab",
+        "start_time": "2020-02-13T15:31:39.496886",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "d9977d2e-4432-4d34-bd5e-2c139cb9e33e",
+        "subject": "NYU-02",
+        "lab": "angelakilab",
+        "start_time": "2019-09-04T09:37:08.690358",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.3.0"
+      },
+      {
+        "id": "e314d967-147d-4d24-89d0-a419c51c1f56",
+        "subject": "SH014",
+        "lab": "angelakilab",
+        "start_time": "2020-07-10T10:37:07.104517",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.0"
+      },
+      {
+        "id": "609912f0-3273-4516-96a2-37bfb6791347",
+        "subject": "SH006",
+        "lab": "angelakilab",
+        "start_time": "2020-02-20T09:18:48.292015",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "6db4c530-1246-4ffe-a9cc-1a538f4c104f",
+        "subject": "DY_013",
+        "lab": "danlab",
+        "start_time": "2020-03-13T12:21:47.873678",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.0"
+      },
+      {
+        "id": "129953d8-5d84-473b-b82a-170619870318",
+        "subject": "NYU-13",
+        "lab": "angelakilab",
+        "start_time": "2020-01-29T13:02:24.365906",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "72aec869-c328-4fc3-8cb7-a0cdf7b9abe2",
+        "subject": "FMR030",
+        "lab": "angelakilab",
+        "start_time": "2022-03-28T08:38:07.295424",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.5.3"
+      },
+      {
+        "id": "7b709ec6-6e43-4c0d-b927-e0c87ee8693f",
+        "subject": "KS024",
+        "lab": "cortexlab",
+        "start_time": "2020-02-06T17:20:45.391000",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "5eeb2609-97e7-443e-a7ff-ce3abbd584c3",
+        "subject": "NYU-50",
+        "lab": "angelakilab",
+        "start_time": "2021-08-16T10:34:39.611347",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "d1e4f2db-8d01-4d78-9d6d-14a3372c5b6b",
+        "subject": "CSHL051",
+        "lab": "churchlandlab",
+        "start_time": "2020-02-04T09:12:29.393811",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "ca856c40-5bb5-457a-b800-5be423d71ebf",
+        "subject": "KS017",
+        "lab": "cortexlab",
+        "start_time": "2020-01-28T10:42:51.313000",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "ba1ef9d5-4bf7-4308-907a-869ebd564f21",
+        "subject": "NYU-08",
+        "lab": "angelakilab",
+        "start_time": "2020-03-13T10:08:45.685161",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "1a2fbb95-2dcd-4da8-80e9-06dafe1174dc",
+        "subject": "SH024",
+        "lab": "angelakilab",
+        "start_time": "2021-09-27T10:18:34.483525",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "7ac31e24-d94b-4dfc-9e8d-5a6b209c1ed3",
+        "subject": "SH022",
+        "lab": "angelakilab",
+        "start_time": "2021-10-11T14:08:38.464331",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "c6d7bab1-4c27-4c01-b63c-49259c4d0997",
+        "subject": "IBL-T3",
+        "lab": "angelakilab",
+        "start_time": "2019-09-17T10:40:31.059952",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.3.0"
+      },
+      {
+        "id": "e2e9bdf7-abc7-4f1f-8100-5ac2fd5722ae",
+        "subject": "IBL_002",
+        "lab": "mrsicflogellab",
+        "start_time": "2019-07-03T10:02:15.561153",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld4.1.3"
+      },
+      {
+        "id": "fea777ab-ec8c-4cba-8286-dbf39dee35ce",
+        "subject": "CSHL058",
+        "lab": "churchlandlab",
+        "start_time": "2020-03-16T13:31:27.714234",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.0"
+      },
+      {
+        "id": "e97aa981-67e2-459b-9ea2-8e4e980321c3",
+        "subject": "SH016",
+        "lab": "angelakilab",
+        "start_time": "2020-11-02T10:25:34.668864",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "45e903d9-b15d-4185-8343-65abaaec653c",
+        "subject": "CSHL046",
+        "lab": "churchlandlab",
+        "start_time": "2020-03-13T09:23:07.419209",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.0"
+      },
+      {
+        "id": "7036d946-447a-4dde-85c9-50034cceae0e",
+        "subject": "ZM_3004",
+        "lab": "mainenlab",
+        "start_time": "2020-03-13T10:48:51",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.0"
+      },
+      {
+        "id": "11f14e9e-5273-4e44-b99c-dccd7ec25c76",
+        "subject": "ibl_witten_18",
+        "lab": "wittenlab",
+        "start_time": "2020-03-19T15:21:21.101549",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.0"
+      },
+      {
+        "id": "c2530751-2af6-4883-af56-91eefd544422",
+        "subject": "CSHL045",
+        "lab": "churchlandlab",
+        "start_time": "2020-02-21T09:24:34.009653",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "d7c82a00-025e-46e3-813f-f12beec5753d",
+        "subject": "FMR031",
+        "lab": "angelakilab",
+        "start_time": "2022-03-21T10:07:54.947352",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.5.3"
+      },
+      {
+        "id": "8302e783-b1f4-475f-96a8-4f15639e92f7",
+        "subject": "CSP003",
+        "lab": "angelakilab",
+        "start_time": "2019-11-14T12:09:45.005579",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.0.6"
+      },
+      {
+        "id": "1b8ec0cd-7d11-4b55-9494-4ece99b4b124",
+        "subject": "SWC_017",
+        "lab": "mrsicflogellab",
+        "start_time": "2020-02-24T13:13:08.238154",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "07fd1697-1987-4b49-8fd6-ac1891da2d38",
+        "subject": "CSHL_003",
+        "lab": "churchlandlab",
+        "start_time": "2019-08-16T15:03:09.719052",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.2.9"
+      },
+      {
+        "id": "dd7f7ce9-7821-4843-8e87-e549d20f33b0",
+        "subject": "CSP005",
+        "lab": "angelakilab",
+        "start_time": "2019-12-03T16:35:27.570716",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.0"
+      },
+      {
+        "id": "0b33e2c9-faaf-4886-8269-7c2c0de52096",
+        "subject": "CSH_ZAD_003",
+        "lab": "zadorlab",
+        "start_time": "2019-11-12T15:00:35.512977",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.1.3"
+      },
+      {
+        "id": "7aef2e2e-5cf0-440f-8e4f-21aacf4a6b64",
+        "subject": "ZM_2245",
+        "lab": "mainenlab",
+        "start_time": "2020-01-17T16:33:34.664260",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "9585dc6d-3d9b-49d5-9510-4e168759510e",
+        "subject": "ibl_witten_15",
+        "lab": "wittenlab",
+        "start_time": "2019-12-20T15:16:23.107099",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.3.1"
+      },
+      {
+        "id": "ad8e6a6e-5e9c-4ad3-9af2-228a53e813fa",
+        "subject": "ibl_witten_04",
+        "lab": "wittenlab",
+        "start_time": "2019-08-06T19:47:11.478197",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.2.5"
+      },
+      {
+        "id": "2719c66f-02f5-433a-b338-b5c7bb8fba78",
+        "subject": "ZM_1745",
+        "lab": "mainenlab",
+        "start_time": "2019-11-25T10:33:55.488972",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.1.3"
+      },
+      {
+        "id": "3800d0f1-adce-44cf-a341-ecd03467ceea",
+        "subject": "FMR015",
+        "lab": "angelakilab",
+        "start_time": "2021-02-22T11:29:38.565659",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "8749091c-3f45-4495-a8bc-838ebeaff6fa",
+        "subject": "CSHL_007",
+        "lab": "churchlandlab",
+        "start_time": "2019-11-06T15:46:02.639568",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.0.6"
+      },
+      {
+        "id": "1e3ed1bd-8260-47c3-9682-40d2f8f82657",
+        "subject": "SH027",
+        "lab": "angelakilab",
+        "start_time": "2022-01-24T12:23:23.341284",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "07c4cce6-171c-4f05-b107-3d81e170857a",
+        "subject": "SH013",
+        "lab": "angelakilab",
+        "start_time": "2020-07-17T11:58:34.445021",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.0"
+      },
+      {
+        "id": "587b2a9a-e9c7-470e-9ce2-d4f9178fa121",
+        "subject": "CSHL049",
+        "lab": "churchlandlab",
+        "start_time": "2020-01-06T13:18:39.737340",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.3.1"
+      },
+      {
+        "id": "43c8d641-7cb1-4875-8b3e-9864f9c2f9ac",
+        "subject": "CSHL059",
+        "lab": "churchlandlab",
+        "start_time": "2020-02-28T13:42:46.001818",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.0"
+      },
+      {
+        "id": "84dff038-18a6-479b-926c-55ad95d53f7f",
+        "subject": "ZM_2240",
+        "lab": "mainenlab",
+        "start_time": "2020-01-17T10:12:48.837521",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.2.5"
+      },
+      {
+        "id": "5e45deab-73d7-4b00-a196-1b394b9855d1",
+        "subject": "CSHL_013",
+        "lab": "churchlandlab",
+        "start_time": "2019-07-15T15:59:43",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.1.0"
+      },
+      {
+        "id": "dd06d85d-12df-417c-b167-9ec2517a0523",
+        "subject": "DY_005",
+        "lab": "danlab",
+        "start_time": "2019-07-06T11:10:02.019874",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld4.1.3"
+      },
+      {
+        "id": "5628ef35-98df-4a04-857e-e058d6db7ab9",
+        "subject": "CSHL_011",
+        "lab": "churchlandlab",
+        "start_time": "2019-09-13T12:56:39.323572",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld5.3.0"
+      },
+      {
+        "id": "9d06a1f7-e44c-492a-b8bd-ef3e6f9de2f2",
+        "subject": "SH004",
+        "lab": "angelakilab",
+        "start_time": "2020-02-07T14:19:45.502105",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.3.1"
+      },
+      {
+        "id": "d9bc7e39-4bdd-4e0c-9117-151ab351a14f",
+        "subject": "FMR032",
+        "lab": "angelakilab",
+        "start_time": "2022-03-14T09:32:59.349279",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.5.3"
+      },
+      {
+        "id": "a03a02ed-645f-40e4-a762-d9916a35f28c",
+        "subject": "CSP026",
+        "lab": "angelakilab",
+        "start_time": "2022-01-28T11:14:55.353706",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "67f31ddc-853c-4aec-90d5-311774be0415",
+        "subject": "CSH_ZAD_011",
+        "lab": "zadorlab",
+        "start_time": "2020-03-20T11:11:16.438300",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.0"
+      },
+      {
+        "id": "fb8d9c99-ccee-4ae3-8404-d9f150f0bbbe",
+        "subject": "NYU-49",
+        "lab": "angelakilab",
+        "start_time": "2021-07-19T10:27:29.014651",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "ef74c681-86ce-498e-9e65-05e8d92b1d70",
+        "subject": "FMR024",
+        "lab": "angelakilab",
+        "start_time": "2021-04-05T08:55:04.129109",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "1e47ab6e-8424-4827-8d0a-170745798d72",
+        "subject": "SWC_030",
+        "lab": "mrsicflogellab",
+        "start_time": "2020-03-23T13:56:38.687730",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.0"
+      },
+      {
+        "id": "70131f8f-2f16-4128-9273-a41d99fdb73d",
+        "subject": "SWC_029",
+        "lab": "mrsicflogellab",
+        "start_time": "2020-03-23T12:31:56.845792",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.0"
+      },
+      {
+        "id": "ee755a8c-4246-448f-a066-15097d0e5afe",
+        "subject": "SWC_AY_018",
+        "lab": "hoferlab",
+        "start_time": "2025-04-28T10:40:04.906499",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld8.27.4"
+      },
+      {
+        "id": "5e0f903d-7d46-4529-a9a5-b83bcf916fe8",
+        "subject": "SWC_AY_005",
+        "lab": "hoferlab",
+        "start_time": "2025-02-04T12:14:22.034279",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld8.27.1"
+      },
+      {
+        "id": "c91f605d-eb58-4a90-8d76-39b8df150574",
+        "subject": "NYU-58",
+        "lab": "angelakilab",
+        "start_time": "2021-12-13T10:18:39.480901",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "ea436c57-944a-4cbd-af90-31e3c35e9116",
+        "subject": "KS014",
+        "lab": "cortexlab",
+        "start_time": "2019-12-02T17:06:30.027000",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.1.3"
+      },
+      {
+        "id": "2c12856d-114f-4494-9b06-eda40dd413ee",
+        "subject": "DY_014",
+        "lab": "danlab",
+        "start_time": "2020-03-13T10:56:31.577297",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.0"
+      },
+      {
+        "id": "ace69ac2-7500-4ee6-89ac-d37c6552258b",
+        "subject": "CSP031",
+        "lab": "angelakilab",
+        "start_time": "2022-01-31T10:01:55.183802",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "4622c40b-0aa0-4db1-93da-4f739ed5e99f",
+        "subject": "NYU-57",
+        "lab": "angelakilab",
+        "start_time": "2021-11-15T11:30:55.521761",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      },
+      {
+        "id": "5960c8a4-8491-4e54-a06c-5a3a7712510e",
+        "subject": "CSH_ZAD_022",
+        "lab": "zadorlab",
+        "start_time": "2020-03-20T11:13:27.755727",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.0"
+      },
+      {
+        "id": "350c8cde-c909-4efe-88ad-e2284ab82ba7",
+        "subject": "SH025",
+        "lab": "angelakilab",
+        "start_time": "2022-01-31T11:40:18.986248",
+        "task_protocol": "_iblrig_tasks_biasedChoiceWorld6.4.2"
+      }
+    ],
+    "selection": "Hash-order subjects; latest exact standard biasedChoiceWorld session per subject; no outcome/QC filtering.",
+    "limits": [
+      "Unseen relative to the inventoried local references, not a claim that no earlier fetch ever inspected them.",
+      "This is an internal prospective plan, not externally preregistered research.",
+      "No replacement of failed QC subjects based on behavioral results; assess prespecified cohort sufficiency."
+    ]
+  }
+}

@@ -86,18 +86,25 @@ class AdaptiveControlTrainer(HybridDDMTrainer):
             PhaseTiming("outcome", 10),
         )
 
+    @torch.no_grad()
     def rollout(
         self,
         paths: AdaptiveControlPaths,
         diagnostics_path: Path | None = None,
+        paired_trial_seed: int | None = None,
     ) -> dict[str, float]:
-        """Run episodes in the environment and write schema-valid `.ndjson` logs."""
+        """Run episodes with optional trial-aligned lapse and DDM random streams.
+
+        `paired_trial_seed` couples checkpoint comparisons independently of earlier
+        decision durations. Environment randomness remains independently seeded.
+        """
         if self.config.task == "ibl_2afc":
             ibl_config = IBL2AFCConfig(
                 trials_per_episode=self.config.trials_per_episode,
                 log_path=paths.log,
                 agent=IBLAgentMetadata(name="adaptive_control", version=self.config.agent_version),
                 seed=self.config.seed,
+                step_ms=self.config.step_ms,
                 phase_schedule=self._ibl_phase_schedule(self.config.max_commit_steps),
                 min_response_latency_steps=self.config.min_commit_steps,
             )
@@ -110,6 +117,7 @@ class AdaptiveControlTrainer(HybridDDMTrainer):
                 log_path=paths.log,
                 agent=IBLAgentMetadata(name="adaptive_control", version=self.config.agent_version),
                 seed=self.config.seed,
+                step_ms=self.config.step_ms,
                 phase_schedule=self._ibl_phase_schedule(self.config.max_commit_steps),
                 min_response_latency_steps=self.config.min_commit_steps,
             )
@@ -122,6 +130,7 @@ class AdaptiveControlTrainer(HybridDDMTrainer):
                 log_path=paths.log,
                 agent=AgentMetadata(name="adaptive_control", version=self.config.agent_version),
                 seed=self.config.seed,
+                step_ms=self.config.step_ms,
                 per_step_cost=0.01,
                 evidence_gain=0.05,
                 momentary_sigma=1.0,
@@ -204,9 +213,27 @@ class AdaptiveControlTrainer(HybridDDMTrainer):
                         drift = drift_gain * stimulus + gated_history_drift
                         dt = self.config.step_ms / 1000.0
 
-                        if np.random.random() < self.config.lapse_rate:
-                            planned_action = int(np.random.choice([ACTION_LEFT, ACTION_RIGHT]))
-                            ddm_steps = int(np.random.randint(self.config.min_commit_steps, effective_max_commit + 1))
+                        if paired_trial_seed is None:
+                            lapse = np.random.random() < self.config.lapse_rate
+                            if lapse:
+                                lapse_action = int(np.random.choice([ACTION_LEFT, ACTION_RIGHT]))
+                                lapse_steps = int(np.random.randint(
+                                    self.config.min_commit_steps, effective_max_commit + 1,
+                                ))
+                        else:
+                            lapse_seed, ddm_seed = np.random.SeedSequence(
+                                [paired_trial_seed, episode, trial_idx],
+                            ).spawn(2)
+                            lapse_rng = np.random.default_rng(lapse_seed)
+                            lapse = lapse_rng.random() < self.config.lapse_rate
+                            lapse_action = int(lapse_rng.choice([ACTION_LEFT, ACTION_RIGHT]))
+                            lapse_steps = int(lapse_rng.integers(
+                                self.config.min_commit_steps, effective_max_commit + 1,
+                            ))
+                            np.random.seed(int(ddm_seed.generate_state(1)[0]))
+                        if lapse:
+                            planned_action = lapse_action
+                            ddm_steps = lapse_steps
                         else:
                             planned_action, ddm_steps = self._simulate_ddm(
                                 drift=drift,
@@ -259,7 +286,11 @@ class AdaptiveControlTrainer(HybridDDMTrainer):
                         prev_action_val = -1.0
                     else:
                         prev_action_val = 0.0
-                    prev_correct = 1.0 if bool(env._correct) else 0.0  # noqa: SLF001
+                    # PRL optimality is hidden; only reward success is observable.
+                    prev_correct = (
+                        float(reward > 0.0) if self.config.task == "prl"
+                        else float(bool(env._correct))  # noqa: SLF001
+                    )
                     prev_reward = float(reward)
                     if diagnostics is not None and pending_diagnostic is not None:
                         pending_diagnostic.update(

@@ -176,7 +176,10 @@ def _logistic_function(x: np.ndarray, bias: float, slope: float, lapse_low: floa
 
 
 def compute_psychometric(df: pd.DataFrame, stimulus_key: str = "contrast") -> PsychometricMetrics:
-    filtered = df[df[f"stimulus_{stimulus_key}"].notnull()].copy()
+    filtered = df[
+        df[f"stimulus_{stimulus_key}"].notnull()
+        & df["action"].isin(["left", "right"])
+    ].copy()
     if filtered.empty:
         return PsychometricMetrics(np.nan, np.nan, np.nan, np.nan)
 
@@ -299,7 +302,9 @@ def compute_chronometric(df: pd.DataFrame, stimulus_key: str = "coherence") -> C
 
 
 def compute_history_metrics(df: pd.DataFrame) -> HistoryMetrics:
-    data = df.copy()
+    # Omissions are neither choices nor switches. Preserve the logged predecessor.
+    data = df[df["action"].isin(["left", "right"])].copy()
+    data.loc[~data["prev_action"].isin(["left", "right"]), "prev_action"] = None
     data["right_choice"] = (data["action"] == "right").astype(int)
     prev_actions = data["prev_action"]
     mask_prev = prev_actions.notnull()

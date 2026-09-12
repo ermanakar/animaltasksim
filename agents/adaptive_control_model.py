@@ -143,7 +143,8 @@ class AdaptiveControlModel(HybridDDMModel):
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Initialize control state, eligibility trace, value prediction, gate, and change-evidence.
 
-        `change_evidence` is the recurrent volatility accumulator. Seeding it to
+        `change_evidence` is an exponentially weighted failure accumulator, not
+        a calibrated volatility estimate. Seeding it to
         zero here is the session/episode reset — callers re-init per episode.
         """
         control_state = torch.zeros(batch_size, 2, device=self.device)
@@ -260,6 +261,8 @@ class AdaptiveControlModel(HybridDDMModel):
         if not self.control_state_enabled:
             zero = torch.zeros(x.shape[0], device=x.device, dtype=x.dtype)
             outputs = dict(base_outputs)
+            # Match the enabled branch's final transform with a zero residual.
+            outputs["stay_tendency"] = torch.tanh(base_outputs["stay_tendency"])
             outputs.update(
                 {
                     "plastic_stay_tendency": zero,
@@ -268,9 +271,6 @@ class AdaptiveControlModel(HybridDDMModel):
                     "control_gate": zero,
                     "retry_pressure": zero,
                     "switch_pressure": zero,
-                    "win_stay_tendency": zero,
-                    "lose_shift_tendency": zero,
-                    "lose_stay_tendency": zero,
                     "persistence_pressure": zero,
                     "exploration_pressure": zero,
                     "staleness_signal": zero,
@@ -301,6 +301,8 @@ class AdaptiveControlModel(HybridDDMModel):
         switch_pressure = self._bounded_positive(-raw_control_delta, self.control_pressure_limit) * control_gate
         staleness_signal = torch.clamp(torch.abs(selected_control), min=0.0, max=1.0) * has_prev_action
 
+        # These learned heads are signed residuals; their historical names do
+        # not constrain them to cause persistence or exploration.
         controller_input = torch.cat([h, prev_reward, uncertainty, has_prev_action, staleness_signal], dim=1)
         if self.persistence_enabled:
             persistence_pressure = self._bounded_signed(
@@ -351,9 +353,6 @@ class AdaptiveControlModel(HybridDDMModel):
                 "control_gate": control_gate.squeeze(-1),
                 "retry_pressure": retry_pressure.squeeze(-1),
                 "switch_pressure": switch_pressure.squeeze(-1),
-                "win_stay_tendency": persistence_pressure.squeeze(-1),
-                "lose_shift_tendency": exploration_pressure.squeeze(-1),
-                "lose_stay_tendency": (-exploration_pressure).squeeze(-1),
                 "persistence_pressure": persistence_pressure.squeeze(-1),
                 "exploration_pressure": exploration_pressure.squeeze(-1),
                 "staleness_signal": staleness_signal.squeeze(-1),

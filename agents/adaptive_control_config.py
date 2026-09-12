@@ -92,6 +92,8 @@ class AdaptiveControlConfig:
     hidden_size: int = 64
     learning_rate: float = 1e-3
     loss_weights: LossWeights = field(default_factory=LossWeights)
+    ddm_samples: int = 32  # Monte Carlo paths per trial for training expectations.
+    ddm_temperature: float = 0.01  # Soft crossing width in evidence units; approximate gradients.
     step_ms: int = 10
     max_sessions: int | None = None
     max_trials_per_session: int | None = None

@@ -31,6 +31,8 @@ class HybridTrainingConfig:
     hidden_size: int = 64
     learning_rate: float = 1e-3
     loss_weights: LossWeights = field(default_factory=LossWeights)
+    ddm_samples: int = 32  # Monte Carlo paths per trial for training expectations.
+    ddm_temperature: float = 0.01  # Soft crossing width in evidence units; approximate gradients.
     step_ms: int = 10
     max_sessions: int | None = None
     max_trials_per_session: int | None = None
@@ -38,6 +40,7 @@ class HybridTrainingConfig:
     max_commit_steps: int = 300  # Must accommodate DDM boundary crossings at low coherence
     drift_scale: float = 10.0  # Scale drift_head initialization to enable stronger evidence effects
     drift_magnitude_target: float = 12.0  # Target drift_gain for drift_magnitude regularization
+    noise_floor: float = 0.0  # Floor on DDM noise scale; 0 = legacy (no floor), >0 = log-floor at log(noise_floor) to stop noise collapse on clean data
     curriculum: CurriculumConfig | None = None  # If set, use curriculum learning
     history_bias_scale: float = 2.0  # History bias can shift starting point by ±scale*bound (was 0.5; too small for sigmoid to reach WS=0.724)
     history_drift_scale: float = 0.3  # History bias can add ±scale to drift rate (was 0.0; needed for high-contrast trials)
@@ -84,6 +87,8 @@ class SessionBatch:
     correct: np.ndarray  # shape (T,)
     win_stay_target: float
     lose_shift_target: float
+    source_session: str = ""
+    starts_session: bool = True
     twin_params: dict[str, float] | None = None
     rt_targets: np.ndarray | None = None
     rt_variances: np.ndarray | None = None

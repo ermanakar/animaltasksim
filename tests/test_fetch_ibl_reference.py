@@ -99,9 +99,13 @@ def test_session_to_records_is_schema_valid_and_filtered(tmp_path) -> None:
     assert summary["dropped_off_protocol_contrast"] > 0
     # The inverted convention is detected, not silently trusted.
     assert summary["choice_sign_matches_legacy_assumption"] is False
-    # trial_index is contiguous and prev is threaded within the session.
-    assert [r["trial_index"] for r in records] == list(range(len(records)))
-    assert records[0]["prev"] is None and records[1]["prev"] is not None
+    # Preserve original indices and never fabricate adjacency across excluded trials.
+    indices = [r["trial_index"] for r in records]
+    assert indices == sorted(indices)
+    assert indices[-1] >= len(records)
+    for previous, current in zip(records, records[1:]):
+        if current["trial_index"] != previous["trial_index"] + 1:
+            assert current["prev"] is None
 
     log_path = tmp_path / "expanded.ndjson"
     log_path.write_text("\n".join(json.dumps(r) for r in records) + "\n", encoding="utf-8")
@@ -142,3 +146,19 @@ def test_qc_reports_trained_and_untrained_full_contrast_accuracy() -> None:
     )
     _, summary_bad = session_to_records(untrained, "untrained", rt_source="firstMovement")
     assert summary_bad["easy_full_contrast_accuracy"] < 0.85
+
+
+def test_nonzero_contrast_nogo_is_not_a_wrong_side_choice() -> None:
+    from scripts.fetch_ibl_reference import ACTION_NO_OP, derive_action
+
+    assert derive_action(1.0, -1, 0, -1) == ACTION_NO_OP
+    assert derive_action(-1.0, -1, 0, -1) == ACTION_NO_OP
+    assert derive_action(1.0, -1, float("nan"), -1) is None
+    trials = _synthetic_session(20, right_choice_value=-1.0)
+    trials["contrastRight"][3] = 1.0
+    trials["contrastLeft"][3] = np.nan
+    trials["choice"][3] = 0
+    trials["feedbackType"][3] = -1
+    records, _ = session_to_records(trials, "omission", "response")
+    omitted = next(r for r in records if r["trial_index"] == 3)
+    assert omitted["action"] == 2 and omitted["rt_ms"] is None

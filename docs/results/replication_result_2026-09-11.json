@@ -1,0 +1,1401 @@
+{
+  "metrics": {
+    "status": "prospective_internal_replication_pass",
+    "n_subjects": 45,
+    "eligible_transitions": 32071,
+    "primary_equal_subject_nll_gain": 0.0015978313072169768,
+    "subject_bootstrap_95_interval": [
+      0.0008210781165722241,
+      0.0024367355029021836
+    ],
+    "subjects_improved": 32,
+    "criterion_met": true,
+    "pooled_nll": {
+      "stimulus_block": 0.4351698841440215,
+      "outcome_history": 0.4032050124470207,
+      "evidence_history": 0.4016606820267888
+    },
+    "per_subject": [
+      {
+        "subject": "CSHL045",
+        "n_trials": 1326,
+        "nll": {
+          "stimulus_block": 0.38237712457949335,
+          "outcome_history": 0.3540646036230038,
+          "evidence_history": 0.3536294661237272
+        }
+      },
+      {
+        "subject": "CSHL046",
+        "n_trials": 858,
+        "nll": {
+          "stimulus_block": 0.421063651827635,
+          "outcome_history": 0.3784329895130814,
+          "evidence_history": 0.3735126135764897
+        }
+      },
+      {
+        "subject": "CSHL049",
+        "n_trials": 775,
+        "nll": {
+          "stimulus_block": 0.3587723481118925,
+          "outcome_history": 0.3422570681664441,
+          "evidence_history": 0.33988071516515783
+        }
+      },
+      {
+        "subject": "CSHL051",
+        "n_trials": 215,
+        "nll": {
+          "stimulus_block": 0.4500140113163075,
+          "outcome_history": 0.42811778976686826,
+          "evidence_history": 0.42342999424130867
+        }
+      },
+      {
+        "subject": "CSHL058",
+        "n_trials": 552,
+        "nll": {
+          "stimulus_block": 0.3819892319282043,
+          "outcome_history": 0.3392750754618076,
+          "evidence_history": 0.34004341736588733
+        }
+      },
+      {
+        "subject": "CSHL059",
+        "n_trials": 1064,
+        "nll": {
+          "stimulus_block": 0.435900639899125,
+          "outcome_history": 0.4271283013832189,
+          "evidence_history": 0.4298648969779258
+        }
+      },
+      {
+        "subject": "CSHL_003",
+        "n_trials": 433,
+        "nll": {
+          "stimulus_block": 0.4938058354090863,
+          "outcome_history": 0.4436536404905049,
+          "evidence_history": 0.44209092386270266
+        }
+      },
+      {
+        "subject": "CSH_ZAD_003",
+        "n_trials": 626,
+        "nll": {
+          "stimulus_block": 0.5069859067071788,
+          "outcome_history": 0.44395139419045876,
+          "evidence_history": 0.43752381084648795
+        }
+      },
+      {
+        "subject": "CSH_ZAD_011",
+        "n_trials": 627,
+        "nll": {
+          "stimulus_block": 0.3760334547497308,
+          "outcome_history": 0.36365667541332813,
+          "evidence_history": 0.36354127116543716
+        }
+      },
+      {
+        "subject": "CSH_ZAD_022",
+        "n_trials": 1144,
+        "nll": {
+          "stimulus_block": 0.3503481131121269,
+          "outcome_history": 0.33288394812033006,
+          "evidence_history": 0.330292883543128
+        }
+      },
+      {
+        "subject": "CSP003",
+        "n_trials": 635,
+        "nll": {
+          "stimulus_block": 0.5095454987988672,
+          "outcome_history": 0.45620205892346394,
+          "evidence_history": 0.4506300398985696
+        }
+      },
+      {
+        "subject": "CSP026",
+        "n_trials": 583,
+        "nll": {
+          "stimulus_block": 0.48875106347207986,
+          "outcome_history": 0.4968340151707722,
+          "evidence_history": 0.49743472712043013
+        }
+      },
+      {
+        "subject": "CSP027",
+        "n_trials": 738,
+        "nll": {
+          "stimulus_block": 0.3105852879258288,
+          "outcome_history": 0.28502422525280807,
+          "evidence_history": 0.2837511293655538
+        }
+      },
+      {
+        "subject": "CSP031",
+        "n_trials": 630,
+        "nll": {
+          "stimulus_block": 0.5395721650283586,
+          "outcome_history": 0.541458278581915,
+          "evidence_history": 0.5432040280461568
+        }
+      },
+      {
+        "subject": "DY_005",
+        "n_trials": 485,
+        "nll": {
+          "stimulus_block": 0.40119781943383637,
+          "outcome_history": 0.3555353416070245,
+          "evidence_history": 0.35538606004880124
+        }
+      },
+      {
+        "subject": "DY_013",
+        "n_trials": 663,
+        "nll": {
+          "stimulus_block": 0.3930075841828565,
+          "outcome_history": 0.36427221094512785,
+          "evidence_history": 0.3643189204236485
+        }
+      },
+      {
+        "subject": "DY_014",
+        "n_trials": 644,
+        "nll": {
+          "stimulus_block": 0.36843390331417314,
+          "outcome_history": 0.37094755159226855,
+          "evidence_history": 0.37090359811066337
+        }
+      },
+      {
+        "subject": "FMR015",
+        "n_trials": 304,
+        "nll": {
+          "stimulus_block": 0.7154857227750137,
+          "outcome_history": 0.6924018717824403,
+          "evidence_history": 0.6928382297835598
+        }
+      },
+      {
+        "subject": "IBL-T3",
+        "n_trials": 470,
+        "nll": {
+          "stimulus_block": 0.4821328593417512,
+          "outcome_history": 0.4277512791573829,
+          "evidence_history": 0.42409029804916454
+        }
+      },
+      {
+        "subject": "IBL_002",
+        "n_trials": 614,
+        "nll": {
+          "stimulus_block": 0.6652558524440474,
+          "outcome_history": 0.5806198713205689,
+          "evidence_history": 0.5689662772952631
+        }
+      },
+      {
+        "subject": "KS014",
+        "n_trials": 672,
+        "nll": {
+          "stimulus_block": 0.3674112284925536,
+          "outcome_history": 0.35683546000986416,
+          "evidence_history": 0.3592629102358704
+        }
+      },
+      {
+        "subject": "KS024",
+        "n_trials": 202,
+        "nll": {
+          "stimulus_block": 0.7250253822508274,
+          "outcome_history": 0.5968306410918046,
+          "evidence_history": 0.5901263727070973
+        }
+      },
+      {
+        "subject": "NYU-08",
+        "n_trials": 571,
+        "nll": {
+          "stimulus_block": 0.5860458377550823,
+          "outcome_history": 0.5501906016847161,
+          "evidence_history": 0.5487282512240074
+        }
+      },
+      {
+        "subject": "NYU-11",
+        "n_trials": 590,
+        "nll": {
+          "stimulus_block": 0.30308565566192497,
+          "outcome_history": 0.30092769377555184,
+          "evidence_history": 0.3008194779946617
+        }
+      },
+      {
+        "subject": "NYU-13",
+        "n_trials": 662,
+        "nll": {
+          "stimulus_block": 0.3822383526964987,
+          "outcome_history": 0.34735045350286264,
+          "evidence_history": 0.3467777915014428
+        }
+      },
+      {
+        "subject": "NYU-49",
+        "n_trials": 1072,
+        "nll": {
+          "stimulus_block": 0.36956239323459733,
+          "outcome_history": 0.3362574538528514,
+          "evidence_history": 0.33286465153484196
+        }
+      },
+      {
+        "subject": "NYU-50",
+        "n_trials": 1040,
+        "nll": {
+          "stimulus_block": 0.44438510271427667,
+          "outcome_history": 0.39843198562212256,
+          "evidence_history": 0.3956026970168754
+        }
+      },
+      {
+        "subject": "NYU-57",
+        "n_trials": 1054,
+        "nll": {
+          "stimulus_block": 0.3815683349234655,
+          "outcome_history": 0.3518863978875047,
+          "evidence_history": 0.3505487810354355
+        }
+      },
+      {
+        "subject": "NYU-58",
+        "n_trials": 675,
+        "nll": {
+          "stimulus_block": 0.3765372807770312,
+          "outcome_history": 0.3375253591039248,
+          "evidence_history": 0.3351039727072033
+        }
+      },
+      {
+        "subject": "SH004",
+        "n_trials": 686,
+        "nll": {
+          "stimulus_block": 0.519399656311248,
+          "outcome_history": 0.49598987209670475,
+          "evidence_history": 0.4941410159612055
+        }
+      },
+      {
+        "subject": "SH006",
+        "n_trials": 503,
+        "nll": {
+          "stimulus_block": 0.39030182108111566,
+          "outcome_history": 0.3735645682206191,
+          "evidence_history": 0.3734208104156356
+        }
+      },
+      {
+        "subject": "SH013",
+        "n_trials": 813,
+        "nll": {
+          "stimulus_block": 0.5399703773873399,
+          "outcome_history": 0.5052148892611433,
+          "evidence_history": 0.5036842128519101
+        }
+      },
+      {
+        "subject": "SH014",
+        "n_trials": 419,
+        "nll": {
+          "stimulus_block": 0.48151526835253516,
+          "outcome_history": 0.4625139038282596,
+          "evidence_history": 0.4635361775217819
+        }
+      },
+      {
+        "subject": "SH022",
+        "n_trials": 703,
+        "nll": {
+          "stimulus_block": 0.36396778546186,
+          "outcome_history": 0.34929652736435907,
+          "evidence_history": 0.34942002164825686
+        }
+      },
+      {
+        "subject": "SH024",
+        "n_trials": 662,
+        "nll": {
+          "stimulus_block": 0.46081614611273236,
+          "outcome_history": 0.40274391179956687,
+          "evidence_history": 0.39950914942948024
+        }
+      },
+      {
+        "subject": "SH025",
+        "n_trials": 940,
+        "nll": {
+          "stimulus_block": 0.46853830229586757,
+          "outcome_history": 0.42030194995096426,
+          "evidence_history": 0.420410392944447
+        }
+      },
+      {
+        "subject": "SH027",
+        "n_trials": 627,
+        "nll": {
+          "stimulus_block": 0.3747044834017095,
+          "outcome_history": 0.3673265977313185,
+          "evidence_history": 0.37046219750037523
+        }
+      },
+      {
+        "subject": "SWC_017",
+        "n_trials": 579,
+        "nll": {
+          "stimulus_block": 0.5813375435507743,
+          "outcome_history": 0.4979289304453485,
+          "evidence_history": 0.4969180611773366
+        }
+      },
+      {
+        "subject": "SWC_030",
+        "n_trials": 738,
+        "nll": {
+          "stimulus_block": 0.611391269158069,
+          "outcome_history": 0.5635590417636821,
+          "evidence_history": 0.5600181331586889
+        }
+      },
+      {
+        "subject": "ZM_1745",
+        "n_trials": 403,
+        "nll": {
+          "stimulus_block": 0.3770864327789918,
+          "outcome_history": 0.35699844083414256,
+          "evidence_history": 0.357898729126838
+        }
+      },
+      {
+        "subject": "ZM_2240",
+        "n_trials": 820,
+        "nll": {
+          "stimulus_block": 0.4084823773611741,
+          "outcome_history": 0.3470394623719827,
+          "evidence_history": 0.34246812028216667
+        }
+      },
+      {
+        "subject": "ZM_2245",
+        "n_trials": 1215,
+        "nll": {
+          "stimulus_block": 0.4194490805886873,
+          "outcome_history": 0.3855305664801071,
+          "evidence_history": 0.38280245173851757
+        }
+      },
+      {
+        "subject": "ZM_3004",
+        "n_trials": 1014,
+        "nll": {
+          "stimulus_block": 0.450149211985295,
+          "outcome_history": 0.4042764241981029,
+          "evidence_history": 0.40213710538060765
+        }
+      },
+      {
+        "subject": "ibl_witten_04",
+        "n_trials": 898,
+        "nll": {
+          "stimulus_block": 0.34377098158336505,
+          "outcome_history": 0.34028553187911337,
+          "evidence_history": 0.3393194621144881
+        }
+      },
+      {
+        "subject": "ibl_witten_15",
+        "n_trials": 1127,
+        "nll": {
+          "stimulus_block": 0.4387445481395587,
+          "outcome_history": 0.41263384411583964,
+          "evidence_history": 0.41269204229127643
+        }
+      }
+    ],
+    "limits": [
+      "Internal freeze, not an externally preregistered study.",
+      "Subject novelty is relative to inventoried local references; earlier unrecorded exposure cannot be excluded.",
+      "Bootstrap conditions on these fixed trained models and samples test subjects, not training datasets or labs.",
+      "This tests a narrow predictive interaction, not mechanism, anatomy, RT fit, or scientific novelty."
+    ],
+    "frozen_plan_sha256": "d7af52e560b7a32693e2ad1ef2716ca6bb719bc049f8cefafdbdba0f79d8bb56",
+    "trials_sha256": "666a2f3afb689a9f03b3113caf7910111f963e7ddff179cacda95b350e2763f2",
+    "acquisition_sha256": "4f7afb703c83113f28402c0406b566f2756ecca0a6589709c7daa63bf68eeb55"
+  },
+  "eligibility": [
+    {
+      "subject": "CSP027",
+      "lab": "angelakilab",
+      "session_id": "3ce03802-3d01-4018-adf9-b079ccbbd0f1",
+      "raw_trials": 773,
+      "retained_trials": 773,
+      "dropped_contrast": 0,
+      "easy_trials": 140,
+      "easy_accuracy": 0.9571428571428572,
+      "omissions": 25,
+      "eligible": true
+    },
+    {
+      "subject": "NYU-11",
+      "lab": "angelakilab",
+      "session_id": "32c99b3a-e85a-4504-b0b6-d8fdc513a70e",
+      "raw_trials": 593,
+      "retained_trials": 593,
+      "dropped_contrast": 0,
+      "easy_trials": 99,
+      "easy_accuracy": 0.98989898989899,
+      "omissions": 1,
+      "eligible": true
+    },
+    {
+      "subject": "NYU-02",
+      "lab": "angelakilab",
+      "session_id": "d9977d2e-4432-4d34-bd5e-2c139cb9e33e",
+      "raw_trials": 177,
+      "retained_trials": 177,
+      "dropped_contrast": 0,
+      "easy_trials": 37,
+      "easy_accuracy": 0.6486486486486487,
+      "omissions": 36,
+      "eligible": false
+    },
+    {
+      "subject": "SH014",
+      "lab": "angelakilab",
+      "session_id": "e314d967-147d-4d24-89d0-a419c51c1f56",
+      "raw_trials": 420,
+      "retained_trials": 420,
+      "dropped_contrast": 0,
+      "easy_trials": 77,
+      "easy_accuracy": 0.935064935064935,
+      "omissions": 0,
+      "eligible": true
+    },
+    {
+      "subject": "SH006",
+      "lab": "angelakilab",
+      "session_id": "609912f0-3273-4516-96a2-37bfb6791347",
+      "raw_trials": 516,
+      "retained_trials": 516,
+      "dropped_contrast": 0,
+      "easy_trials": 95,
+      "easy_accuracy": 0.968421052631579,
+      "omissions": 6,
+      "eligible": true
+    },
+    {
+      "subject": "DY_013",
+      "lab": "danlab",
+      "session_id": "6db4c530-1246-4ffe-a9cc-1a538f4c104f",
+      "raw_trials": 664,
+      "retained_trials": 664,
+      "dropped_contrast": 0,
+      "easy_trials": 134,
+      "easy_accuracy": 0.9626865671641791,
+      "omissions": 0,
+      "eligible": true
+    },
+    {
+      "subject": "NYU-13",
+      "lab": "angelakilab",
+      "session_id": "129953d8-5d84-473b-b82a-170619870318",
+      "raw_trials": 663,
+      "retained_trials": 663,
+      "dropped_contrast": 0,
+      "easy_trials": 119,
+      "easy_accuracy": 0.9831932773109243,
+      "omissions": 0,
+      "eligible": true
+    },
+    {
+      "subject": "FMR030",
+      "lab": "angelakilab",
+      "session_id": "72aec869-c328-4fc3-8cb7-a0cdf7b9abe2",
+      "raw_trials": 860,
+      "retained_trials": 860,
+      "dropped_contrast": 0,
+      "easy_trials": 170,
+      "easy_accuracy": 0.6176470588235294,
+      "omissions": 9,
+      "eligible": false
+    },
+    {
+      "subject": "KS024",
+      "lab": "cortexlab",
+      "session_id": "7b709ec6-6e43-4c0d-b927-e0c87ee8693f",
+      "raw_trials": 213,
+      "retained_trials": 213,
+      "dropped_contrast": 0,
+      "easy_trials": 42,
+      "easy_accuracy": 0.8571428571428571,
+      "omissions": 5,
+      "eligible": true
+    },
+    {
+      "subject": "NYU-50",
+      "lab": "angelakilab",
+      "session_id": "5eeb2609-97e7-443e-a7ff-ce3abbd584c3",
+      "raw_trials": 1047,
+      "retained_trials": 1047,
+      "dropped_contrast": 0,
+      "easy_trials": 207,
+      "easy_accuracy": 0.9371980676328503,
+      "omissions": 3,
+      "eligible": true
+    },
+    {
+      "subject": "CSHL051",
+      "lab": "churchlandlab",
+      "session_id": "d1e4f2db-8d01-4d78-9d6d-14a3372c5b6b",
+      "raw_trials": 268,
+      "retained_trials": 268,
+      "dropped_contrast": 0,
+      "easy_trials": 57,
+      "easy_accuracy": 0.8947368421052632,
+      "omissions": 30,
+      "eligible": true
+    },
+    {
+      "subject": "KS017",
+      "lab": "cortexlab",
+      "session_id": "ca856c40-5bb5-457a-b800-5be423d71ebf",
+      "raw_trials": 320,
+      "retained_trials": 320,
+      "dropped_contrast": 0,
+      "easy_trials": 73,
+      "easy_accuracy": 0.8082191780821918,
+      "omissions": 6,
+      "eligible": false
+    },
+    {
+      "subject": "NYU-08",
+      "lab": "angelakilab",
+      "session_id": "ba1ef9d5-4bf7-4308-907a-869ebd564f21",
+      "raw_trials": 582,
+      "retained_trials": 582,
+      "dropped_contrast": 0,
+      "easy_trials": 138,
+      "easy_accuracy": 0.8695652173913043,
+      "omissions": 6,
+      "eligible": true
+    },
+    {
+      "subject": "SH024",
+      "lab": "angelakilab",
+      "session_id": "1a2fbb95-2dcd-4da8-80e9-06dafe1174dc",
+      "raw_trials": 697,
+      "retained_trials": 697,
+      "dropped_contrast": 0,
+      "easy_trials": 145,
+      "easy_accuracy": 0.9172413793103448,
+      "omissions": 19,
+      "eligible": true
+    },
+    {
+      "subject": "SH022",
+      "lab": "angelakilab",
+      "session_id": "7ac31e24-d94b-4dfc-9e8d-5a6b209c1ed3",
+      "raw_trials": 713,
+      "retained_trials": 713,
+      "dropped_contrast": 0,
+      "easy_trials": 148,
+      "easy_accuracy": 0.9932432432432432,
+      "omissions": 5,
+      "eligible": true
+    },
+    {
+      "subject": "IBL-T3",
+      "lab": "angelakilab",
+      "session_id": "c6d7bab1-4c27-4c01-b63c-49259c4d0997",
+      "raw_trials": 486,
+      "retained_trials": 486,
+      "dropped_contrast": 0,
+      "easy_trials": 101,
+      "easy_accuracy": 0.900990099009901,
+      "omissions": 13,
+      "eligible": true
+    },
+    {
+      "subject": "IBL_002",
+      "lab": "mrsicflogellab",
+      "session_id": "e2e9bdf7-abc7-4f1f-8100-5ac2fd5722ae",
+      "raw_trials": 618,
+      "retained_trials": 618,
+      "dropped_contrast": 0,
+      "easy_trials": 130,
+      "easy_accuracy": 0.8846153846153846,
+      "omissions": 2,
+      "eligible": true
+    },
+    {
+      "subject": "CSHL058",
+      "lab": "churchlandlab",
+      "session_id": "fea777ab-ec8c-4cba-8286-dbf39dee35ce",
+      "raw_trials": 553,
+      "retained_trials": 553,
+      "dropped_contrast": 0,
+      "easy_trials": 106,
+      "easy_accuracy": 0.9716981132075472,
+      "omissions": 0,
+      "eligible": true
+    },
+    {
+      "subject": "SH016",
+      "lab": "angelakilab",
+      "session_id": "e97aa981-67e2-459b-9ea2-8e4e980321c3",
+      "raw_trials": 215,
+      "retained_trials": 215,
+      "dropped_contrast": 0,
+      "easy_trials": 41,
+      "easy_accuracy": 0.6585365853658537,
+      "omissions": 37,
+      "eligible": false
+    },
+    {
+      "subject": "CSHL046",
+      "lab": "churchlandlab",
+      "session_id": "45e903d9-b15d-4185-8343-65abaaec653c",
+      "raw_trials": 859,
+      "retained_trials": 859,
+      "dropped_contrast": 0,
+      "easy_trials": 178,
+      "easy_accuracy": 0.9606741573033708,
+      "omissions": 0,
+      "eligible": true
+    },
+    {
+      "subject": "ZM_3004",
+      "lab": "mainenlab",
+      "session_id": "7036d946-447a-4dde-85c9-50034cceae0e",
+      "raw_trials": 1015,
+      "retained_trials": 1015,
+      "dropped_contrast": 0,
+      "easy_trials": 210,
+      "easy_accuracy": 0.9619047619047619,
+      "omissions": 0,
+      "eligible": true
+    },
+    {
+      "subject": "ibl_witten_18",
+      "lab": "wittenlab",
+      "session_id": "11f14e9e-5273-4e44-b99c-dccd7ec25c76",
+      "raw_trials": 1050,
+      "retained_trials": 1050,
+      "dropped_contrast": 0,
+      "easy_trials": 196,
+      "easy_accuracy": 0.8367346938775511,
+      "omissions": 11,
+      "eligible": false
+    },
+    {
+      "subject": "CSHL045",
+      "lab": "churchlandlab",
+      "session_id": "c2530751-2af6-4883-af56-91eefd544422",
+      "raw_trials": 1327,
+      "retained_trials": 1327,
+      "dropped_contrast": 0,
+      "easy_trials": 267,
+      "easy_accuracy": 0.9325842696629213,
+      "omissions": 0,
+      "eligible": true
+    },
+    {
+      "subject": "FMR031",
+      "lab": "angelakilab",
+      "session_id": "d7c82a00-025e-46e3-813f-f12beec5753d",
+      "raw_trials": 790,
+      "retained_trials": 790,
+      "dropped_contrast": 0,
+      "easy_trials": 147,
+      "easy_accuracy": 0.7755102040816326,
+      "omissions": 9,
+      "eligible": false
+    },
+    {
+      "subject": "CSP003",
+      "lab": "angelakilab",
+      "session_id": "8302e783-b1f4-475f-96a8-4f15639e92f7",
+      "raw_trials": 653,
+      "retained_trials": 653,
+      "dropped_contrast": 0,
+      "easy_trials": 119,
+      "easy_accuracy": 0.865546218487395,
+      "omissions": 10,
+      "eligible": true
+    },
+    {
+      "subject": "SWC_017",
+      "lab": "mrsicflogellab",
+      "session_id": "1b8ec0cd-7d11-4b55-9494-4ece99b4b124",
+      "raw_trials": 596,
+      "retained_trials": 596,
+      "dropped_contrast": 0,
+      "easy_trials": 117,
+      "easy_accuracy": 0.8632478632478633,
+      "omissions": 8,
+      "eligible": true
+    },
+    {
+      "subject": "CSHL_003",
+      "lab": "churchlandlab",
+      "session_id": "07fd1697-1987-4b49-8fd6-ac1891da2d38",
+      "raw_trials": 440,
+      "retained_trials": 440,
+      "dropped_contrast": 0,
+      "easy_trials": 87,
+      "easy_accuracy": 0.9540229885057471,
+      "omissions": 3,
+      "eligible": true
+    },
+    {
+      "subject": "CSP005",
+      "lab": "angelakilab",
+      "session_id": "dd7f7ce9-7821-4843-8e87-e549d20f33b0",
+      "raw_trials": 247,
+      "retained_trials": 247,
+      "dropped_contrast": 0,
+      "easy_trials": 49,
+      "easy_accuracy": 0.8367346938775511,
+      "omissions": 0,
+      "eligible": false
+    },
+    {
+      "subject": "CSH_ZAD_003",
+      "lab": "zadorlab",
+      "session_id": "0b33e2c9-faaf-4886-8269-7c2c0de52096",
+      "raw_trials": 643,
+      "retained_trials": 643,
+      "dropped_contrast": 0,
+      "easy_trials": 123,
+      "easy_accuracy": 0.8699186991869918,
+      "omissions": 9,
+      "eligible": true
+    },
+    {
+      "subject": "ZM_2245",
+      "lab": "mainenlab",
+      "session_id": "7aef2e2e-5cf0-440f-8e4f-21aacf4a6b64",
+      "raw_trials": 1220,
+      "retained_trials": 1220,
+      "dropped_contrast": 0,
+      "easy_trials": 227,
+      "easy_accuracy": 0.9823788546255506,
+      "omissions": 2,
+      "eligible": true
+    },
+    {
+      "subject": "ibl_witten_15",
+      "lab": "wittenlab",
+      "session_id": "9585dc6d-3d9b-49d5-9510-4e168759510e",
+      "raw_trials": 1128,
+      "retained_trials": 1128,
+      "dropped_contrast": 0,
+      "easy_trials": 210,
+      "easy_accuracy": 0.9380952380952381,
+      "omissions": 0,
+      "eligible": true
+    },
+    {
+      "subject": "ibl_witten_04",
+      "lab": "wittenlab",
+      "session_id": "ad8e6a6e-5e9c-4ad3-9af2-228a53e813fa",
+      "raw_trials": 899,
+      "retained_trials": 899,
+      "dropped_contrast": 0,
+      "easy_trials": 175,
+      "easy_accuracy": 0.9885714285714285,
+      "omissions": 0,
+      "eligible": true
+    },
+    {
+      "subject": "ZM_1745",
+      "lab": "mainenlab",
+      "session_id": "2719c66f-02f5-433a-b338-b5c7bb8fba78",
+      "raw_trials": 404,
+      "retained_trials": 404,
+      "dropped_contrast": 0,
+      "easy_trials": 86,
+      "easy_accuracy": 0.9767441860465116,
+      "omissions": 0,
+      "eligible": true
+    },
+    {
+      "subject": "FMR015",
+      "lab": "angelakilab",
+      "session_id": "3800d0f1-adce-44cf-a341-ecd03467ceea",
+      "raw_trials": 305,
+      "retained_trials": 305,
+      "dropped_contrast": 0,
+      "easy_trials": 74,
+      "easy_accuracy": 0.8513513513513513,
+      "omissions": 0,
+      "eligible": true
+    },
+    {
+      "subject": "CSHL_007",
+      "lab": "churchlandlab",
+      "session_id": "8749091c-3f45-4495-a8bc-838ebeaff6fa",
+      "raw_trials": 253,
+      "retained_trials": 253,
+      "dropped_contrast": 0,
+      "easy_trials": 50,
+      "easy_accuracy": 0.78,
+      "omissions": 17,
+      "eligible": false
+    },
+    {
+      "subject": "SH027",
+      "lab": "angelakilab",
+      "session_id": "1e3ed1bd-8260-47c3-9682-40d2f8f82657",
+      "raw_trials": 653,
+      "retained_trials": 653,
+      "dropped_contrast": 0,
+      "easy_trials": 115,
+      "easy_accuracy": 0.9826086956521739,
+      "omissions": 13,
+      "eligible": true
+    },
+    {
+      "subject": "SH013",
+      "lab": "angelakilab",
+      "session_id": "07c4cce6-171c-4f05-b107-3d81e170857a",
+      "raw_trials": 814,
+      "retained_trials": 814,
+      "dropped_contrast": 0,
+      "easy_trials": 171,
+      "easy_accuracy": 0.8947368421052632,
+      "omissions": 0,
+      "eligible": true
+    },
+    {
+      "subject": "CSHL049",
+      "lab": "churchlandlab",
+      "session_id": "587b2a9a-e9c7-470e-9ce2-d4f9178fa121",
+      "raw_trials": 776,
+      "retained_trials": 776,
+      "dropped_contrast": 0,
+      "easy_trials": 168,
+      "easy_accuracy": 0.9880952380952381,
+      "omissions": 0,
+      "eligible": true
+    },
+    {
+      "subject": "CSHL059",
+      "lab": "churchlandlab",
+      "session_id": "43c8d641-7cb1-4875-8b3e-9864f9c2f9ac",
+      "raw_trials": 1065,
+      "retained_trials": 1065,
+      "dropped_contrast": 0,
+      "easy_trials": 238,
+      "easy_accuracy": 0.9621848739495799,
+      "omissions": 0,
+      "eligible": true
+    },
+    {
+      "subject": "ZM_2240",
+      "lab": "mainenlab",
+      "session_id": "84dff038-18a6-479b-926c-55ad95d53f7f",
+      "raw_trials": 821,
+      "retained_trials": 821,
+      "dropped_contrast": 0,
+      "easy_trials": 188,
+      "easy_accuracy": 0.9787234042553191,
+      "omissions": 0,
+      "eligible": true
+    },
+    {
+      "subject": "CSHL_013",
+      "lab": "churchlandlab",
+      "session_id": "5e45deab-73d7-4b00-a196-1b394b9855d1",
+      "raw_trials": 562,
+      "retained_trials": 562,
+      "dropped_contrast": 0,
+      "easy_trials": 113,
+      "easy_accuracy": 0.7256637168141593,
+      "omissions": 0,
+      "eligible": false
+    },
+    {
+      "subject": "DY_005",
+      "lab": "danlab",
+      "session_id": "dd06d85d-12df-417c-b167-9ec2517a0523",
+      "raw_trials": 486,
+      "retained_trials": 486,
+      "dropped_contrast": 0,
+      "easy_trials": 109,
+      "easy_accuracy": 0.981651376146789,
+      "omissions": 0,
+      "eligible": true
+    },
+    {
+      "subject": "CSHL_011",
+      "lab": "churchlandlab",
+      "session_id": "5628ef35-98df-4a04-857e-e058d6db7ab9",
+      "raw_trials": 390,
+      "retained_trials": 390,
+      "dropped_contrast": 0,
+      "easy_trials": 84,
+      "easy_accuracy": 0.6071428571428571,
+      "omissions": 2,
+      "eligible": false
+    },
+    {
+      "subject": "SH004",
+      "lab": "angelakilab",
+      "session_id": "9d06a1f7-e44c-492a-b8bd-ef3e6f9de2f2",
+      "raw_trials": 687,
+      "retained_trials": 687,
+      "dropped_contrast": 0,
+      "easy_trials": 143,
+      "easy_accuracy": 0.972027972027972,
+      "omissions": 0,
+      "eligible": true
+    },
+    {
+      "subject": "FMR032",
+      "lab": "angelakilab",
+      "session_id": "d9bc7e39-4bdd-4e0c-9117-151ab351a14f",
+      "raw_trials": 803,
+      "retained_trials": 803,
+      "dropped_contrast": 0,
+      "easy_trials": 171,
+      "easy_accuracy": 0.8421052631578947,
+      "omissions": 3,
+      "eligible": false
+    },
+    {
+      "subject": "CSP026",
+      "lab": "angelakilab",
+      "session_id": "a03a02ed-645f-40e4-a762-d9916a35f28c",
+      "raw_trials": 584,
+      "retained_trials": 584,
+      "dropped_contrast": 0,
+      "easy_trials": 127,
+      "easy_accuracy": 0.9133858267716536,
+      "omissions": 0,
+      "eligible": true
+    },
+    {
+      "subject": "CSH_ZAD_011",
+      "lab": "zadorlab",
+      "session_id": "67f31ddc-853c-4aec-90d5-311774be0415",
+      "raw_trials": 628,
+      "retained_trials": 628,
+      "dropped_contrast": 0,
+      "easy_trials": 130,
+      "easy_accuracy": 0.9769230769230769,
+      "omissions": 0,
+      "eligible": true
+    },
+    {
+      "subject": "NYU-49",
+      "lab": "angelakilab",
+      "session_id": "fb8d9c99-ccee-4ae3-8404-d9f150f0bbbe",
+      "raw_trials": 1075,
+      "retained_trials": 1075,
+      "dropped_contrast": 0,
+      "easy_trials": 204,
+      "easy_accuracy": 0.9558823529411765,
+      "omissions": 1,
+      "eligible": true
+    },
+    {
+      "subject": "FMR024",
+      "lab": "angelakilab",
+      "session_id": "ef74c681-86ce-498e-9e65-05e8d92b1d70",
+      "raw_trials": 454,
+      "retained_trials": 454,
+      "dropped_contrast": 0,
+      "easy_trials": 88,
+      "easy_accuracy": 0.8181818181818182,
+      "omissions": 15,
+      "eligible": false
+    },
+    {
+      "subject": "SWC_030",
+      "lab": "mrsicflogellab",
+      "session_id": "1e47ab6e-8424-4827-8d0a-170745798d72",
+      "raw_trials": 739,
+      "retained_trials": 739,
+      "dropped_contrast": 0,
+      "easy_trials": 151,
+      "easy_accuracy": 0.8741721854304636,
+      "omissions": 0,
+      "eligible": true
+    },
+    {
+      "subject": "SWC_029",
+      "lab": "mrsicflogellab",
+      "session_id": "70131f8f-2f16-4128-9273-a41d99fdb73d",
+      "raw_trials": 843,
+      "retained_trials": 843,
+      "dropped_contrast": 0,
+      "easy_trials": 167,
+      "easy_accuracy": 0.7245508982035929,
+      "omissions": 0,
+      "eligible": false
+    },
+    {
+      "subject": "SWC_AY_018",
+      "lab": "hoferlab",
+      "session_id": "ee755a8c-4246-448f-a066-15097d0e5afe",
+      "raw_trials": 1307,
+      "retained_trials": 1307,
+      "dropped_contrast": 0,
+      "easy_trials": 270,
+      "easy_accuracy": 0.8148148148148148,
+      "omissions": 0,
+      "eligible": false
+    },
+    {
+      "subject": "SWC_AY_005",
+      "lab": "hoferlab",
+      "session_id": "5e0f903d-7d46-4529-a9a5-b83bcf916fe8",
+      "raw_trials": 681,
+      "retained_trials": 681,
+      "dropped_contrast": 0,
+      "easy_trials": 139,
+      "easy_accuracy": 0.7482014388489209,
+      "omissions": 0,
+      "eligible": false
+    },
+    {
+      "subject": "NYU-58",
+      "lab": "angelakilab",
+      "session_id": "c91f605d-eb58-4a90-8d76-39b8df150574",
+      "raw_trials": 693,
+      "retained_trials": 693,
+      "dropped_contrast": 0,
+      "easy_trials": 123,
+      "easy_accuracy": 0.9512195121951219,
+      "omissions": 9,
+      "eligible": true
+    },
+    {
+      "subject": "KS014",
+      "lab": "cortexlab",
+      "session_id": "ea436c57-944a-4cbd-af90-31e3c35e9116",
+      "raw_trials": 673,
+      "retained_trials": 673,
+      "dropped_contrast": 0,
+      "easy_trials": 127,
+      "easy_accuracy": 1.0,
+      "omissions": 0,
+      "eligible": true
+    },
+    {
+      "subject": "DY_014",
+      "lab": "danlab",
+      "session_id": "2c12856d-114f-4494-9b06-eda40dd413ee",
+      "raw_trials": 651,
+      "retained_trials": 651,
+      "dropped_contrast": 0,
+      "easy_trials": 117,
+      "easy_accuracy": 1.0,
+      "omissions": 4,
+      "eligible": true
+    },
+    {
+      "subject": "CSP031",
+      "lab": "angelakilab",
+      "session_id": "ace69ac2-7500-4ee6-89ac-d37c6552258b",
+      "raw_trials": 653,
+      "retained_trials": 653,
+      "dropped_contrast": 0,
+      "easy_trials": 129,
+      "easy_accuracy": 0.8837209302325582,
+      "omissions": 13,
+      "eligible": true
+    },
+    {
+      "subject": "NYU-57",
+      "lab": "angelakilab",
+      "session_id": "4622c40b-0aa0-4db1-93da-4f739ed5e99f",
+      "raw_trials": 1059,
+      "retained_trials": 1059,
+      "dropped_contrast": 0,
+      "easy_trials": 226,
+      "easy_accuracy": 0.9424778761061947,
+      "omissions": 2,
+      "eligible": true
+    },
+    {
+      "subject": "CSH_ZAD_022",
+      "lab": "zadorlab",
+      "session_id": "5960c8a4-8491-4e54-a06c-5a3a7712510e",
+      "raw_trials": 1145,
+      "retained_trials": 1145,
+      "dropped_contrast": 0,
+      "easy_trials": 237,
+      "easy_accuracy": 1.0,
+      "omissions": 0,
+      "eligible": true
+    },
+    {
+      "subject": "SH025",
+      "lab": "angelakilab",
+      "session_id": "350c8cde-c909-4efe-88ad-e2284ab82ba7",
+      "raw_trials": 963,
+      "retained_trials": 963,
+      "dropped_contrast": 0,
+      "easy_trials": 175,
+      "easy_accuracy": 0.9657142857142857,
+      "omissions": 12,
+      "eligible": true
+    }
+  ],
+  "acquisition": [
+    {
+      "id": "3ce03802-3d01-4018-adf9-b079ccbbd0f1",
+      "sha256": "03fb44c58948eaa23c55cbf2616beb51d17e3dcb75c6ddfd98e8cbc049670184"
+    },
+    {
+      "id": "32c99b3a-e85a-4504-b0b6-d8fdc513a70e",
+      "sha256": "8253357026bce139662f70f06153c0de089dbb5bd22b0756c23abc57e385b6c7"
+    },
+    {
+      "id": "d9977d2e-4432-4d34-bd5e-2c139cb9e33e",
+      "sha256": "f8afbf8a04928d2ac00f7e7040331c8a979b6e6685b92c628cb66ae2c02684a4"
+    },
+    {
+      "id": "e314d967-147d-4d24-89d0-a419c51c1f56",
+      "sha256": "70cb7088749a0dc7c36efaac44b00b475da3b048d3373709fa14333c08f5c44b"
+    },
+    {
+      "id": "609912f0-3273-4516-96a2-37bfb6791347",
+      "sha256": "3117ce285f9fc8c98be322f0322724753b0b54375a66f1a1a0e5014013f5dab5"
+    },
+    {
+      "id": "6db4c530-1246-4ffe-a9cc-1a538f4c104f",
+      "sha256": "5a69a4db3c7f1b2dbe149987e8903177bd78ce0fdf86380b63623839e495c9de"
+    },
+    {
+      "id": "129953d8-5d84-473b-b82a-170619870318",
+      "sha256": "712c37c06a909819a9df381f2c33eec6a0919ea09f57ce0fb2846b8c2713473d"
+    },
+    {
+      "id": "72aec869-c328-4fc3-8cb7-a0cdf7b9abe2",
+      "sha256": "513a68ff0239d4a65ac7d650515c223cceb50681c8ba9baa6fb74ffb15edabc1"
+    },
+    {
+      "id": "7b709ec6-6e43-4c0d-b927-e0c87ee8693f",
+      "sha256": "2a16238752e6078d305af40ece74fa409ba562688fbbc8d10a723725540a6f17"
+    },
+    {
+      "id": "5eeb2609-97e7-443e-a7ff-ce3abbd584c3",
+      "sha256": "14e9522363c271ee5bdd69013fa33c7ddc740719ac0df42db2e630c82105eea4"
+    },
+    {
+      "id": "d1e4f2db-8d01-4d78-9d6d-14a3372c5b6b",
+      "sha256": "43e335f3b097eac89eee82d00e5b999b2ba067384295af4f7620727a20c0844f"
+    },
+    {
+      "id": "ca856c40-5bb5-457a-b800-5be423d71ebf",
+      "sha256": "5cb57b2cb7fc47bdbdf461dc8010fa1c027b9623509166171428e36d9d60b800"
+    },
+    {
+      "id": "ba1ef9d5-4bf7-4308-907a-869ebd564f21",
+      "sha256": "00ffaeacfcf623d036b563d62e4ff2862487eea033364a8865710b4050b63a6c"
+    },
+    {
+      "id": "1a2fbb95-2dcd-4da8-80e9-06dafe1174dc",
+      "sha256": "9f073a56c59f9e9fc1ef0d4f068c03d30086e5fa6baff54c8c870adae687f660"
+    },
+    {
+      "id": "7ac31e24-d94b-4dfc-9e8d-5a6b209c1ed3",
+      "sha256": "21d82ac209c35d868ff97945e1f62a9b3a216a1b8c5c23fba6420767dcc28c14"
+    },
+    {
+      "id": "c6d7bab1-4c27-4c01-b63c-49259c4d0997",
+      "sha256": "310ca64764bd45e4e870e23fca8b83f4cd83c211c1729d7de56ddbc64c6b65fd"
+    },
+    {
+      "id": "e2e9bdf7-abc7-4f1f-8100-5ac2fd5722ae",
+      "sha256": "7ad6ad386f0bbdf487af3546d4982686516a786390a9e68e7504f56a9c393a74"
+    },
+    {
+      "id": "fea777ab-ec8c-4cba-8286-dbf39dee35ce",
+      "sha256": "0fb07b1bc5fc62820ef068092c5bb585468de9c10a41b36c8076b4ae858dc085"
+    },
+    {
+      "id": "e97aa981-67e2-459b-9ea2-8e4e980321c3",
+      "sha256": "4d3a8d1c24f45b1cb0585b76fc6232fcf3d1b5207a4643d219f7039e4c609c80"
+    },
+    {
+      "id": "45e903d9-b15d-4185-8343-65abaaec653c",
+      "sha256": "6aa9f8e38da07a7b8ef8eac3b1470a4aab4368d3b93b9ac38ee76c5bfb431292"
+    },
+    {
+      "id": "7036d946-447a-4dde-85c9-50034cceae0e",
+      "sha256": "b75f63a54a6696879943a53cda09f6f823c023c1d917c36d01077e4e3e41940f"
+    },
+    {
+      "id": "11f14e9e-5273-4e44-b99c-dccd7ec25c76",
+      "sha256": "aafc697fff65d09d7dd837c63b880149ae9df3ad97a308a52ca060b7a2d5f8eb"
+    },
+    {
+      "id": "c2530751-2af6-4883-af56-91eefd544422",
+      "sha256": "bb1e56788e19731616e08ec89687f68ddcc8c6c4c4c70ac97a782b5b3f085587"
+    },
+    {
+      "id": "d7c82a00-025e-46e3-813f-f12beec5753d",
+      "sha256": "64f1373ec827081a87e781fb061a096b2ef38d3b5093c8846920f64f17badbfe"
+    },
+    {
+      "id": "8302e783-b1f4-475f-96a8-4f15639e92f7",
+      "sha256": "9cac61892d28cae9de0cf943fbb0ccf55068983205d220710d0b665ea59d0eda"
+    },
+    {
+      "id": "1b8ec0cd-7d11-4b55-9494-4ece99b4b124",
+      "sha256": "44fd4c15b6833976e03bcc58b873d052967e8feb742075038ae83f793f4bfa00"
+    },
+    {
+      "id": "07fd1697-1987-4b49-8fd6-ac1891da2d38",
+      "sha256": "14c115d79d0bbdf9424ca2c9827e043cffc5828886fe4d7b629a5628de0812fc"
+    },
+    {
+      "id": "dd7f7ce9-7821-4843-8e87-e549d20f33b0",
+      "sha256": "3797f82adc5cae17237e47897d94043a24b1a034e16101f282f9625026f23716"
+    },
+    {
+      "id": "0b33e2c9-faaf-4886-8269-7c2c0de52096",
+      "sha256": "ae3f7b086af7db6a57874d991ae48e09431754f3bf498b92344c485b20aa8f16"
+    },
+    {
+      "id": "7aef2e2e-5cf0-440f-8e4f-21aacf4a6b64",
+      "sha256": "1cc34c9163e7506eb922b7a3d598d8d0a70f793abf8ec5da1b0b3e9b61281ec6"
+    },
+    {
+      "id": "9585dc6d-3d9b-49d5-9510-4e168759510e",
+      "sha256": "3956305d33033a69ee5f592c77f47fb30f3f245667d7a4acd904bebde12bf352"
+    },
+    {
+      "id": "ad8e6a6e-5e9c-4ad3-9af2-228a53e813fa",
+      "sha256": "1c72dbb999f35c1de147fb15e7f28cdb87683b3d0a8703d85e978dfffa2eeb51"
+    },
+    {
+      "id": "2719c66f-02f5-433a-b338-b5c7bb8fba78",
+      "sha256": "bb53e943c9f08f3391beefc199aa67d4f3a5c7755c443e3f19b5066c6dbd894d"
+    },
+    {
+      "id": "3800d0f1-adce-44cf-a341-ecd03467ceea",
+      "sha256": "d137524d92ecf62e2dabeb189ce024182ad1283b03547910c595ce76d274b73b"
+    },
+    {
+      "id": "8749091c-3f45-4495-a8bc-838ebeaff6fa",
+      "sha256": "b76d979dad5bb3cabfce69675a78a7572dba6b9e784c96c60cae0c262fc83daa"
+    },
+    {
+      "id": "1e3ed1bd-8260-47c3-9682-40d2f8f82657",
+      "sha256": "c841ea8e5f206284fa8202bd07f630093fffc529f9c9562a10efbd60e55e55c9"
+    },
+    {
+      "id": "07c4cce6-171c-4f05-b107-3d81e170857a",
+      "sha256": "a0e6673177d6ca1ee1cbd5876dc7113c9b641855301f5b9804b28d4b447add44"
+    },
+    {
+      "id": "587b2a9a-e9c7-470e-9ce2-d4f9178fa121",
+      "sha256": "ea2e2838248f481985c55a31ba2bffffcd30d9a055ff9ff9d49a1a6bb442f1dc"
+    },
+    {
+      "id": "43c8d641-7cb1-4875-8b3e-9864f9c2f9ac",
+      "sha256": "b7384e1a937f7f247d3fdb8f9f25f9f430faf3acf003f8aec6dc669479945c7a"
+    },
+    {
+      "id": "84dff038-18a6-479b-926c-55ad95d53f7f",
+      "sha256": "c2d563f3a5b54fef5cb4ecb2d52fc3b12011a531c8cb79989c1cc2396df40545"
+    },
+    {
+      "id": "5e45deab-73d7-4b00-a196-1b394b9855d1",
+      "sha256": "97e21d949cdfecf2155e67151bb240e2c5b3b9e49db41f784d789cd3f9f037c6"
+    },
+    {
+      "id": "dd06d85d-12df-417c-b167-9ec2517a0523",
+      "sha256": "6863fa3528f8c3fde5979f931a52df25697312cb74c26a10b4f708a5e1b292d9"
+    },
+    {
+      "id": "5628ef35-98df-4a04-857e-e058d6db7ab9",
+      "sha256": "b5bca37f36c2065f8eb46556cac7ea990f9711e97f25b23fcedf18b00b6736e4"
+    },
+    {
+      "id": "9d06a1f7-e44c-492a-b8bd-ef3e6f9de2f2",
+      "sha256": "b559a4a74d6d9f32bff3bd533738892c9dfe5424708ccfa4d0659e9d6a8c05df"
+    },
+    {
+      "id": "d9bc7e39-4bdd-4e0c-9117-151ab351a14f",
+      "sha256": "5c8db82e29a3a960ce8e70d06d9edf8e57cd820767792c2a29bb8f2b867e54ae"
+    },
+    {
+      "id": "a03a02ed-645f-40e4-a762-d9916a35f28c",
+      "sha256": "be718b656d81cdc06c55dca18c38766c9d9dce010cd40cd8766dcbde4b1e9feb"
+    },
+    {
+      "id": "67f31ddc-853c-4aec-90d5-311774be0415",
+      "sha256": "eaba8b1aece120555dad1814954747de0e132ddb45a15726d09b115d53d8f838"
+    },
+    {
+      "id": "fb8d9c99-ccee-4ae3-8404-d9f150f0bbbe",
+      "sha256": "043a9b9d76924d2cf8bba3fd842096ad86e8a22a9ec01732fd82deed03dcdc1b"
+    },
+    {
+      "id": "ef74c681-86ce-498e-9e65-05e8d92b1d70",
+      "sha256": "ee97e5721740206f019491f45990fe92f8109e3c40827552aff36d33c7c2fe53"
+    },
+    {
+      "id": "1e47ab6e-8424-4827-8d0a-170745798d72",
+      "sha256": "5f54dfa57f6882c74f15e071e1acbee23aa35c2d138221e9925789fcf2b03948"
+    },
+    {
+      "id": "70131f8f-2f16-4128-9273-a41d99fdb73d",
+      "sha256": "d3ac5fba353779cb7a05ec4ba4338f33873c4e34b8df78cd978e182622068516"
+    },
+    {
+      "id": "ee755a8c-4246-448f-a066-15097d0e5afe",
+      "sha256": "ae86f8e0ba956758ee7f7ba5ab68bb045104c00b21af2651e9663128a06dc5bc"
+    },
+    {
+      "id": "5e0f903d-7d46-4529-a9a5-b83bcf916fe8",
+      "sha256": "d236d4b6fbaa619d36ce952c69447ce76011cffb24ef2911bcf79e9126174fa7"
+    },
+    {
+      "id": "c91f605d-eb58-4a90-8d76-39b8df150574",
+      "sha256": "112184bf46cd6ce6989ee957e9d8c5fb1d59270791b2a225389239ca8db6f608"
+    },
+    {
+      "id": "ea436c57-944a-4cbd-af90-31e3c35e9116",
+      "sha256": "6f0a85c1dd97d4f596c123bbccb4723bfc0de052d03f161b952be20d724781b3"
+    },
+    {
+      "id": "2c12856d-114f-4494-9b06-eda40dd413ee",
+      "sha256": "6f8822562c196d6de267a828bdfdeda32ecfcf4fec75560a10ffefb84cbb9b16"
+    },
+    {
+      "id": "ace69ac2-7500-4ee6-89ac-d37c6552258b",
+      "sha256": "0316bc088eb552bd60265bf386b793c9329fd7fda4484694c5af2c6845447183"
+    },
+    {
+      "id": "4622c40b-0aa0-4db1-93da-4f739ed5e99f",
+      "sha256": "b4c52914c764f2a48d1bf7f9f18e73d8b66f3cdf276066835f9d4f1f2e1a4f87"
+    },
+    {
+      "id": "5960c8a4-8491-4e54-a06c-5a3a7712510e",
+      "sha256": "df9ae7dfdb6cca13ee41b13ddac09e07c7427e85173f0ec5c71e223eb0ecf6cd"
+    },
+    {
+      "id": "350c8cde-c909-4efe-88ad-e2284ab82ba7",
+      "sha256": "b8f2fd60aa6322f8d5cc4e506c3d308c75544789a3a9041714eae6ae11cb761d"
+    }
+  ],
+  "scored_at_utc": "2026-09-11",
+  "frozen_plan_sha256": "d7af52e560b7a32693e2ad1ef2716ca6bb719bc049f8cefafdbdba0f79d8bb56"
+}

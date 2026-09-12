@@ -1,0 +1,203 @@
+{
+  "settings": {
+    "output": "docs/results/ddm_surrogate_calibration.json",
+    "samples": 3000,
+    "seed": 81
+  },
+  "step_ms": 10,
+  "maximum_steps": 150,
+  "minimum_steps": 5,
+  "non_decision_ms": 150,
+  "lapse_rate": 0,
+  "initial_position": 0,
+  "torch_version": "2.9.0",
+  "interpretation": "Paired numerical calibration on three simulated regimes; not animal validation or an exhaustive error bound.",
+  "limitations": [
+    "Soft hazards differ from hard crossing at any nonzero temperature.",
+    "Narrow temperatures can increase gradient variance or saturation.",
+    "Exact-boundary ties have sigmoid hazard one half.",
+    "Quantized RT uses a straight-through gradient."
+  ],
+  "rows": [
+    {
+      "drift": -1.0,
+      "half_bound": 0.5,
+      "noise": 1.0,
+      "temperature": 0.1,
+      "hard_p_right": 0.2486666738986969,
+      "soft_p_right": 0.3361833691596985,
+      "p_right_difference": 0.08751669526100159,
+      "hard_mean_rt_ms": 434.3833312988281,
+      "soft_mean_rt_ms": 284.150634765625,
+      "mean_rt_difference_ms": -150.23269653320312
+    },
+    {
+      "drift": -1.0,
+      "half_bound": 0.5,
+      "noise": 1.0,
+      "temperature": 0.02,
+      "hard_p_right": 0.2486666738986969,
+      "soft_p_right": 0.25216177105903625,
+      "p_right_difference": 0.0034950971603393555,
+      "hard_mean_rt_ms": 434.3833312988281,
+      "soft_mean_rt_ms": 423.7047119140625,
+      "mean_rt_difference_ms": -10.678619384765625
+    },
+    {
+      "drift": -1.0,
+      "half_bound": 0.5,
+      "noise": 1.0,
+      "temperature": 0.01,
+      "hard_p_right": 0.2486666738986969,
+      "soft_p_right": 0.24862368404865265,
+      "p_right_difference": -4.298985004425049e-05,
+      "hard_mean_rt_ms": 434.3833312988281,
+      "soft_mean_rt_ms": 431.73992919921875,
+      "mean_rt_difference_ms": -2.643402099609375
+    },
+    {
+      "drift": -1.0,
+      "half_bound": 0.5,
+      "noise": 1.0,
+      "temperature": 0.005,
+      "hard_p_right": 0.2486666738986969,
+      "soft_p_right": 0.2482624650001526,
+      "p_right_difference": -0.0004042088985443115,
+      "hard_mean_rt_ms": 434.3833312988281,
+      "soft_mean_rt_ms": 433.72357177734375,
+      "mean_rt_difference_ms": -0.659759521484375
+    },
+    {
+      "drift": -1.0,
+      "half_bound": 0.5,
+      "noise": 1.0,
+      "temperature": 0.001,
+      "hard_p_right": 0.2486666738986969,
+      "soft_p_right": 0.24887977540493011,
+      "p_right_difference": 0.00021310150623321533,
+      "hard_mean_rt_ms": 434.3833312988281,
+      "soft_mean_rt_ms": 434.3084716796875,
+      "mean_rt_difference_ms": -0.074859619140625
+    },
+    {
+      "drift": 0.0,
+      "half_bound": 1.0,
+      "noise": 1.0,
+      "temperature": 0.1,
+      "hard_p_right": 0.5040000081062317,
+      "soft_p_right": 0.49978896975517273,
+      "p_right_difference": -0.00421103835105896,
+      "hard_mean_rt_ms": 1020.5999755859375,
+      "soft_mean_rt_ms": 797.682861328125,
+      "mean_rt_difference_ms": -222.9171142578125
+    },
+    {
+      "drift": 0.0,
+      "half_bound": 1.0,
+      "noise": 1.0,
+      "temperature": 0.02,
+      "hard_p_right": 0.5040000081062317,
+      "soft_p_right": 0.5043060779571533,
+      "p_right_difference": 0.00030606985092163086,
+      "hard_mean_rt_ms": 1020.5999755859375,
+      "soft_mean_rt_ms": 1008.3793334960938,
+      "mean_rt_difference_ms": -12.22064208984375
+    },
+    {
+      "drift": 0.0,
+      "half_bound": 1.0,
+      "noise": 1.0,
+      "temperature": 0.01,
+      "hard_p_right": 0.5040000081062317,
+      "soft_p_right": 0.5043521523475647,
+      "p_right_difference": 0.0003521442413330078,
+      "hard_mean_rt_ms": 1020.5999755859375,
+      "soft_mean_rt_ms": 1016.960693359375,
+      "mean_rt_difference_ms": -3.6392822265625
+    },
+    {
+      "drift": 0.0,
+      "half_bound": 1.0,
+      "noise": 1.0,
+      "temperature": 0.005,
+      "hard_p_right": 0.5040000081062317,
+      "soft_p_right": 0.5039153099060059,
+      "p_right_difference": -8.469820022583008e-05,
+      "hard_mean_rt_ms": 1020.5999755859375,
+      "soft_mean_rt_ms": 1019.2833251953125,
+      "mean_rt_difference_ms": -1.316650390625
+    },
+    {
+      "drift": 0.0,
+      "half_bound": 1.0,
+      "noise": 1.0,
+      "temperature": 0.001,
+      "hard_p_right": 0.5040000081062317,
+      "soft_p_right": 0.5035297870635986,
+      "p_right_difference": -0.00047022104263305664,
+      "hard_mean_rt_ms": 1020.5999755859375,
+      "soft_mean_rt_ms": 1020.65234375,
+      "mean_rt_difference_ms": 0.0523681640625
+    },
+    {
+      "drift": 2.0,
+      "half_bound": 1.5,
+      "noise": 0.5,
+      "temperature": 0.1,
+      "hard_p_right": 1.0,
+      "soft_p_right": 0.9999960660934448,
+      "p_right_difference": -3.933906555175781e-06,
+      "hard_mean_rt_ms": 911.0133056640625,
+      "soft_mean_rt_ms": 804.9295654296875,
+      "mean_rt_difference_ms": -106.083740234375
+    },
+    {
+      "drift": 2.0,
+      "half_bound": 1.5,
+      "noise": 0.5,
+      "temperature": 0.02,
+      "hard_p_right": 1.0,
+      "soft_p_right": 1.0,
+      "p_right_difference": 0.0,
+      "hard_mean_rt_ms": 911.0133056640625,
+      "soft_mean_rt_ms": 903.068359375,
+      "mean_rt_difference_ms": -7.9449462890625
+    },
+    {
+      "drift": 2.0,
+      "half_bound": 1.5,
+      "noise": 0.5,
+      "temperature": 0.01,
+      "hard_p_right": 1.0,
+      "soft_p_right": 1.0,
+      "p_right_difference": 0.0,
+      "hard_mean_rt_ms": 911.0133056640625,
+      "soft_mean_rt_ms": 908.7418212890625,
+      "mean_rt_difference_ms": -2.271484375
+    },
+    {
+      "drift": 2.0,
+      "half_bound": 1.5,
+      "noise": 0.5,
+      "temperature": 0.005,
+      "hard_p_right": 1.0,
+      "soft_p_right": 1.0,
+      "p_right_difference": 0.0,
+      "hard_mean_rt_ms": 911.0133056640625,
+      "soft_mean_rt_ms": 910.30810546875,
+      "mean_rt_difference_ms": -0.7052001953125
+    },
+    {
+      "drift": 2.0,
+      "half_bound": 1.5,
+      "noise": 0.5,
+      "temperature": 0.001,
+      "hard_p_right": 1.0,
+      "soft_p_right": 1.0,
+      "p_right_difference": 0.0,
+      "hard_mean_rt_ms": 911.0133056640625,
+      "soft_mean_rt_ms": 910.947998046875,
+      "mean_rt_difference_ms": -0.0653076171875
+    }
+  ]
+}

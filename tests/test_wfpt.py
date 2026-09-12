@@ -8,11 +8,7 @@ against known analytical properties of the drift-diffusion model:
   4. Gradient flow: all DDM parameters receive gradients.
   5. Edge cases: near-zero drift, extreme bias, minimal decision time.
 
-Convention note: the implementation maps positive drift → higher P(choice=0).
-This is an internal convention (opposite to standard DDM where positive drift
-favours the upper boundary / choice=1). The training pipeline compensates by
-learning the sign jointly, so results are unaffected. Tests below verify
-internal consistency under this convention.
+Positive drift favours the right/upper boundary (choice=1), matching rollout.
 
 References:
   - Ratcliff & McKoon (2008). The Diffusion Decision Model.
@@ -142,7 +138,7 @@ class TestWFPTChoiceProbability:
         p0 = _numerical_choice_probability(drift, bound, bias, noise, ndt, choice=0.0, n_points=1000, t_max=8.0)
         p1 = _numerical_choice_probability(drift, bound, bias, noise, ndt, choice=1.0, n_points=1000, t_max=8.0)
         total = p0 + p1
-        assert abs(total - 1.0) < 0.25, (
+        assert abs(total - 1.0) < 0.002, (
             f"drift={drift}, bound={bound}, bias={bias}: P(0)={p0:.3f} + P(1)={p1:.3f} = {total:.3f}"
         )
 
@@ -158,20 +154,20 @@ class TestWFPTChoiceProbability:
         p0 = _numerical_choice_probability(3.0, 2.0, 0.5, 1.0, ndt, choice=0.0, n_points=1000, t_max=8.0)
         p1 = _numerical_choice_probability(3.0, 2.0, 0.5, 1.0, ndt, choice=1.0, n_points=1000, t_max=8.0)
         total = p0 + p1
-        assert abs(total - 1.0) < 0.15, (
+        assert abs(total - 1.0) < 0.002, (
             f"drift=3, bound=2: P(0)={p0:.3f} + P(1)={p1:.3f} = {total:.3f}"
         )
 
     def test_stronger_drift_shifts_probability(self) -> None:
         """Stronger drift should increase P for the favoured choice.
 
-        Convention: positive drift → higher P(choice=0) in this implementation.
+        Convention: positive drift → higher P(choice=1) in this implementation.
         """
         ndt = 0.1
-        p0_weak = _numerical_choice_probability(1.0, 1.5, 0.5, 1.0, ndt, choice=0.0, n_points=500)
-        p0_strong = _numerical_choice_probability(3.0, 1.5, 0.5, 1.0, ndt, choice=0.0, n_points=500)
+        p0_weak = _numerical_choice_probability(1.0, 1.5, 0.5, 1.0, ndt, choice=1.0, n_points=500)
+        p0_strong = _numerical_choice_probability(3.0, 1.5, 0.5, 1.0, ndt, choice=1.0, n_points=500)
         assert p0_strong > p0_weak, (
-            f"Stronger drift should increase P(choice=0): weak={p0_weak:.3f}, strong={p0_strong:.3f}"
+            f"Stronger drift should increase P(choice=1): weak={p0_weak:.3f}, strong={p0_strong:.3f}"
         )
 
 
@@ -184,10 +180,10 @@ class TestWFPTSymmetry:
 
     def test_drift_sign_flip_mirrors_density(self) -> None:
         """Flipping drift sign should swap which choice has higher likelihood."""
-        # Positive drift favours choice=0 in this implementation
+        # Positive drift favours choice=1 in this implementation
         ll_c0_pos = _scalar_ll(choice=0, rt=0.4, drift=2.0, bound=1.0, bias=0.5, noise=1.0, ndt=0.1)
         ll_c1_pos = _scalar_ll(choice=1, rt=0.4, drift=2.0, bound=1.0, bias=0.5, noise=1.0, ndt=0.1)
-        # Negative drift favours choice=1
+        # Negative drift favours choice=0
         ll_c0_neg = _scalar_ll(choice=0, rt=0.4, drift=-2.0, bound=1.0, bias=0.5, noise=1.0, ndt=0.1)
         ll_c1_neg = _scalar_ll(choice=1, rt=0.4, drift=-2.0, bound=1.0, bias=0.5, noise=1.0, ndt=0.1)
         # Symmetry: ll(c=0, +v) == ll(c=1, -v) for unbiased start
@@ -235,12 +231,12 @@ class TestWFPTGradients:
             assert torch.all(torch.isfinite(param.grad)), f"{name} has non-finite gradient"
 
     def test_gradient_direction_for_drift(self) -> None:
-        """Positive drift should increase likelihood of choice=0 (impl convention)."""
-        # In this implementation, positive drift favours choice=0
-        ll_favoured = _scalar_ll(choice=0, rt=0.4, drift=3.0, bound=1.5, bias=0.5, noise=1.0, ndt=0.1)
-        ll_unfavoured = _scalar_ll(choice=0, rt=0.4, drift=-3.0, bound=1.5, bias=0.5, noise=1.0, ndt=0.1)
+        """Positive drift should increase likelihood of the right boundary."""
+        # In this implementation, positive drift favours choice=1
+        ll_favoured = _scalar_ll(choice=1, rt=0.4, drift=3.0, bound=1.5, bias=0.5, noise=1.0, ndt=0.1)
+        ll_unfavoured = _scalar_ll(choice=1, rt=0.4, drift=-3.0, bound=1.5, bias=0.5, noise=1.0, ndt=0.1)
         assert ll_favoured > ll_unfavoured, (
-            f"Positive drift should increase P(choice=0): ll(+3)={ll_favoured:.3f} vs ll(-3)={ll_unfavoured:.3f}"
+            f"Positive drift should increase P(choice=1): ll(+3)={ll_favoured:.3f} vs ll(-3)={ll_unfavoured:.3f}"
         )
 
 
@@ -327,3 +323,58 @@ class TestWFPTLossWrapper:
         loss_1x = wfpt_loss(**kwargs, weight=1.0)
         loss_2x = wfpt_loss(**kwargs, weight=2.0)
         assert abs(loss_2x.item() - 2.0 * loss_1x.item()) < 1e-4, "Weight should scale loss linearly"
+
+
+@pytest.mark.parametrize("drift,bound,bias,noise", [
+    (1.2, 1.5, 0.3, 1.0), (-1.2, 1.5, 0.7, 1.0),
+    (0.0, 2.0, 0.35, 1.0), (3.0, 4.0, 0.5, 2.0),
+])
+def test_density_matches_analytic_hitting_probability(
+    drift: float, bound: float, bias: float, noise: float,
+) -> None:
+    """Integrate the density against the independent two-boundary solution."""
+    t = torch.linspace(1e-5, 20.0, 12000, dtype=torch.float64)
+    params = [torch.full_like(t, value) for value in (drift, bound, bias, noise)]
+    masses = []
+    for choice in (0.0, 1.0):
+        ll = wfpt_log_likelihood(torch.full_like(t, choice), t, *params, torch.zeros_like(t))
+        masses.append(float(torch.trapezoid(ll.exp(), t)))
+    expected_right = bias if drift == 0.0 else (
+        np.expm1(-2 * drift * bound * bias / noise**2)
+        / np.expm1(-2 * drift * bound / noise**2)
+    )
+    assert masses[1] == pytest.approx(expected_right, abs=2e-4)
+    assert sum(masses) == pytest.approx(1.0, abs=2e-4)
+
+
+def test_wrapper_uses_physical_start_and_half_bound() -> None:
+    """The +/-B simulator parameters map to separation 2B and fraction z."""
+    def tensor(value: float) -> torch.Tensor:
+        return torch.tensor([value], dtype=torch.float64)
+    args = dict(choice=tensor(1), rt_ms=tensor(700), drift=tensor(1.2),
+                bound=tensor(1.5), bias=tensor(0.6), noise=tensor(0.8),
+                non_decision_ms=tensor(150))
+    expected = -wfpt_log_likelihood(tensor(1), tensor(.7), tensor(1.2),
+                                   tensor(3), tensor(.7), tensor(.8), tensor(.15)).mean()
+    assert torch.allclose(wfpt_loss(**args), expected)
+
+
+def test_wfpt_spatial_scale_invariance() -> None:
+    """Changing evidence units must not change the joint choice/RT density."""
+    base = _scalar_ll(1, .7, 1.2, 1.5, .3, .8, .1)
+    scaled = _scalar_ll(1, .7, 12, 15, .3, 8, .1)
+    assert base == pytest.approx(scaled, abs=1e-5)
+
+
+def test_rt_loss_uses_seconds_squared_and_mask() -> None:
+    """A 100 ms error costs .01 seconds squared; omitted entries do not count."""
+    from agents.losses import rt_loss
+
+    predicted = torch.tensor([600., 5000.], requires_grad=True)
+    target = torch.tensor([500., 0.])
+    loss = rt_loss(predicted, target, torch.tensor([1., 0.]))
+    assert loss.item() == pytest.approx(.01)
+    loss.backward()
+    assert predicted.grad is not None
+    assert predicted.grad[0].item() == pytest.approx(.0002)
+    assert predicted.grad[1].item() == 0.0

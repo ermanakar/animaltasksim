@@ -175,7 +175,8 @@ class ProbabilisticReversalLearningEnv(Env):
             obs["prev_action"] = prev_action_onehot
             prev_reward = self._prev_reward if self._prev_reward is not None else 0.0
             obs["prev_reward"] = np.array(prev_reward, dtype=np.float32)
-            prev_correct = self._prev_correct if self._prev_correct is not None else 0.0
+            # Observable success only: optimality is a hidden evaluation label.
+            prev_correct = float(prev_reward > 0.0)
             obs["prev_correct"] = np.array(prev_correct, dtype=np.float32)
         return obs
 
@@ -284,8 +285,6 @@ class ProbabilisticReversalLearningEnv(Env):
         self._rt_steps = None
 
     def _log_trial(self) -> None:
-        if self._logger is None:
-            return
         phase_times = {
             f"{name}_ms": self.config.step_ms * steps
             for name, steps in self._phase_step_counts.items()
@@ -311,7 +310,8 @@ class ProbabilisticReversalLearningEnv(Env):
             "block_index": self._block_index,
             "contingency": {"left": block.p_left_reward, "right": block.p_right_reward},
         }
-        self._logger.log(record)
+        if self._logger is not None:
+            self._logger.log(record)
         self._prev_action = self._response_action
         self._prev_reward = float(self._trial_reward)
         self._prev_correct = self._correct

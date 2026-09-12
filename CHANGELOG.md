@@ -1,5 +1,37 @@
 # Changelog
 
+## September 11 — architecture repair
+
+- Corrected IBL blank-trial reward sampling and removed PRL hidden-optimality inputs.
+- Repaired DDM likelihood conventions, time-loss units, history-loss gradients,
+  session continuity, training RT targets, and finite-window/lapse simulation.
+- Added calibrated soft first-passage helper and Monte Carlo training expectations.
+- Added provenance-checked experiment reuse and fixed-checkpoint paired ablations.
+- Preserved historical runs and frozen replication artifacts; new runs have changed semantics.
+
+## September 11 — source audit and frozen replication
+
+- Independently reconciled all 120 reference sessions; recovered animal/lab
+  identities and corrected 255 misclassified omissions in a separate candidate.
+- Corrected importer no-go handling and original-index/adjacency preservation.
+- Added subject-disjoint analysis and a hash-bound prospective replication
+  workflow. The fixed reserved-cohort test passed on 45 eligible animals;
+  full exclusions, scores, and limits are in `docs/REPLICATION_RESULT.md`.
+- Preserved adopted data, historical results, and the completed test against overwrite.
+
+## September 2026 research refresh
+
+- Recentered the active workflow on a controlled IBL history comparison and
+  subject-disjoint replication; retained historical agents, sweeps, and artifacts.
+- Added a provenance-bound exploratory analysis with session folds and synthetic
+  recovery checks. Raw mouse retry gap is negative; evidence interactions add a
+  small predictive gain, without validating the existing adaptive mechanism.
+- Excluded omitted choices from psychometric fits and stay/switch denominators.
+- Corrected shared Hybrid/adaptive `max_sessions` to count sessions before
+  chunking. Old commands can now train on more data and take longer; historical
+  saved results remain unchanged. No existing CLI names, schema keys, or paths changed.
+
+
 All notable changes to AnimalTaskSim are documented here. This file tracks
 **releases and contract-affecting changes** — CLI arguments, schema keys, file
 paths, environment behavior — plus headline features. For the scientific record
@@ -21,8 +53,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Schema v0.2 optional fields** (`eval/schema_validator.py`, additive; `extra="forbid"` preserved): PRL (`reversal`, `block_index`, `contingency`) and DMS (`sample_stimulus`, `delay_ms`, `match`) trial fields. Registry gains PRL metadata and `prl`/`dms` task values.
 - **Adaptive-control lesion / recurrence flags**: `uncertain_retry_enabled` (default on) and the flag-gated change-evidence recurrence (`change_evidence_enabled` / `change_evidence_decay`, default off; verified flag-off bit-for-bit no-op). λ=0.9 is the validated opt-in cross-task profile.
 - **PRL arbitration diagnostic**: a checkpoint-reroll CLI writing a separate `control_diagnostics.ndjson` sidecar, leaving the frozen trial schema unchanged.
-- **Reproducible IBL reference fetcher** (`scripts/fetch_ibl_reference.py`): pulls multi-session `biasedChoiceWorld` data from the IBL public server (OpenAlyx) into the project schema, with convention-agnostic action derivation, choice-sign auto-calibration, a trained-performance QC gate, and an EID manifest. Requires `ONE-api` (kept out of `pyproject.toml`). Add-and-compare only; `reference.ndjson` is unchanged.
-- Regression coverage across PRL / DMS / registry / diagnostics / change-evidence / fetcher. Total: 185 tests.
+- **Reproducible IBL reference fetcher** (`scripts/fetch_ibl_reference.py`): pulls multi-session `biasedChoiceWorld` data from the IBL public server (OpenAlyx) into the project schema, with convention-agnostic action derivation, choice-sign auto-calibration, a trained-performance QC gate, and an EID manifest. Requires `ONE-api` (kept out of `pyproject.toml`). The expanded reference has now been adopted: `data/ibl/reference.ndjson` contains 120 QC'd public sessions / 86,648 trials, with the legacy 10-session file preserved as `reference_10session.ndjson`.
+- Regression coverage across PRL / DMS / registry / diagnostics / change-evidence / fetcher. Current suite: 187 tests passing as of 2026-07-08.
 
 ### Changed
 
