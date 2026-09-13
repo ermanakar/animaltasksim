@@ -86,3 +86,26 @@ recurrent controllers, and writes per-trial and per-animal scores. Use a fresh
 `--output` directory. The first recorded run failed its superiority gate; see
 [the validation report](../docs/ARCHITECTURE_VALIDATION.md). Repeating or changing
 this development experiment does not create a new untouched test cohort.
+
+### Stronger history controls (development analysis)
+
+`OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 -m scripts.compare_history_explanations`
+runs eight fixed nested history models on the source-reconciled development
+cohort, with common contiguous histories, animal folds and leave-one-lab-out
+sensitivity. The runner freezes its plan before fitting, excludes the reserved
+cohort, and requires a fresh output directory. See
+[the protocol and result](../docs/COMPETING_HISTORY.md).
+
+`OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 -m scripts.choice_control_comparison`
+completes the matched choice-only reduced-model fit against saved full-model
+predictions. Seeds, checkpoints and prediction paths are fixed; prior artifacts
+are hash-checked and output must be fresh. See
+[the matched result](../docs/MATCHED_CHOICE_CONTROL.md).
+
+### Causal preference controls and synthetic recovery
+
+`OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 -m scripts.diagnose_bias_history`
+uses a new frozen plan, excludes prefix trials from all scores, and runs fixed
+bias/drift/history synthetic diagnostics after the development comparison.
+`MPLBACKEND=Agg python3 -m scripts.render_bias_history_figure` renders the saved
+snapshot. See [results and identification limits](../docs/BIAS_HISTORY.md).

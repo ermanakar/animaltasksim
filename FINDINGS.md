@@ -3,6 +3,34 @@
 **Benchmarking reinforcement-learning agents against rodent and primate decision-making fingerprints**
 *October 2025 – July 2026 · from v0.1.0 to the v0.2 adaptive-control/PRL/DMS scaffold*
 
+## Causal preference controls and synthetic limits — September 12
+
+Prefix-only session preference and causal slow residual traces improve prediction
+on 73,332 post-prefix trials from 83 development animals. Added evidence beyond
+these controls and long history yields 0.000421 nats/trial (descriptive interval
+0.000155–0.000695); 54/83 animals improve. However, 2/5 drift-only simulations
+show positive lower intervals for added lags without true history updating;
+small genuine evidence effects often lack a positive lower interval in the
+12-animal synthetic samples. These illustrative runs do not estimate real-study
+power or specificity. Defer a fresh cohort and mechanistic claims. See
+[bias results](docs/BIAS_HISTORY.md) and [novelty review](docs/NOVELTY_REVIEW.md).
+
+## Matched controls and competing history — September 12
+
+Choice-only reduced/full fitting is now matched at six epochs and two seeds.
+Reduced mean NLL is 0.445847 versus full 0.446538; the paired reduced advantage
+0.000690 has an exploratory interval spanning −0.004550 to 0.007200. Two of eight
+animals favor reduced, so there is no established overall superiority or
+statistical equivalence. [Matched architecture result](docs/MATCHED_CHOICE_CONTROL.md).
+
+On a separate common sample of 84,674 trials from 83 development animals, five-
+trial history plus fixed leaky learning controls improves prediction much more
+than one-step history. Evidence adds a residual 0.000445 nats/trial (descriptive
+interval 0.000196–0.000703); 55/83 animals improve. Leave-one-lab-out sensitivity
+retains a smaller gain, with positive lab means in eight of nine labs. Stable
+animal biases or slow states may also account for history gains. This is neither
+a new confirmation nor validation of a memory mechanism. [Competing history](docs/COMPETING_HISTORY.md).
+
 ## Controlled fitting diagnosis — September 11
 
 Six fixed fits (three conditions, two seeds) show that longer training improves
