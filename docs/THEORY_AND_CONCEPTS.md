@@ -38,7 +38,7 @@ AnimalTaskSim recreates two classic experiments from neuroscience and adds a thi
 
 ### Task 1: The Mouse Contrast Game (IBL 2AFC)
 
-**The real experiment.** Developed by the [International Brain Laboratory](https://doi.org/10.1016/j.neuron.2021.04.001) and run in dozens of labs around the world. A mouse sits in front of a screen with a small steering wheel. A striped pattern appears on either the left or right side. The mouse spins the wheel to move the pattern to the center. Correct answer = a drop of water. Wrong answer = a brief wait in the dark.
+**The real experiment.** Developed by the [International Brain Laboratory](https://doi.org/10.7554/eLife.63711) and run in dozens of labs around the world. A mouse sits in front of a screen with a small steering wheel. A striped pattern appears on either the left or right side. The mouse spins the wheel to move the pattern to the center. Correct answer = a drop of water. Wrong answer = a brief wait in the dark.
 
 **What makes it hard.** The pattern can be bold and obvious (high contrast, like black stripes on white) or so faint it is barely visible (low contrast, like light gray on slightly lighter gray). Low contrast trials are genuinely ambiguous — even the mouse's visual system cannot tell for sure which side the pattern is on.
 
@@ -50,7 +50,7 @@ This is the task the project has studied most thoroughly, and the one where the 
 
 ### Task 2: The Monkey Dots Game (RDM)
 
-**The real experiment.** Based on landmark studies from the [Shadlen lab](https://doi.org/10.1523/JNEUROSCI.12-12-04740.1992) that helped discover how neurons accumulate evidence during decisions. A rhesus macaque watches a cloud of moving dots. Some dots move together in the same direction (left or right), while the rest wander randomly. The monkey decides which way the majority of dots are moving.
+**The real experiment.** Based on landmark studies from the [Shadlen lab](https://doi.org/10.1523/JNEUROSCI.12-12-04745.1992) that helped discover how neurons accumulate evidence during decisions. A rhesus macaque watches a cloud of moving dots. Some dots move together in the same direction (left or right), while the rest wander randomly. The monkey decides which way the majority of dots are moving.
 
 **What makes it hard.** When most dots agree (high coherence), the answer is obvious. When only a few dots agree (low coherence), it looks like television static and the monkey has to watch carefully, accumulating evidence over time before committing to an answer.
 
@@ -486,9 +486,9 @@ Training runs on CPU in under 20 minutes.
 
 **The Science Behind the Project:**
 - Ratcliff & McKoon (2008). *Neural Computation* — The mathematical foundations of drift-diffusion models
-- International Brain Laboratory (2021). *Neuron* — The standardized mouse decision-making task
+- International Brain Laboratory (2021). *eLife* — The standardized mouse decision-making task
 - Britten et al. (1992). *Journal of Neuroscience* — The classic monkey dot-motion experiment
-- Urai et al. (2019). *Nature Communications* — How past outcomes bias future decisions in animals
+- Urai et al. (2019). *eLife* — How past choices bias subsequent evidence accumulation
 
 **Project Documentation:**
 - [FINDINGS.md](../FINDINGS.md) — The full experimental narrative and exact, current numbers (70+ experiments, all failures documented)

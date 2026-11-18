@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use AnimalTaskSim in your research, please cite it using the following metadata."
-title: "AnimalTaskSim: Hybrid Drift–Diffusion × LSTM Agents Matching Animal Decision Behavior"
+title: "AnimalTaskSim: Testing Explanations of Animal Decisions Against Trial-Level Behavioral Data"
 authors:
   - family-names: Akar
     given-names: Erman
@@ -8,56 +8,206 @@ version: "0.2.0"
 date-released: "2026-02-19"
 repository-code: "https://github.com/ermanakar/animaltasksim"
 abstract: >
-  AnimalTaskSim provides hybrid DDM + LSTM agents trained to reproduce
-  psychometric, chronometric, and sequential-history fingerprints observed
-  in macaque and mouse decision-making tasks.  The project bridges classical
-  drift-diffusion modeling with recurrent policy learning, enabling stochastic
-  reaction-time dynamics and cross-species behavioral calibration.
+  AnimalTaskSim provides task environments, comparison agents, schema-validated
+  trial logs, and a shared evaluation pipeline for testing explanations of
+  animal choices against trial-level behavioral data. Explanations are compared
+  by held-out prediction on source-verified mouse and macaque reference data,
+  with frozen protocols and model-recovery checks. Hybrid drift-diffusion and
+  recurrent agents are retained as comparison models, not validated mechanisms.
 keywords:
   - decision making
+  - choice history
+  - model comparison
   - drift diffusion model
   - recurrent neural networks
-  - macaque
   - IBL mice
+  - macaque
   - psychophysics
-  - reinforcement learning
-  - behavioral modeling
 
+# Data sources and the methods this project compares against.
+# Entries were generated from Crossref metadata for each DOI.
 references:
   - type: article
-    title: "The International Brain Laboratory: Standardized and reproducible measurement of decision making in mice"
+    title: "Standardized and reproducible measurement of decision-making in mice"
     authors:
-      - family-names: International Brain Laboratory
-    journal: "Neuron"
+      - name: "The International Brain Laboratory"
+      - family-names: "Aguillon-Rodriguez"
+        given-names: "Valeria"
+      - family-names: "Angelaki"
+        given-names: "Dora"
+      - family-names: "Bayer"
+        given-names: "Hannah"
+      - family-names: "Bonacchi"
+        given-names: "Niccolo"
+      - family-names: "Carandini"
+        given-names: "Matteo"
+      - family-names: "Cazettes"
+        given-names: "Fanny"
+      - family-names: "Chapuis"
+        given-names: "Gaelle"
+      - family-names: "Churchland"
+        given-names: "Anne K"
+      - family-names: "Dan"
+        given-names: "Yang"
+      - family-names: "Dewitt"
+        given-names: "Eric"
+      - family-names: "Faulkner"
+        given-names: "Mayo"
+      - family-names: "Forrest"
+        given-names: "Hamish"
+      - family-names: "Haetzel"
+        given-names: "Laura"
+      - family-names: "Häusser"
+        given-names: "Michael"
+      - family-names: "Hofer"
+        given-names: "Sonja B"
+      - family-names: "Hu"
+        given-names: "Fei"
+      - family-names: "Khanal"
+        given-names: "Anup"
+      - family-names: "Krasniak"
+        given-names: "Christopher"
+      - family-names: "Laranjeira"
+        given-names: "Ines"
+      - family-names: "Mainen"
+        given-names: "Zachary F"
+      - family-names: "Meijer"
+        given-names: "Guido"
+      - family-names: "Miska"
+        given-names: "Nathaniel J"
+      - family-names: "Mrsic-Flogel"
+        given-names: "Thomas D"
+      - family-names: "Murakami"
+        given-names: "Masayoshi"
+      - family-names: "Noel"
+        given-names: "Jean-Paul"
+      - family-names: "Pan-Vazquez"
+        given-names: "Alejandro"
+      - family-names: "Rossant"
+        given-names: "Cyrille"
+      - family-names: "Sanders"
+        given-names: "Joshua"
+      - family-names: "Socha"
+        given-names: "Karolina"
+      - family-names: "Terry"
+        given-names: "Rebecca"
+      - family-names: "Urai"
+        given-names: "Anne E"
+      - family-names: "Vergara"
+        given-names: "Hernando"
+      - family-names: "Wells"
+        given-names: "Miles"
+      - family-names: "Wilson"
+        given-names: "Christian J"
+      - family-names: "Witten"
+        given-names: "Ilana B"
+      - family-names: "Wool"
+        given-names: "Lauren E"
+      - family-names: "Zador"
+        given-names: "Anthony M"
+    journal: "eLife"
     year: 2021
-    doi: "10.1016/j.neuron.2021.04.001"
+    doi: "10.7554/elife.63711"
 
   - type: article
-    title: "The analysis of visual motion: direction-selective neurons in the middle temporal visual area (MT) of the macaque"
+    title: "Response of Neurons in the Lateral Intraparietal Area during a Combined Visual Discrimination Reaction Time Task"
     authors:
-      - family-names: Britten
-        given-names: Kenneth H.
-      - family-names: Newsome
-        given-names: William T.
-      - family-names: Shadlen
-        given-names: Michael N.
-      - family-names: Celebrini
-        given-names: S.
-      - family-names: Movshon
-        given-names: J. Anthony
-    journal: "Journal of Neuroscience"
-    year: 1992
-    doi: "10.1523/JNEUROSCI.12-12-04740.1992"
+      - family-names: "Roitman"
+        given-names: "Jamie D."
+      - family-names: "Shadlen"
+        given-names: "Michael N."
+    journal: "The Journal of Neuroscience"
+    year: 2002
+    doi: "10.1523/jneurosci.22-21-09475.2002"
+
+  - type: article
+    title: "Reinforcement biases subsequent perceptual decisions when confidence is low, a widespread behavioral phenomenon"
+    authors:
+      - family-names: "Lak"
+        given-names: "Armin"
+      - family-names: "Hueske"
+        given-names: "Emily"
+      - family-names: "Hirokawa"
+        given-names: "Junya"
+      - family-names: "Masset"
+        given-names: "Paul"
+      - family-names: "Ott"
+        given-names: "Torben"
+      - family-names: "Urai"
+        given-names: "Anne E"
+      - family-names: "Donner"
+        given-names: "Tobias H"
+      - family-names: "Carandini"
+        given-names: "Matteo"
+      - family-names: "Tonegawa"
+        given-names: "Susumu"
+      - family-names: "Uchida"
+        given-names: "Naoshige"
+      - family-names: "Kepecs"
+        given-names: "Adam"
+    journal: "eLife"
+    year: 2020
+    doi: "10.7554/elife.49834"
+
+  - type: article
+    title: "Extracting the dynamics of behavior in sensory decision-making experiments"
+    authors:
+      - family-names: "Roy"
+        given-names: "Nicholas A."
+      - family-names: "Bak"
+        given-names: "Ji Hyun"
+      - family-names: "Akrami"
+        given-names: "Athena"
+      - family-names: "Brody"
+        given-names: "Carlos D."
+      - family-names: "Pillow"
+        given-names: "Jonathan W."
+    journal: "Neuron"
+    year: 2021
+    doi: "10.1016/j.neuron.2020.12.004"
+
+  - type: article
+    title: "Mice alternate between discrete strategies during perceptual decision-making"
+    authors:
+      - family-names: "Ashwood"
+        given-names: "Zoe C."
+      - family-names: "Roy"
+        given-names: "Nicholas A."
+      - family-names: "Stone"
+        given-names: "Iris R."
+      - name: "The International Brain Laboratory"
+      - family-names: "Urai"
+        given-names: "Anne E."
+      - family-names: "Churchland"
+        given-names: "Anne K."
+      - family-names: "Pouget"
+        given-names: "Alexandre"
+      - family-names: "Pillow"
+        given-names: "Jonathan W."
+    journal: "Nature Neuroscience"
+    year: 2022
+    doi: "10.1038/s41593-021-01007-z"
+
+  - type: article
+    title: "Ten simple rules for the computational modeling of behavioral data"
+    authors:
+      - family-names: "Wilson"
+        given-names: "Robert C"
+      - family-names: "Collins"
+        given-names: "Anne GE"
+    journal: "eLife"
+    year: 2019
+    doi: "10.7554/elife.49547"
 
   - type: article
     title: "The effect of stimulus strength on the speed and accuracy of a perceptual decision"
     authors:
-      - family-names: Palmer
-        given-names: John
-      - family-names: Huk
-        given-names: Alexander C.
-      - family-names: Shadlen
-        given-names: Michael N.
+      - family-names: "Palmer"
+        given-names: "John"
+      - family-names: "Huk"
+        given-names: "Alexander C."
+      - family-names: "Shadlen"
+        given-names: "Michael N."
     journal: "Journal of Vision"
     year: 2005
     doi: "10.1167/5.5.1"
@@ -65,85 +215,13 @@ references:
   - type: article
     title: "The Diffusion Decision Model: Theory and Data for Two-Choice Decision Tasks"
     authors:
-      - family-names: Ratcliff
-        given-names: Roger
-      - family-names: McKoon
-        given-names: Gail
+      - family-names: "Ratcliff"
+        given-names: "Roger"
+      - family-names: "McKoon"
+        given-names: "Gail"
     journal: "Neural Computation"
     year: 2008
     doi: "10.1162/neco.2008.12-06-420"
-
-  - type: article
-    title: "The Diffusion Decision Model: Current Issues and History"
-    authors:
-      - family-names: Ratcliff
-        given-names: Roger
-      - family-names: Smith
-        given-names: Philip L.
-    journal: "Trends in Cognitive Sciences"
-    year: 2016
-    doi: "10.1016/j.tics.2016.01.007"
-
-  - type: article
-    title: "Testing drift-diffusion models of decision making with experimental data"
-    authors:
-      - family-names: Fudenberg
-        given-names: Drew
-      - family-names: Strack
-        given-names: Philipp
-      - family-names: Strzalecki
-        given-names: Tomasz
-    journal: "Proceedings of the National Academy of Sciences"
-    year: 2018
-    doi: "10.1073/pnas.1800804115"
-
-  - type: article
-    title: "Mechanisms of choice history biases in perceptual decisions"
-    authors:
-      - family-names: Urai
-        given-names: Anne E.
-      - family-names: de Gee
-        given-names: Jakob W.
-      - family-names: Tsetsos
-        given-names: Konstantinos
-      - family-names: Donner
-        given-names: Tobias H.
-    journal: "Nature Communications"
-    year: 2019
-    doi: "10.1038/s41467-018-08003-3"
-
-  - type: article
-    title: "Learning rule extraction from IBL mouse decision data using recurrent models"
-    authors:
-      - family-names: Ashwood
-        given-names: Zachary
-      - family-names: Roy
-        given-names: Nicolas A.
-    journal: "Advances in Neural Information Processing Systems"
-    year: 2023
-    url: "https://proceedings.neurips.cc/paper_files/paper/2023/hash/learning_rule_inference.html"
-
-  - type: article
-    title: "Sequential effects: a review and a proposed coding framework"
-    authors:
-      - family-names: Gruber
-        given-names: Tobias
-      - family-names: Brown
-        given-names: Sacha
-    journal: "Cognitive Psychology"
-    year: 2016
-    doi: "10.1016/j.cogpsych.2016.01.002"
-
-  - type: article
-    title: "Win–stay, lose–shift strategy across species: from rats to bees"
-    authors:
-      - family-names: Randall
-        given-names: J.A.
-      - family-names: Fotheringham
-        given-names: I.
-    journal: "Animal Behaviour"
-    year: 1997
-    doi: "10.1006/anbe.1996.0323"
 
 license: "MIT"
 preferred-citation:
