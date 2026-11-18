@@ -1,7 +1,21 @@
 # FINDINGS
 
-**Benchmarking reinforcement-learning agents against rodent and primate decision-making fingerprints**
-*October 2025 – July 2026 · from v0.1.0 to the v0.2 adaptive-control/PRL/DMS scaffold*
+**Dated experiment record: testing explanations of rodent and primate decisions**
+*October 2025 – September 2026 · September 2026 entries first (newest at top), then the historical record from v0.1.0*
+
+## Generative comparison: history versus drift and switching — September 19
+
+Six models were compared on 73,332 trials from 83 development animals with
+animal-disjoint folds: task-only, history, AR(1) drift, three-state GLM-HMM, and
+the two latent models with history added. History improves equal-animal NLL by
+0.014577 nats/trial over drift (clustered interval 0.009169–0.022487) and by
+0.014342 over switching (0.008622–0.022931). The 360-run recovery study did not
+pass its qualification gate: history strength 0.4 was detected in 40/40 runs,
+0.15 in 29/40 and 32/40, and 0.05 in 0/40; the 41-versus-21-state drift grid
+check also missed its fixed tolerance. The drift model uses fixed parameters and
+is not PsyTrack. These are reused development animals. Fresh confirmation
+remains deferred. See [results](docs/GENERATIVE_COMPARISON.md) and
+[protocol](docs/GENERATIVE_COMPARISON_PROTOCOL.md).
 
 ## Causal preference controls and synthetic limits — September 12
 
