@@ -107,6 +107,22 @@ drift alone. Therefore the next gate is published generative drift/switching vs
 history model recovery and realistic power simulation, before reserving a new
 confirmation cohort. [Focused literature comparison](NOVELTY_REVIEW.md).
 
+## September 19 generative comparison
+
+The next comparison now has an executable [protocol](GENERATIVE_COMPARISON_PROTOCOL.md):
+task-only, history, explicit AR drift, three-state GLM-HMM, and their history
+extensions. Recovery uses the real development cohort's task schedules with
+new synthetic responses, multiple effect sizes, and explicit false-detection
+and power criteria. Earlier small simulations are not treated as qualification.
+
+The implementation includes causal prediction checks, independent author-code
+filter verification, and drift-grid sensitivity. The matched author-code GLM-HMM refit agrees with the implementation, but the
+360-run recovery study and drift-resolution check did not meet the full
+qualification gate. See the [completed comparison](GENERATIVE_COMPARISON.md).
+A fitted continuous-drift benchmark, numerical convergence, and a power study
+matched to the exact intended endpoint remain prerequisites for a new cohort.
+Do not equate a good development score with passing that gate.
+
 ## Decision rule
 
 Advance a richer model only if its added structure improves the frozen primary

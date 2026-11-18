@@ -45,6 +45,14 @@ cohort is deferred pending stronger generative-model recovery.
 
 ## Current result
 
+The completed generative comparison tests history against drift and switching
+models. Across **360 development-sized simulations**, strong history effects were
+recovered reliably, but weak effects were not. The drift-grid precision check
+also failed its fixed tolerance. **Fresh confirmation remains deferred.**
+[Results and limits](docs/GENERATIVE_COMPARISON.md) · [Protocol and mathematics](docs/GENERATIVE_COMPARISON_PROTOCOL.md).
+
+### Earlier frozen replication
+
 A frozen internal replication **passed on 45 eligible mice** from a cohort of
 60 animals absent from the inventoried local references. Evidence-dependent
 history improved prediction by **0.00160 nats/trial**, with a 95% subject-bootstrap
@@ -129,6 +137,6 @@ lengths and response timing differ from the published protocol. Existing
 chronometric and lesion results need those qualifications. Old figures use an
 older reference and are retained under `docs/figures/` as historical artifacts.
 
-**Next decision:** compare evidence dependence with longer-history and
-block-learning explanations on development animals. Preserve this completed
-cohort result; reserve another cohort before further confirmation.
+**Next decision:** qualify history-versus-latent-state identification with
+generative recovery and realistic power checks. Preserve all completed cohort
+results; freeze a new protocol before accessing another confirmation cohort.
