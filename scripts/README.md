@@ -109,3 +109,47 @@ uses a new frozen plan, excludes prefix trials from all scores, and runs fixed
 bias/drift/history synthetic diagnostics after the development comparison.
 `MPLBACKEND=Agg python3 -m scripts.render_bias_history_figure` renders the saved
 snapshot. See [results and identification limits](../docs/BIAS_HISTORY.md).
+
+## Generative history versus latent preference (September 2026)
+
+This development-only comparison has its own [protocol](../docs/GENERATIVE_COMPARISON_PROTOCOL.md).
+It preserves the frozen replication CLI and data. Existing verified source-reconciled
+inputs and the September 12 comparison plan must be present; it downloads no cohorts.
+
+```bash
+pip install -e '.[dev,research]'
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m scripts.compare_generative_history
+# Resume completed recovery cells only with identical source, inputs and settings:
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m scripts.compare_generative_history --resume
+python -m scripts.verify_generative_history
+OPENBLAS_NUM_THREADS=1 python -m scripts.check_drift_resolution
+# Only after the main run is complete:
+MPLBACKEND=Agg python -m scripts.render_generative_comparison
+```
+
+The full recovery batch is a research run, not a short demo: 360 development-sized
+simulations and complete refits. `--repetitions 1 --output runs/<new-name>` is a
+numerical smoke test, not a qualified power result. Keep BLAS threads at one when
+using multiple workers. Optional Numba acceleration is strongly recommended for
+research runs; the module has a slower NumPy reference fallback.
+
+`check_published_state_filter` additionally requires the author `ssm` fork at
+`e9b408b79e2ab22a05ca93c3a1f78a7dae461992`, installed in an isolated research environment.
+The script checks installed source against that checkout and verifies emissions
+and causal filtering, **not** independent model fitting. The local checked
+checkout is `runs/vendor_ssm_20260919`; all installed package versions are saved
+in the experiment's `environment.json`. This optional legacy dependency is not
+added to normal application or CI requirements.
+
+After installing the pinned author fork in that isolated environment, the optional
+independent checks are:
+
+```bash
+OPENBLAS_NUM_THREADS=1 python -m scripts.check_published_state_filter
+OPENBLAS_NUM_THREADS=1 python -m scripts.refit_author_glmhmm
+```
+
+The refit uses the author package's likelihood and autograd derivatives on our
+matched design, priors and folds. It is not a reproduction of the paper's dataset
+selection or full analysis. Both checks refuse to overwrite their existing plans
+or require the checked upstream revision as appropriate.
