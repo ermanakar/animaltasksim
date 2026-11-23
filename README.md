@@ -65,13 +65,38 @@ improves prediction of animal choices and response times.
 A software lesion establishes a contribution within a model; it does not
 establish a necessary mechanism in an animal.
 
+**The evidence effect is not symmetric across outcomes.** Split by previous
+outcome on the development mice, the reward half of the effect loses about 80%
+of its gain under side-bias and longer-history controls; the error half loses
+about 30%. Both remain small and narrowly positive. A prediction that the reward
+half would vanish entirely **failed**. [Outcome split](docs/OUTCOME_SPLIT.md).
+
+**Sixteen reference sessions are not standard protocol.** The adopted reference
+includes 14 optogenetic and 2 altered-reward sessions. Removing them changes no
+development result in sign or beyond its interval; the generative refit is
+still outstanding. [Sensitivity check](docs/VARIANT_SENSITIVITY.md).
+
 ## Where the project stands
 
-**A fresh confirmation cohort is deferred.** Before another cohort is accessed,
-the comparison needs reliable identification at the intended effect size, a
-fitted continuous-drift benchmark, stable numerics, and a power study matched
-to the exact endpoint. All completed cohort results are preserved, and a new
-protocol must be frozen first. [Research plan](docs/RESEARCH_PLAN.md).
+**The direction changed on November 23, 2026: slow state before trial history.**
+A deeper reference now holds every standard session of the development mice:
+**3,946 sessions, 2.54 million trials, 72 mice**, 21 to 103 sessions per mouse.
+A first exploratory look suggests the largest structure in the behaviour is
+slow. The following trial predicts the current choice almost as well as the
+previous one does, which marks most apparent "history" as lasting side
+preference. Individual differences are stable across sessions (split-half
+r = 0.88 for reward-driven repetition).
+[First look](docs/DEEP_EXPLORATION.md) ·
+[Acquisition protocol](docs/DEEP_REFERENCE_PROTOCOL.md).
+
+![Neighbour-trial weights and their difference](docs/figures/deep_exploration_v1.png)
+
+The project now asks how much of choice behaviour is explained by slowly
+changing latent state within each animal, and what remains for trial history
+afterwards. Fixed, drifting and switching models are compared on held-out
+sessions of the same animals, with recovery checks first and a confirmation
+cohort of untouched animals last. This is exploratory so far; no state model
+has been fitted to the deep data. [Research plan](docs/RESEARCH_PLAN.md).
 
 ## Start here
 
@@ -86,9 +111,10 @@ or model training. The existing scored cohort is protected against overwrite.
 
 | To understand | Read |
 |---|---|
+| What happens next and why | [RESEARCH_PLAN](docs/RESEARCH_PLAN.md) |
+| The deep reference and what it shows | [DEEP_EXPLORATION](docs/DEEP_EXPLORATION.md) |
 | The replicated result, scores and exclusions | [REPLICATION_RESULT](docs/REPLICATION_RESULT.md) |
 | History versus drift and switching | [GENERATIVE_COMPARISON](docs/GENERATIVE_COMPARISON.md) |
-| What happens next and why | [RESEARCH_PLAN](docs/RESEARCH_PLAN.md) |
 | How the reference data were verified | [SOURCE_RECONCILIATION](docs/SOURCE_RECONCILIATION.md) |
 | The first exploratory audit | [HISTORY_AUDIT](docs/HISTORY_AUDIT.md) |
 | The full dated experiment record | [FINDINGS](FINDINGS.md) |
@@ -98,7 +124,8 @@ or model training. The existing scored cohort is protected against overwrite.
 
 | Area | Status |
 |---|---|
-| IBL reference and history analysis | Active: validate the phenomenon and compare simple explanations |
+| Deep IBL reference and within-animal state models | Active: conversion, recovery, then held-out comparison |
+| Evidence-dependent history | Replicated and small; not pursued further on its own |
 | Trial logging, schema, metrics, tests | Shared scientific infrastructure |
 | Sticky-Q, Bayes, DDM, PPO, Hybrid, R-DDM | Retained comparison implementations; no new calibration sweeps planned |
 | Hybrid, adaptive control and PRL | Repaired implementation; not validated against animals |
@@ -126,7 +153,9 @@ python scripts/make_report.py --run runs/your_run
 
 ## Data and limits
 
-The adopted IBL dataset has **120 sessions / 86,648 trials**. The macaque RDM
+The adopted IBL dataset has **120 sessions / 86,648 trials**. The deep
+development reference (3,946 sessions) is local; its session list and array
+hashes are tracked so it can be re-acquired. The macaque RDM
 reference has 2,611 trials. PRL and DMS currently have no animal reference here.
 IBL data attribution and CC-BY 4.0 terms are in [data/README.md](data/README.md);
 repository code is MIT.

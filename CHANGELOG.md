@@ -1,5 +1,31 @@
 # Changelog
 
+All notable changes to AnimalTaskSim are documented here. This file tracks
+**releases and contract-affecting changes** — CLI arguments, schema keys, file
+paths, environment behavior — plus headline features. For the scientific record
+(experiments, metrics, negative results, target provenance) see
+[FINDINGS.md](FINDINGS.md); this changelog deliberately does not duplicate it.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+
+---
+
+## November 23 — deep reference and change of direction
+
+- Added a staged, hash-bound fetcher for every standard session of the
+  development animals (`scripts/fetch_ibl_deep_reference.py`). Protocol names
+  are matched exactly; optogenetic, RPE and habituation variants are excluded.
+  Outputs are local under `runs/ibl_deep_reference_v1`; the session list and
+  array hashes are tracked.
+- Added exploratory analyses with tracked snapshots and figures:
+  `explore_deep_reference.py`, `exclude_variant_sensitivity.py`,
+  `split_evidence_by_outcome.py`, `render_state_direction_figures.py`.
+- Recorded that 16 sessions of the adopted reference use optogenetic or RPE
+  protocols. The adopted reference is unchanged.
+- Replaced the research plan; the September plan is archived at
+  `docs/archive/RESEARCH_PLAN_2026-09.md`.
+- No existing CLI names, schema keys, paths, defaults or frozen artifacts changed.
+
 ## September 11 — architecture repair
 
 - Corrected IBL blank-trial reward sampling and removed PRL hidden-optimality inputs.
@@ -30,17 +56,6 @@
 - Corrected shared Hybrid/adaptive `max_sessions` to count sessions before
   chunking. Old commands can now train on more data and take longer; historical
   saved results remain unchanged. No existing CLI names, schema keys, or paths changed.
-
-
-All notable changes to AnimalTaskSim are documented here. This file tracks
-**releases and contract-affecting changes** — CLI arguments, schema keys, file
-paths, environment behavior — plus headline features. For the scientific record
-(experiments, metrics, negative results, target provenance) see
-[FINDINGS.md](FINDINGS.md); this changelog deliberately does not duplicate it.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
-
----
 
 ## [Unreleased]
 

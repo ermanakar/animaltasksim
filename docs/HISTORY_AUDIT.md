@@ -110,7 +110,9 @@ possible. Never silently replace the historical sweep metrics with this audit.
    prediction. Legacy RT ceiling detection and heuristic quality targets also
    remain unsuitable as scientific acceptance gates.
 
-The next steps and decision rules are in [RESEARCH_PLAN.md](RESEARCH_PLAN.md).
+The plan that followed this audit is archived in
+[RESEARCH_PLAN_2026-09](archive/RESEARCH_PLAN_2026-09.md); the current plan is
+[RESEARCH_PLAN.md](RESEARCH_PLAN.md).
 The [IBL methods](https://elifesciences.org/articles/63711) motivate controlling
 sensory evidence, outcomes, and blocks. The recovery/comparison approach follows
 [Wilson and Collins](https://elifesciences.org/articles/49547), while the exact

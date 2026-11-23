@@ -1,0 +1,502 @@
+{
+ "status": "exploratory sensitivity check; previously inspected development animals",
+ "rule": "Keep exact versioned biasedChoiceWorld; drop every other protocol.",
+ "kept_sessions": 104,
+ "kept_subjects": 71,
+ "excluded_sessions": [
+  {
+   "id": "00c4ee96-3b51-4d6a-a3cc-442b637c9de1",
+   "subject": "ZFM-02600",
+   "lab": "mainenlab",
+   "task_protocol": "_iblrig_tasks_opto_biasedChoiceWorld6.4.2"
+  },
+  {
+   "id": "94adaf4a-f52d-4bb0-ae4c-54f235379e3d",
+   "subject": "SWC_NM_072",
+   "lab": "hoferlab",
+   "task_protocol": "nate_optoBiasedChoiceWorld8.16.0"
+  },
+  {
+   "id": "cc930af5-0246-4eb7-ae73-0c825fc035ed",
+   "subject": "SWC_NM_081",
+   "lab": "hoferlab",
+   "task_protocol": "nate_optoBiasedChoiceWorld8.19.6"
+  },
+  {
+   "id": "6fcbb3b5-7315-4471-80b8-16c2e8387b32",
+   "subject": "ZFM-04122",
+   "lab": "mainenlab",
+   "task_protocol": "_iblrig_tasks_opto_biasedChoiceWorld6.5.3"
+  },
+  {
+   "id": "4513ca43-092c-4d70-89f9-f431b281fe8c",
+   "subject": "SWC_NM_091",
+   "lab": "hoferlab",
+   "task_protocol": "nate_optoBiasedChoiceWorld8.24.7"
+  },
+  {
+   "id": "2622435f-deeb-49ec-94c2-b4c57c3282bf",
+   "subject": "SWC_NM_081",
+   "lab": "hoferlab",
+   "task_protocol": "nate_optoBiasedChoiceWorld8.22.0"
+  },
+  {
+   "id": "87aec2ee-10a4-4ab1-bda8-b0a68cec16dd",
+   "subject": "ZM_1372",
+   "lab": "mainenlab",
+   "task_protocol": "_iblrig_tasks_biasedChoiceWorldRPE"
+  },
+  {
+   "id": "52945e01-92a8-4c5c-8367-2af6b0aa7a19",
+   "subject": "ZFM-03324",
+   "lab": "mainenlab",
+   "task_protocol": "_iblrig_tasks_opto_biasedChoiceWorld6.5.3"
+  },
+  {
+   "id": "ecbc6cfb-a420-4025-bc8c-9059b8505999",
+   "subject": "SWC_NM_071",
+   "lab": "hoferlab",
+   "task_protocol": "nate_optoBiasedChoiceWorld8.16.0"
+  },
+  {
+   "id": "bb16ba38-34f1-452c-84a5-ca910b49b2cb",
+   "subject": "SWC_NM_058",
+   "lab": "hoferlab",
+   "task_protocol": "nate_optoBiasedChoiceWorld8.16.0"
+  },
+  {
+   "id": "8ad0b793-0faf-4ee6-ba4e-fd0ac99f14bf",
+   "subject": "SWC_NM_058",
+   "lab": "hoferlab",
+   "task_protocol": "nate_optoBiasedChoiceWorld8.16.0"
+  },
+  {
+   "id": "4234bb64-5beb-4688-8b18-9b06988f9bf1",
+   "subject": "SWC_NM_058",
+   "lab": "hoferlab",
+   "task_protocol": "nate_optoBiasedChoiceWorld8.16.0"
+  },
+  {
+   "id": "f5a77da9-3613-4b14-b5e7-0c537e4ecb7a",
+   "subject": "SWC_NM_057",
+   "lab": "hoferlab",
+   "task_protocol": "nate_optoBiasedChoiceWorld8.16.0"
+  },
+  {
+   "id": "a61ec24b-6085-4f3d-9f51-4cbbce4ea8be",
+   "subject": "SWC_NM_086",
+   "lab": "hoferlab",
+   "task_protocol": "nate_optoBiasedChoiceWorld8.24.7"
+  },
+  {
+   "id": "632ce799-4023-4c4b-9fda-21825edbf287",
+   "subject": "SWC_NM_085",
+   "lab": "hoferlab",
+   "task_protocol": "nate_optoBiasedChoiceWorld8.22.1+dirty"
+  },
+  {
+   "id": "c15de630-9202-4810-bc48-d138bbbe839f",
+   "subject": "ZM_1372",
+   "lab": "mainenlab",
+   "task_protocol": "_iblrig_tasks_biasedChoiceWorldRPE"
+  }
+ ],
+ "subjects_removed": [
+  "SWC_NM_057",
+  "SWC_NM_058",
+  "SWC_NM_071",
+  "SWC_NM_072",
+  "SWC_NM_081",
+  "SWC_NM_085",
+  "SWC_NM_086",
+  "SWC_NM_091",
+  "ZFM-02600",
+  "ZFM-03324",
+  "ZFM-04122",
+  "ZM_1372"
+ ],
+ "all_sessions": {
+  "history_audit": {
+   "pooled_retry": {
+    "weak_count": 14307,
+    "strong_count": 2183,
+    "weak_retry": 0.5454672537918501,
+    "strong_retry": 0.63078332569858,
+    "gap": -0.08531607190672985
+   },
+   "comparisons": {
+    "outcome_history_over_stimulus_block": {
+     "pooled_nll_gain": 0.023609820150804865,
+     "equal_session_nll_gain": 0.02398194791740837,
+     "median_session_nll_gain": 0.020748871678975767,
+     "sessions_improved": 101,
+     "n_sessions": 120,
+     "fold_nll_gains": [
+      0.02334297864249507,
+      0.030911384582796082,
+      0.021295674706406052,
+      0.0213648039086474,
+      0.018656015451816763
+     ],
+     "equal_subject_nll_gain": 0.023304596001259358,
+     "subjects_improved": 72,
+     "n_subjects": 83
+    },
+    "evidence_history_over_outcome_history": {
+     "pooled_nll_gain": 0.0011414962500413477,
+     "equal_session_nll_gain": 0.0012206102272708174,
+     "median_session_nll_gain": 0.0009954646407688839,
+     "sessions_improved": 79,
+     "n_sessions": 120,
+     "fold_nll_gains": [
+      0.0009525379233703075,
+      0.0015631812008442012,
+      0.00143994045775812,
+      4.335574377930561e-05,
+      0.0016217392382106208
+     ],
+     "equal_subject_nll_gain": 0.001183681771296011,
+     "subjects_improved": 58,
+     "n_subjects": 83
+    }
+   },
+   "eligible_trials": 85894,
+   "eligible_sessions": 120
+  },
+  "competing_history_subject_folds": {
+   "evidence_history_over_outcome_history": {
+    "mean_gain": 0.0013066914723456609,
+    "subject_bootstrap_95": [
+     0.0007995107945119037,
+     0.0018111703371772008
+    ],
+    "subjects_improved": 58,
+    "subjects": 83
+   },
+   "long_evidence_over_long_history": {
+    "mean_gain": 0.0005453412553009542,
+    "subject_bootstrap_95": [
+     0.00025860475627329925,
+     0.000835828067865647
+    ],
+    "subjects_improved": 55,
+    "subjects": 83
+   },
+   "learning_evidence_over_learning_history": {
+    "mean_gain": 0.001413425135386337,
+    "subject_bootstrap_95": [
+     0.0008847316969023291,
+     0.001939042740528673
+    ],
+    "subjects_improved": 58,
+    "subjects": 83
+   },
+   "combined_evidence_over_combined_history": {
+    "mean_gain": 0.0004448364412784542,
+    "subject_bootstrap_95": [
+     0.00019632730694590198,
+     0.0007025778114310933
+    ],
+    "subjects_improved": 55,
+    "subjects": 83
+   },
+   "combined_history_over_outcome_history": {
+    "mean_gain": 0.025433998890466433,
+    "subject_bootstrap_95": [
+     0.02150527136236791,
+     0.029596437275179372
+    ],
+    "subjects_improved": 79,
+    "subjects": 83
+   }
+  },
+  "competing_history_lab_folds": {
+   "evidence_history_over_outcome_history": {
+    "mean_gain": 0.0011986694418189572,
+    "subject_bootstrap_95": [
+     0.000643037161285181,
+     0.0017426061526643526
+    ],
+    "subjects_improved": 56,
+    "subjects": 83
+   },
+   "long_evidence_over_long_history": {
+    "mean_gain": 0.000498433542609162,
+    "subject_bootstrap_95": [
+     0.00020074326429179,
+     0.0007980215173499259
+    ],
+    "subjects_improved": 54,
+    "subjects": 83
+   },
+   "learning_evidence_over_learning_history": {
+    "mean_gain": 0.0013576045143941064,
+    "subject_bootstrap_95": [
+     0.0007940418382947205,
+     0.0019075170398625716
+    ],
+    "subjects_improved": 56,
+    "subjects": 83
+   },
+   "combined_evidence_over_combined_history": {
+    "mean_gain": 0.00039371119869158666,
+    "subject_bootstrap_95": [
+     0.0001328027423760046,
+     0.0006615127288970816
+    ],
+    "subjects_improved": 53,
+    "subjects": 83
+   },
+   "combined_history_over_outcome_history": {
+    "mean_gain": 0.0249089127354594,
+    "subject_bootstrap_95": [
+     0.021026918970647374,
+     0.02904616343159436
+    ],
+    "subjects_improved": 78,
+    "subjects": 83
+   }
+  },
+  "bias_history": {
+   "long_over_one_step": {
+    "mean_gain": 0.024981162841731228,
+    "subject_bootstrap_95": [
+     0.02095062466651496,
+     0.029229963838193318
+    ],
+    "subjects_improved": 78,
+    "subjects": 83
+   },
+   "bias_over_one_step": {
+    "mean_gain": 0.020979948560439988,
+    "subject_bootstrap_95": [
+     0.015276123014041602,
+     0.02733945098143968
+    ],
+    "subjects_improved": 68,
+    "subjects": 83
+   },
+   "bias_long_over_bias": {
+    "mean_gain": 0.012636406628132615,
+    "subject_bootstrap_95": [
+     0.010232523353786395,
+     0.015110327868158552
+    ],
+    "subjects_improved": 73,
+    "subjects": 83
+   },
+   "bias_evidence_over_bias": {
+    "mean_gain": 0.0007127376142175073,
+    "subject_bootstrap_95": [
+     0.00034697365869653605,
+     0.0010986307203036797
+    ],
+    "subjects_improved": 53,
+    "subjects": 83
+   },
+   "bias_long_evidence_over_bias_long": {
+    "mean_gain": 0.00042073941301573034,
+    "subject_bootstrap_95": [
+     0.00015547780312961086,
+     0.0006948061468721368
+    ],
+    "subjects_improved": 54,
+    "subjects": 83
+   }
+  }
+ },
+ "without_variants": {
+  "history_audit": {
+   "pooled_retry": {
+    "weak_count": 11605,
+    "strong_count": 1645,
+    "weak_retry": 0.5402843601895735,
+    "strong_retry": 0.6316109422492401,
+    "gap": -0.0913265820596666
+   },
+   "comparisons": {
+    "outcome_history_over_stimulus_block": {
+     "pooled_nll_gain": 0.021796388543860904,
+     "equal_session_nll_gain": 0.02261884944754622,
+     "median_session_nll_gain": 0.018761232683980167,
+     "sessions_improved": 84,
+     "n_sessions": 104,
+     "fold_nll_gains": [
+      0.025911439376089706,
+      0.029065331233124946,
+      0.014009102304125338,
+      0.023876296704178516,
+      0.01648871181971214
+     ],
+     "equal_subject_nll_gain": 0.021816831880171875,
+     "subjects_improved": 60,
+     "n_subjects": 71
+    },
+    "evidence_history_over_outcome_history": {
+     "pooled_nll_gain": 0.001220149600297491,
+     "equal_session_nll_gain": 0.0013468220280393297,
+     "median_session_nll_gain": 0.0009867831596802046,
+     "sessions_improved": 66,
+     "n_sessions": 104,
+     "fold_nll_gains": [
+      0.0004742563562175792,
+      0.0021594249121177117,
+      0.0008398605096242113,
+      0.0011304151086972659,
+      0.001593890705119394
+     ],
+     "equal_subject_nll_gain": 0.0013182081617136787,
+     "subjects_improved": 50,
+     "n_subjects": 71
+    }
+   },
+   "eligible_trials": 72714,
+   "eligible_sessions": 104
+  },
+  "competing_history_subject_folds": {
+   "evidence_history_over_outcome_history": {
+    "mean_gain": 0.001387353358073212,
+    "subject_bootstrap_95": [
+     0.0007805622952908304,
+     0.0020009124670475726
+    ],
+    "subjects_improved": 51,
+    "subjects": 71
+   },
+   "long_evidence_over_long_history": {
+    "mean_gain": 0.0006402742841877037,
+    "subject_bootstrap_95": [
+     0.0002863732724452877,
+     0.0009979497411143489
+    ],
+    "subjects_improved": 48,
+    "subjects": 71
+   },
+   "learning_evidence_over_learning_history": {
+    "mean_gain": 0.001516521629118938,
+    "subject_bootstrap_95": [
+     0.0008952925341140902,
+     0.0021459434404770277
+    ],
+    "subjects_improved": 50,
+    "subjects": 71
+   },
+   "combined_evidence_over_combined_history": {
+    "mean_gain": 0.0005054763267655665,
+    "subject_bootstrap_95": [
+     0.00020131537495073467,
+     0.0008111081525309328
+    ],
+    "subjects_improved": 46,
+    "subjects": 71
+   },
+   "combined_history_over_outcome_history": {
+    "mean_gain": 0.02486084692451422,
+    "subject_bootstrap_95": [
+     0.020058382540949153,
+     0.030020560634339062
+    ],
+    "subjects_improved": 67,
+    "subjects": 71
+   }
+  },
+  "competing_history_lab_folds": {
+   "evidence_history_over_outcome_history": {
+    "mean_gain": 0.0012372239063459776,
+    "subject_bootstrap_95": [
+     0.0005554210399047764,
+     0.0019040358086905222
+    ],
+    "subjects_improved": 48,
+    "subjects": 71
+   },
+   "long_evidence_over_long_history": {
+    "mean_gain": 0.0005809688628981584,
+    "subject_bootstrap_95": [
+     0.00019756875448260236,
+     0.0009653618509546172
+    ],
+    "subjects_improved": 45,
+    "subjects": 71
+   },
+   "learning_evidence_over_learning_history": {
+    "mean_gain": 0.0014376323018071384,
+    "subject_bootstrap_95": [
+     0.0007459539271115761,
+     0.002122379919377604
+    ],
+    "subjects_improved": 49,
+    "subjects": 71
+   },
+   "combined_evidence_over_combined_history": {
+    "mean_gain": 0.0004307935214074193,
+    "subject_bootstrap_95": [
+     9.939346425811726e-05,
+     0.0007614219193934448
+    ],
+    "subjects_improved": 44,
+    "subjects": 71
+   },
+   "combined_history_over_outcome_history": {
+    "mean_gain": 0.024144964079799058,
+    "subject_bootstrap_95": [
+     0.01933554930862941,
+     0.029209233432090642
+    ],
+    "subjects_improved": 65,
+    "subjects": 71
+   }
+  },
+  "bias_history": {
+   "long_over_one_step": {
+    "mean_gain": 0.02457274381956674,
+    "subject_bootstrap_95": [
+     0.01963669866888996,
+     0.03001213710547951
+    ],
+    "subjects_improved": 65,
+    "subjects": 71
+   },
+   "bias_over_one_step": {
+    "mean_gain": 0.02274901175978507,
+    "subject_bootstrap_95": [
+     0.016053401933115278,
+     0.030562366635557368
+    ],
+    "subjects_improved": 62,
+    "subjects": 71
+   },
+   "bias_long_over_bias": {
+    "mean_gain": 0.011216361050629176,
+    "subject_bootstrap_95": [
+     0.008827469054679045,
+     0.013593663864006568
+    ],
+    "subjects_improved": 62,
+    "subjects": 71
+   },
+   "bias_evidence_over_bias": {
+    "mean_gain": 0.0007423782698664868,
+    "subject_bootstrap_95": [
+     0.00030033878536020475,
+     0.0011867650878312438
+    ],
+    "subjects_improved": 44,
+    "subjects": 71
+   },
+   "bias_long_evidence_over_bias_long": {
+    "mean_gain": 0.000489137584527137,
+    "subject_bootstrap_95": [
+     0.00016127107894683322,
+     0.0008221012323257402
+    ],
+    "subjects_improved": 46,
+    "subjects": 71
+   }
+  }
+ },
+ "generative_refit": "not complete when this snapshot was written",
+ "script_sha256": {
+  "scripts/exclude_variant_sensitivity.py": "ec78fab6b6d35c1ab7906dda962202185e8a89f99f9e9d686263caca9fb90ba6"
+ }
+}

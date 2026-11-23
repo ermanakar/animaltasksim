@@ -1062,3 +1062,68 @@ path). Existing flagship runs were trained/validated against the legacy
 reference is future work**, as is regenerating the overlay figures (currently
 rendered against the legacy set). PRL animal parity remains out of scope (no PRL
 reference dataset). Macaque RDM is unchanged.
+
+---
+
+## September 2026 Reset: Source Audit, Replication, and Competing Explanations
+
+This period is recorded in dated reports rather than here. In order:
+[history audit](docs/HISTORY_AUDIT.md),
+[source reconciliation](docs/SOURCE_RECONCILIATION.md),
+[replication protocol](docs/REPLICATION_PROTOCOL.md) and
+[result](docs/REPLICATION_RESULT.md),
+[architecture repair](docs/ARCHITECTURE_REPAIR.md) and
+[validation](docs/ARCHITECTURE_VALIDATION.md),
+[fitting diagnosis](docs/FITTING_DIAGNOSIS.md),
+[matched choice control](docs/MATCHED_CHOICE_CONTROL.md),
+[competing history](docs/COMPETING_HISTORY.md),
+[bias controls](docs/BIAS_HISTORY.md),
+[generative comparison](docs/GENERATIVE_COMPARISON.md).
+The plan that governed it is [archived](docs/archive/RESEARCH_PLAN_2026-09.md).
+
+Outcome: a small evidence-dependent history effect replicated on a reserved
+cohort (0.00160 nats/trial, 32/45 mice); the hybrid architecture was not
+validated; trial history could not be separated from drift or state switching.
+
+## Deep Reference and Change of Direction (November 23, 2026)
+
+All four items are exploratory and use previously inspected development animals.
+
+### Deep development reference acquired
+
+3,950 of 4,024 planned standard sessions cached for 72 of the 83 development
+animals (biased 2,116; training 1,636; ephys 198); 74 unavailable on the public
+server. [Protocol and result](docs/DEEP_REFERENCE_PROTOCOL.md).
+
+### Variant sessions in the adopted reference
+
+16 of 120 adopted sessions (15.3% of trials, 12 animals, 2 labs) use
+optogenetic or RPE protocols. Removing them changes no development result in
+sign: retry gap −0.0853 → −0.0913; primary combined-control evidence gain
+0.00044 → 0.00051. The generative refit was unfinished at the time of writing.
+[Report](docs/VARIANT_SENSITIVITY.md).
+
+### First look at the deep data
+
+Across 2.54 million trials, the following trial predicts the current choice
+nearly as well as the previous one, so most apparent choice history is shared
+slow side preference. After subtraction the net weights are +0.30 and +0.33
+after rewards and −0.30 and −0.18 after errors (hard, easy; log-odds; 71 mice in
+block sessions). Individual net weights are stable across odd and even sessions
+(r = 0.88, 0.60). [Report](docs/DEEP_EXPLORATION.md).
+
+### Outcome split — a failed prediction
+
+Prediction written before fitting: under the strongest control the reward half
+of the evidence effect would have an interval containing zero. Result: 0.21
+[0.02, 0.40] ×10⁻³ nats/trial after rewards and 0.22 [0.03, 0.40] after errors.
+The prediction failed. The reward half does lose about 80% of its gain under
+controls, against about 30% for the error half, and a drift-only simulation
+reproduces a spurious reward term under weak control.
+[Report](docs/OUTCOME_SPLIT.md).
+
+### Direction
+
+The project moves from refining the evidence-history effect to modelling slow
+latent state within animals, with gated milestones and a reserved confirmation
+cohort. [Research plan](docs/RESEARCH_PLAN.md).
