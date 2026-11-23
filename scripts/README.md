@@ -2,12 +2,28 @@
 
 ## Active research workflow
 
+The current direction is within-animal slow-state modelling on the deep
+development reference; see the [research plan](../docs/RESEARCH_PLAN.md).
+
+| Purpose | Entry point |
+|---|---|
+| Acquire every standard session of the development animals | `fetch_ibl_deep_reference.py` (stages `inventory`, `plan`, `download`, `verify`; needs ONE-api) |
+| First exploratory look at the deep reference | `explore_deep_reference.py` |
+| Sensitivity to optogenetic and RPE sessions | `exclude_variant_sensitivity.py` (stages `prepare`, `generative`) |
+| Evidence gain split by previous outcome | `split_evidence_by_outcome.py` |
+| Figures for the two reports above | `render_state_direction_figures.py` (reads tracked snapshots only) |
+
+Reports: [protocol](../docs/DEEP_REFERENCE_PROTOCOL.md) ·
+[first look](../docs/DEEP_EXPLORATION.md) ·
+[sensitivity](../docs/VARIANT_SENSITIVITY.md) ·
+[outcome split](../docs/OUTCOME_SPLIT.md).
+
 ```bash
 python scripts/audit_ibl_history.py
 ```
 
 This is the September 2026 exploratory IBL history comparison. See
-[methods/results](../docs/HISTORY_AUDIT.md) and [next milestone](../docs/RESEARCH_PLAN.md).
+[methods/results](../docs/HISTORY_AUDIT.md).
 It validates the reference with the shared loader and writes separate analysis
 artifacts. The data were already inspected; session folds are not unseen animals.
 
@@ -41,7 +57,7 @@ reproducible. They are not the recommended next workflow. Their scientific
 context is in [FINDINGS.md](../FINDINGS.md); old shell wrappers are under
 `docs/archive/commands/`.
 
-No new scalar sweep or DMS architecture is planned before the replication gate.
+No new scalar sweep or DMS architecture is planned under the current plan.
 New analyses should share reusable evaluation functions, save configs and source
 hashes, and distinguish exploratory results from independent confirmation.
 

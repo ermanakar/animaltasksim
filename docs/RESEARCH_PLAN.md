@@ -1,159 +1,149 @@
-# Research plan — September 2026 reset
+# Research plan — November 2026: slow state before trial history
 
-## Question and alternatives
+This plan replaces the [September 2026 plan](archive/RESEARCH_PLAN_2026-09.md),
+which is archived unchanged. Completed results keep their own dated reports.
 
-Does previous stimulus strength modulate the influence of a rewarded or
-unrewarded choice on the next decision, beyond present stimulus and block
-context? Contrast is a proxy for available evidence, not subjective uncertainty.
+## Why the direction changes
 
-The current reference gives a negative raw weak-minus-strong failure retry gap.
-The earlier controller was designed to produce a positive gap. Neither changing
-that target after seeing results nor adding circuits establishes an explanation.
+The September plan asked whether previous stimulus strength modulates the
+effect of the previous outcome on the next choice. That question has been taken
+as far as the current data allow:
 
-Compare explicit alternatives:
+- The effect replicated on a reserved cohort, and it is small
+  ([result](REPLICATION_RESULT.md)).
+- It shrinks under longer-history and side-bias controls
+  ([competing history](COMPETING_HISTORY.md), [bias controls](BIAS_HISTORY.md)).
+- Split by outcome, most of its reward half disappears under those controls
+  ([outcome split](OUTCOME_SPLIT.md)).
+- Generative models could not separate trial history from slow drift or state
+  switching, and the recovery study failed its gate. The report named more
+  within-animal data as the remedy ([generative comparison](GENERATIVE_COMPARISON.md)).
 
-1. Current stimulus and block context account for the apparent signature.
-2. Outcome-dependent choice history adds predictive information.
-3. Prior evidence further modulates that history, with the direction estimated
-   from data rather than hard-coded.
-4. A simple learning or inference model explains the same effect as well as the
-   adaptive controller, making its extra machinery unnecessary for this task.
+Two things are new. First, the [deep development reference](DEEP_REFERENCE_PROTOCOL.md)
+now holds 21 to 103 sessions per mouse for 72 mice, against about 1.4 before.
+Second, the [first look](DEEP_EXPLORATION.md) at it suggests that the largest
+structure in the behaviour is slow: side preference lasting many trials, stable
+differences between animals, and within-session changes in speed. Trial-to-trial
+outcome effects are small beside it.
 
-## Completed reset
+Continuing to refine a 10⁻³ nats/trial effect while the dominant structure is
+unmodelled is the wrong order of work.
 
-- Corrected psychometric/history omission handling; regression tests cover it.
-- Corrected `max_sessions` to count actual sessions before chunking. Historical
-  runs are not regenerated; identical old commands can now train on more data
-  and take longer. Re-running is a new experiment, not byte-for-byte reproduction.
-- Added a fixed exploratory session-held-out comparison with source hashes,
-  explicit folds, per-session losses, and synthetic recovery tests.
-- Shortened the project entry points and separated current claims from historical
-  records. Preserved all prior implementations, runs, and frozen interfaces.
+## Question
 
-## September 6 progress
+**How much of a mouse's choice behaviour in this task is explained by slowly
+changing latent state, and what remains for trial history once that state is
+modelled within each animal?**
 
-The complete source reconciliation recovered 83 animals in 9 labs and corrected
-255 misclassified omissions in a separate candidate dataset. Subject-disjoint
-folds preserve the exploratory evidence-history gain. The metadata inventory
-also excludes legacy-reference animals (90 known animals total).
+"State" is a hypothesis about structure in the data, not an assumed fact.
+Mice alternating between engaged and biased states in this task has been
+reported before ([Ashwood et al., 2022](https://www.nature.com/articles/s41593-021-01007-z));
+the project makes no novelty claim for it.
 
-A 60-animal cohort and an executable internal prospective protocol are frozen;
-see [source reconciliation](SOURCE_RECONCILIATION.md) and
-[replication protocol](REPLICATION_PROTOCOL.md). The freeze is hash-bound and
-local, not an external preregistration or a committed-protocol claim.
+## Explicit alternatives
 
-## Completed replication — September 11
+Each must be fitted with the same information access and scored on the same
+held-out sessions of the same animals.
 
-The original internal test passed without changing the frozen rules: 45/60
-animals eligible, 32/45 improved, equal-animal gain 0.001598 nats/trial,
-95% subject-bootstrap interval [0.000821, 0.002437]. See
-[the result and limitations](REPLICATION_RESULT.md). The frozen plan was local
-and uncommitted; there is no claim that the earlier desired version-control or
-external-preregistration milestone had been met.
+1. **Fixed animal.** A per-animal psychometric curve and constant side bias.
+2. **Fixed animal plus trial history.** Adds outcome-dependent choice history.
+3. **Continuous drift.** Side bias and sensitivity change smoothly in time.
+4. **Discrete states.** The animal switches between a few response modes.
+5. **Drift or states, plus trial history.**
 
-This closes the first source-verification and prospective prediction milestone.
-It does not validate the adaptive controller or establish a novel mechanism.
+The exploration favours 3–5 over 1–2, but it fitted none of them. A result in
+which model 2 predicts held-out sessions as well as 3–5 would refute the new
+direction, and would be reported as such.
 
-## Development follow-up — September 12
+## Milestones and gates
 
-A fixed eight-model comparison now tests evidence history against five-trial
-outcome history and two simple leaky correct-side estimates. All models use the
-same 84,674 eligible trials from 83 development animals, with animal-disjoint
-folds and leave-one-lab-out sensitivity. The combined-control evidence gain is
-0.000445 nats/trial; longer history accounts for much more predictive improvement.
-See [the competing-history report](COMPETING_HISTORY.md). This is development
-evidence; the completed reserved cohort remains excluded and unchanged.
+Each milestone has a written protocol before its analysis runs. A milestone
+that fails its gate stops the sequence; the failure is the result.
 
-The matched choice-only architecture follow-up yields reduced/full mean NLL
-0.445847/0.446538 with no resolved superiority. The extra controller remains a
-hypothesis, and both models remain comparators. See
-[the matched result](MATCHED_CHOICE_CONTROL.md).
+1. **Convert the deep reference.** Turn raw arrays into schema-valid trials per
+   session family, reusing the verified wheel-choice coding and omission
+   handling. Eligibility and quality rules are written before any outcome is
+   examined and never depend on history or state measures.
+   *Gate:* converted biased sessions reproduce the source-reconciled reference
+   trial for trial on the sessions they share.
 
-Synthetic positive controls recover lag-only and lag-plus-evidence generators,
-but a complete model-recovery confusion matrix remains future work. The learning
-alternatives are deliberately simple and use analyst block controls, so they do
-not exhaust animal inference explanations. Do not compare these absolute scores
-with architecture scores from different cohorts and information access.
+2. **Recovery at the new data depth.** Repeat the generative recovery study with
+   the real per-animal session counts and task schedules, synthetic responses,
+   and the effect sizes observed in development. Include a fitted continuous
+   drift model, which the earlier study lacked.
+   *Gate:* predeclared false-detection and power thresholds are met for telling
+   alternatives 2, 3, 4 and 5 apart. If they are not, no claim about which
+   model is right can be made from these data.
 
-## Next milestone: distinguish explanations
+3. **Within-animal comparison on development mice.** Fit each alternative per
+   animal on a fixed subset of its sessions and score the remaining sessions.
+   The endpoint, the session split, the number of states and all priors are
+   fixed in advance.
+   *Gate:* the endpoint and decision rule are frozen and hashed before fitting.
 
-1. Compare the result with prior evidence-dependent history literature before
-   asserting novelty. Identify the exact incremental claim worth testing.
-2. On development animals, compare the current model with longer outcome
-   histories, learning/inference models, and individual variation. Use equivalent
-   information access; block identity remains an analyst control, not an oracle
-   supplied to an autonomous agent.
-3. Check animal and lab sensitivity. The completed test has 21/45 animals from
-   one lab; subject-level intervals do not imply cross-lab generalization.
-4. Extend model-recovery checks to competing explanations. Add RT distributions
-   only when comparing models that actually predict RT.
-5. Freeze a new test and reserve another animal cohort before confirmation.
-   These 45 scored animals cannot be reused as an untouched test set after tuning.
+4. **Predictions that choice models did not use.** If state models win, test
+   what they predict about measures they were not fitted to: response time and
+   omissions by inferred state, clustering of easy-trial errors, and state
+   occupancy across a session and across training.
+   *Gate:* each prediction is written with its direction before it is checked.
 
-Keep the completed score, source hashes, exclusions, and frozen coefficients.
-Any follow-up using its outcomes is exploratory and must be labeled accordingly.
+5. **Confirmation on untouched animals.** Animals in neither the development
+   set nor the completed replication cohort remain unlisted and undownloaded.
+   A confirmation protocol with sample size, eligibility and stopping rules is
+   frozen before any of them is accessed. Development animals cannot confirm
+   anything.
 
-## Remaining discriminator after stronger history controls
+6. **Consequences for agents.** Only after milestone 3: define state-level
+   fingerprints and ask whether any agent reproduces them. Until then no
+   architecture is changed to target a state-level result.
 
-Before a new confirmation cohort, test whether recent choices are estimating
-persistent animal/session side preferences or slow behavioral state. Any
-held-out animal's bias/state must be estimated causally from preceding trials
-or a predeclared prefix, never by fitting its intercept to the full scored
-session. Compare added lags on identical subsequent trials. The completed [causal preference diagnostic](BIAS_HISTORY.md) now adds a
-prefix-only session intercept and slow residual filters, but not hierarchical
-animal or explicit switching-state models. History/evidence gains survive these
-controls, while synthetic counterexamples show that lag gains can arise from
-drift alone. Therefore the next gate is published generative drift/switching vs
-history model recovery and realistic power simulation, before reserving a new
-confirmation cohort. [Focused literature comparison](NOVELTY_REVIEW.md).
+## Decision rules
 
-## September 19 generative comparison
+- Advance a richer model only if it improves the frozen held-out measure, the
+  animal-level uncertainty supports the improvement, and recovery shows the
+  comparison can distinguish it from simpler alternatives.
+- State the practically meaningful difference before the comparison, on
+  development data only.
+- If the simpler model predicts as well, report that and keep the simpler model.
+- A failed prediction is recorded with the same prominence as a successful one.
+  The [outcome split](OUTCOME_SPLIT.md) is the current example.
 
-The next comparison now has an executable [protocol](GENERATIVE_COMPARISON_PROTOCOL.md):
-task-only, history, explicit AR drift, three-state GLM-HMM, and their history
-extensions. Recovery uses the real development cohort's task schedules with
-new synthetic responses, multiple effect sizes, and explicit false-detection
-and power criteria. Earlier small simulations are not treated as qualification.
+## Standing rules
 
-The implementation includes causal prediction checks, independent author-code
-filter verification, and drift-grid sensitivity. The matched author-code GLM-HMM refit agrees with the implementation, but the
-360-run recovery study and drift-resolution check did not meet the full
-qualification gate. See the [completed comparison](GENERATIVE_COMPARISON.md).
-A fitted continuous-drift benchmark, numerical convergence, and a power study
-matched to the exact intended endpoint remain prerequisites for a new cohort.
-Do not equate a good development score with passing that gate.
+- Every analysis is labelled exploratory or confirmatory before it runs.
+- Existing run directories, the adopted reference, the reconciled candidate and
+  the frozen replication are never overwritten. New work goes to new paths.
+- Inputs, code and plans are hashed; portable snapshots of every reported
+  number go under `docs/results/`.
+- Session families are not pooled without a stated reason.
+- Software lesions and model fits do not establish mechanisms in animals.
 
-## Decision rule
+## Open items carried forward
 
-Advance a richer model only if its added structure improves the frozen primary
-prediction measure on fresh subjects, the subject-level uncertainty supports
-that improvement, and the relevant behavioral predictions survive appropriate
-controls. Predefine a practically meaningful improvement on development data;
-do not choose it after the test result.
+- The generative refit without optogenetic and RPE sessions had not finished on
+  November 23 ([sensitivity check](VARIANT_SENSITIVITY.md)).
+- The adopted reference still contains those 16 variant sessions. Rebuilding it
+  is a dated provenance decision, to be taken with milestone 1.
+- 21 of the 45 replication animals come from one lab; cross-lab generalization
+  of the replicated effect remains untested.
 
-If simple models perform equally well, report that and simplify. If the apparent
-history effect disappears with stronger controls, report the confound. If it
-replicates, test a specific predicted task manipulation. Any of these can be a
-useful result; none is guaranteed to be novel or publication-ready.
+## Deferred
 
-## Deferred work and compatibility
-
-Pause global scalar sweeps, new control circuits, and DMS expansion. PRL remains
-an available simulation stress test, not animal validation. Resume transfer only
-after the perceptual-task measurement and prediction gates are met; DMS then
-starts with metrics and a memoryless baseline.
-
-Keep existing CLI arguments, schema keys, paths, and defaults stable. Do not
-remove historical scripts merely because they are no longer the active path.
-The historical experiment record belongs in FINDINGS.md and existing artifacts;
-current claims belong in README.md and the dated audit report.
+The evidence-dependent history effect is not pursued further on its own; it
+returns as a term inside alternative 5. Scalar sweeps, new control circuits,
+the adaptive controller, PRL transfer and DMS expansion stay paused. Existing
+CLI arguments, schema keys, paths and defaults remain stable, and historical
+scripts stay in place.
 
 ## Scientific basis
 
-The [IBL task paper](https://elifesciences.org/articles/63711) models sensory,
-rewarded/unrewarded choice history, and block contributions. The reset adopts
-that separation while testing an additional evidence interaction; it is not an
-exact reproduction of the paper's fitting procedure.
-[Wilson and Collins](https://elifesciences.org/articles/49547) motivate predictive
-comparison and recovery checks. These methods support assessment of competing
-explanations; they cannot establish anatomical necessity from behavioral fits.
+[The IBL task paper](https://elifesciences.org/articles/63711) separates
+sensory, choice-history and block contributions.
+[Ashwood et al.](https://www.nature.com/articles/s41593-021-01007-z) describe
+discrete engaged and biased states in the same task.
+[Roy et al.](https://pubmed.ncbi.nlm.nih.gov/33412101/) describe continuous
+drift of psychophysical weights during learning.
+[Lak et al.](https://elifesciences.org/articles/49834) motivate
+difficulty-dependent outcome effects and the following-trial control.
+[Wilson and Collins](https://elifesciences.org/articles/49547) motivate
+recovery checks before interpretation.

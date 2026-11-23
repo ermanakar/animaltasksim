@@ -4,8 +4,10 @@
 
 - AnimalTaskSim tests explanations of animal choices using task environments,
   comparison agents, and a shared schema-validated NDJSON evaluation pipeline.
-- Current priority: the September 2026 IBL history audit and subject-disjoint
-  replication plan in `docs/HISTORY_AUDIT.md` and `docs/RESEARCH_PLAN.md`.
+- Current priority (November 2026): within-animal slow-state models on the deep
+  development reference, following the gated milestones in
+  `docs/RESEARCH_PLAN.md`. The September history audit and replication are
+  complete; their plan is archived in `docs/archive/RESEARCH_PLAN_2026-09.md`.
 - The adopted 120-session reference has a negative failure retry gap; do not
   portray the adaptive controller's positive gap as animal-validated. Software
   lesions establish within-model effects, not neural or biological necessity.
