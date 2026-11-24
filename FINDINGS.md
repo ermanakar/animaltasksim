@@ -1139,3 +1139,24 @@ source-reconciled reference match on all 73,383 trials. No quality filter was
 applied; 2,561 sessions meet the thresholds frozen for the September
 replication, recorded as a flag only.
 [Protocol and result](docs/DEEP_CONVERSION_PROTOCOL.md).
+
+### Milestone 2: recovery gate failed on convergence (November 24, 2026)
+
+Six within-animal models were fitted to synthetic choices on the real schedules
+of 71 animals (eight generators, three seeds, 213 simulated animals per
+generator). Protocol and thresholds were written first.
+
+- **Passed:** state false detection 0.000, state power 1.000, history false
+  detection 0.000, history power 1.000, state form named correctly 1.000 and
+  wrongly 0.000, numerical resolution 2.5 × 10⁻⁵.
+- **Failed:** convergence. `switching_history` hit its iteration limit in 50
+  and 43 of 213 animals in the two generators without a state, giving 3.9% and
+  3.4% of fits against a 2% limit.
+- **Not gated:** history at half the development strength was detected in only
+  0.51 and 0.15 of cohorts. Fitted drift persistence had median 0.995 against a
+  true 0.995.
+
+Milestone 3 is not frozen. The comparison separates the alternatives at this
+depth; the fitting of the largest model must be revised in a new dated protocol
+and the check repeated. Recovery on synthetic data says nothing yet about the
+mice. [Protocol and result](docs/WITHIN_ANIMAL_RECOVERY_PROTOCOL.md).

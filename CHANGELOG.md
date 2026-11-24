@@ -10,6 +10,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## November 24 — within-animal recovery study
+
+- Added `eval/within_animal.py` (fixed, history, fitted-drift and switching
+  models fitted per animal, with analytic gradients),
+  `eval/within_animal_recovery.py` (simulators and detection rules) and
+  `scripts/recover_within_animal.py` (stages `plan`, `run`, `summarize`).
+- Recovery gate **failed on convergence only**: the largest switching model hit
+  its iteration limit in 3.9% and 3.4% of fits where no state was simulated
+  (limit 2%). The six discrimination criteria passed. Milestone 3 is not
+  frozen. [Protocol and result](docs/WITHIN_ANIMAL_RECOVERY_PROTOCOL.md).
+
 ## November 23 — deep reference conversion
 
 - Added `eval/ibl_deep_convert.py` and `scripts/convert_ibl_deep_reference.py`:
