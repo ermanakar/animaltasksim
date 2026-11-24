@@ -1,0 +1,720 @@
+{
+ "passed": false,
+ "criteria": {
+  "1_state_false_detection": true,
+  "2_state_power": true,
+  "3_history_false_detection": true,
+  "4_history_power": true,
+  "5_form": true,
+  "6_convergence": false,
+  "7_numerical_resolution": true
+ },
+ "numerical_resolution": 2.483455876052082e-05,
+ "cells": {
+  "fixed": {
+   "animals": 213,
+   "probabilities": {
+    "state": 0.0,
+    "history": 0.0,
+    "form_switching": 0.0,
+    "form_drift": 0.0
+   },
+   "per_seed_decisions": [
+    {
+     "state": false,
+     "history": false,
+     "form": "unresolved"
+    },
+    {
+     "state": false,
+     "history": false,
+     "form": "unresolved"
+    },
+    {
+     "state": false,
+     "history": false,
+     "form": "unresolved"
+    }
+   ],
+   "mean_gain": {
+    "state_drift": {
+     "mean": -2.6416958671784e-05,
+     "interval": [
+      -3.623418908589873e-05,
+      -1.7564429484885698e-05
+     ],
+     "animals_positive": 67
+    },
+    "state_switching": {
+     "mean": -0.0007014126952040145,
+     "interval": [
+      -0.0007764300624545287,
+      -0.0006332640778503998
+     ],
+     "animals_positive": 2
+    },
+    "history_drift": {
+     "mean": -0.0007454008939545709,
+     "interval": [
+      -0.0008384967997843199,
+      -0.000660158569105758
+     ],
+     "animals_positive": 7
+    },
+    "history_switching": {
+     "mean": -0.0011985283639832764,
+     "interval": [
+      -0.0013141457415603945,
+      -0.001085234159952039
+     ],
+     "animals_positive": 1
+    },
+    "form": {
+     "mean": -0.0006749957365322305,
+     "interval": [
+      -0.0007503778429526026,
+      -0.0006066301230341083
+     ],
+     "animals_positive": 4
+    }
+   },
+   "best_model_counts": {
+    "fixed": 130,
+    "history": 4,
+    "drift": 65,
+    "drift_history": 3,
+    "switching": 11,
+    "switching_history": 0
+   },
+   "nonconverged_fraction": 0.03912363067292645,
+   "fitted_drift": {
+    "drift": {
+     "rho": 0.9011337863533727,
+     "sd": 0.04918162891311799
+    },
+    "drift_history": {
+     "rho": 0.9038088060341171,
+     "sd": 0.035964529674312226
+    }
+   },
+   "true_drift_sd_median": 0.0
+  },
+  "history": {
+   "animals": 213,
+   "probabilities": {
+    "state": 0.0,
+    "history": 1.0,
+    "form_switching": 0.0,
+    "form_drift": 0.0
+   },
+   "per_seed_decisions": [
+    {
+     "state": false,
+     "history": true,
+     "form": "unresolved"
+    },
+    {
+     "state": false,
+     "history": true,
+     "form": "unresolved"
+    },
+    {
+     "state": false,
+     "history": true,
+     "form": "unresolved"
+    }
+   ],
+   "mean_gain": {
+    "state_drift": {
+     "mean": -1.8078059157259175e-05,
+     "interval": [
+      -2.538745565916542e-05,
+      -1.0824159282523884e-05
+     ],
+     "animals_positive": 68
+    },
+    "state_switching": {
+     "mean": -0.0007396604072775977,
+     "interval": [
+      -0.000819225342216591,
+      -0.0006705854507417689
+     ],
+     "animals_positive": 1
+    },
+    "history_drift": {
+     "mean": 0.013200707461603645,
+     "interval": [
+      0.011837192753056155,
+      0.014705431256080233
+     ],
+     "animals_positive": 211
+    },
+    "history_switching": {
+     "mean": 0.01280485322270869,
+     "interval": [
+      0.011420303118974143,
+      0.014337682970528828
+     ],
+     "animals_positive": 211
+    },
+    "form": {
+     "mean": -0.0007215823481203385,
+     "interval": [
+      -0.000799329952274558,
+      -0.000653322799335054
+     ],
+     "animals_positive": 1
+    }
+   },
+   "best_model_counts": {
+    "fixed": 1,
+    "history": 143,
+    "drift": 0,
+    "drift_history": 68,
+    "switching": 0,
+    "switching_history": 1
+   },
+   "nonconverged_fraction": 0.033646322378716745,
+   "fitted_drift": {
+    "drift": {
+     "rho": 0.9011321741695546,
+     "sd": 0.1396779651891705
+    },
+    "drift_history": {
+     "rho": 0.9079289660041532,
+     "sd": 0.05135099138052215
+    }
+   },
+   "true_drift_sd_median": 0.0
+  },
+  "drift": {
+   "animals": 213,
+   "probabilities": {
+    "state": 1.0,
+    "history": 0.0,
+    "form_switching": 0.0,
+    "form_drift": 1.0
+   },
+   "per_seed_decisions": [
+    {
+     "state": true,
+     "history": false,
+     "form": "drift"
+    },
+    {
+     "state": true,
+     "history": false,
+     "form": "drift"
+    },
+    {
+     "state": true,
+     "history": false,
+     "form": "drift"
+    }
+   ],
+   "mean_gain": {
+    "state_drift": {
+     "mean": 0.01260401576855015,
+     "interval": [
+      0.011716273310765385,
+      0.013474157348288733
+     ],
+     "animals_positive": 213
+    },
+    "state_switching": {
+     "mean": 0.0072488114663352525,
+     "interval": [
+      0.006453427565056265,
+      0.00806006548007768
+     ],
+     "animals_positive": 187
+    },
+    "history_drift": {
+     "mean": -0.0007571728219856267,
+     "interval": [
+      -0.0008430074421785322,
+      -0.0006687872026438208
+     ],
+     "animals_positive": 3
+    },
+    "history_switching": {
+     "mean": -0.002159231914607054,
+     "interval": [
+      -0.0023739972097721797,
+      -0.001944410159796784
+     ],
+     "animals_positive": 6
+    },
+    "form": {
+     "mean": -0.005355204302214897,
+     "interval": [
+      -0.005770825070157283,
+      -0.0049724445562623195
+     ],
+     "animals_positive": 0
+    }
+   },
+   "best_model_counts": {
+    "fixed": 0,
+    "history": 0,
+    "drift": 210,
+    "drift_history": 3,
+    "switching": 0,
+    "switching_history": 0
+   },
+   "nonconverged_fraction": 0.003129890453834116,
+   "fitted_drift": {
+    "drift": {
+     "rho": 0.9951633317860937,
+     "sd": 0.5674863531414029
+    },
+    "drift_history": {
+     "rho": 0.9951899438529269,
+     "sd": 0.5694901040488349
+    }
+   },
+   "true_drift_sd_median": 0.6150663574018238
+  },
+  "switching": {
+   "animals": 213,
+   "probabilities": {
+    "state": 1.0,
+    "history": 0.0,
+    "form_switching": 1.0,
+    "form_drift": 0.0
+   },
+   "per_seed_decisions": [
+    {
+     "state": true,
+     "history": false,
+     "form": "switching"
+    },
+    {
+     "state": true,
+     "history": false,
+     "form": "switching"
+    },
+    {
+     "state": true,
+     "history": false,
+     "form": "switching"
+    }
+   ],
+   "mean_gain": {
+    "state_drift": {
+     "mean": 0.010227470640088008,
+     "interval": [
+      0.010055604810090794,
+      0.010404646459194816
+     ],
+     "animals_positive": 213
+    },
+    "state_switching": {
+     "mean": 0.018649058638523713,
+     "interval": [
+      0.01822460173137482,
+      0.019077354808034578
+     ],
+     "animals_positive": 213
+    },
+    "history_drift": {
+     "mean": -0.0006935489619428264,
+     "interval": [
+      -0.0007926023794715663,
+      -0.0005993320276014126
+     ],
+     "animals_positive": 19
+    },
+    "history_switching": {
+     "mean": -0.0024659988565844198,
+     "interval": [
+      -0.002681189873149921,
+      -0.002246450182712067
+     ],
+     "animals_positive": 0
+    },
+    "form": {
+     "mean": 0.008421587998435703,
+     "interval": [
+      0.008030650772545635,
+      0.008801286379026753
+     ],
+     "animals_positive": 211
+    }
+   },
+   "best_model_counts": {
+    "fixed": 0,
+    "history": 0,
+    "drift": 0,
+    "drift_history": 0,
+    "switching": 213,
+    "switching_history": 0
+   },
+   "nonconverged_fraction": 0.0,
+   "fitted_drift": {
+    "drift": {
+     "rho": 0.959585355716915,
+     "sd": 1.1868810967428098
+    },
+    "drift_history": {
+     "rho": 0.9625121429548193,
+     "sd": 1.0907636851905944
+    }
+   },
+   "true_drift_sd_median": 0.0
+  },
+  "drift_history": {
+   "animals": 213,
+   "probabilities": {
+    "state": 1.0,
+    "history": 1.0,
+    "form_switching": 0.0,
+    "form_drift": 1.0
+   },
+   "per_seed_decisions": [
+    {
+     "state": true,
+     "history": true,
+     "form": "drift"
+    },
+    {
+     "state": true,
+     "history": true,
+     "form": "drift"
+    },
+    {
+     "state": true,
+     "history": true,
+     "form": "drift"
+    }
+   ],
+   "mean_gain": {
+    "state_drift": {
+     "mean": 0.010441001168833142,
+     "interval": [
+      0.009549601812904644,
+      0.011427440290440684
+     ],
+     "animals_positive": 213
+    },
+    "state_switching": {
+     "mean": 0.005308029007033032,
+     "interval": [
+      0.004567334815536237,
+      0.006092538113917154
+     ],
+     "animals_positive": 169
+    },
+    "history_drift": {
+     "mean": 0.012893439206380329,
+     "interval": [
+      0.01152167096908464,
+      0.014274196089191256
+     ],
+     "animals_positive": 213
+    },
+    "history_switching": {
+     "mean": 0.011285099623897657,
+     "interval": [
+      0.00991324784039053,
+      0.01264451857666345
+     ],
+     "animals_positive": 206
+    },
+    "form": {
+     "mean": -0.005132972161800112,
+     "interval": [
+      -0.005561678289622632,
+      -0.004703613211035506
+     ],
+     "animals_positive": 0
+    }
+   },
+   "best_model_counts": {
+    "fixed": 0,
+    "history": 0,
+    "drift": 0,
+    "drift_history": 213,
+    "switching": 0,
+    "switching_history": 0
+   },
+   "nonconverged_fraction": 0.005477308294209703,
+   "fitted_drift": {
+    "drift": {
+     "rho": 0.994192409775138,
+     "sd": 0.5367047246316593
+    },
+    "drift_history": {
+     "rho": 0.9949120842615788,
+     "sd": 0.5439931420820454
+    }
+   },
+   "true_drift_sd_median": 0.5764421938372344
+  },
+  "switching_history": {
+   "animals": 213,
+   "probabilities": {
+    "state": 1.0,
+    "history": 1.0,
+    "form_switching": 1.0,
+    "form_drift": 0.0
+   },
+   "per_seed_decisions": [
+    {
+     "state": true,
+     "history": true,
+     "form": "switching"
+    },
+    {
+     "state": true,
+     "history": true,
+     "form": "switching"
+    },
+    {
+     "state": true,
+     "history": true,
+     "form": "switching"
+    }
+   ],
+   "mean_gain": {
+    "state_drift": {
+     "mean": 0.00981950996657427,
+     "interval": [
+      0.009632693189021364,
+      0.010009256579079338
+     ],
+     "animals_positive": 213
+    },
+    "state_switching": {
+     "mean": 0.017175153432821926,
+     "interval": [
+      0.016709957634585212,
+      0.017633222383412302
+     ],
+     "animals_positive": 213
+    },
+    "history_drift": {
+     "mean": 0.011405864623663508,
+     "interval": [
+      0.010351649919092206,
+      0.01253359617436503
+     ],
+     "animals_positive": 211
+    },
+    "history_switching": {
+     "mean": 0.01065951013386453,
+     "interval": [
+      0.009495594186339308,
+      0.011874827485706119
+     ],
+     "animals_positive": 200
+    },
+    "form": {
+     "mean": 0.00735564346624766,
+     "interval": [
+      0.00696967500566201,
+      0.007736364418185006
+     ],
+     "animals_positive": 210
+    }
+   },
+   "best_model_counts": {
+    "fixed": 0,
+    "history": 0,
+    "drift": 0,
+    "drift_history": 3,
+    "switching": 12,
+    "switching_history": 198
+   },
+   "nonconverged_fraction": 0.0,
+   "fitted_drift": {
+    "drift": {
+     "rho": 0.9570933538898135,
+     "sd": 1.145505702445731
+    },
+    "drift_history": {
+     "rho": 0.962029351722961,
+     "sd": 1.0821067800732376
+    }
+   },
+   "true_drift_sd_median": 0.0
+  },
+  "drift_history_half": {
+   "animals": 213,
+   "probabilities": {
+    "state": 1.0,
+    "history": 0.5135,
+    "form_switching": 0.0,
+    "form_drift": 1.0
+   },
+   "per_seed_decisions": [
+    {
+     "state": true,
+     "history": false,
+     "form": "drift"
+    },
+    {
+     "state": true,
+     "history": false,
+     "form": "drift"
+    },
+    {
+     "state": true,
+     "history": true,
+     "form": "drift"
+    }
+   ],
+   "mean_gain": {
+    "state_drift": {
+     "mean": 0.011675272054802526,
+     "interval": [
+      0.010728732769459091,
+      0.012647707925219617
+     ],
+     "animals_positive": 213
+    },
+    "state_switching": {
+     "mean": 0.006409106678643858,
+     "interval": [
+      0.00563134738486746,
+      0.007246503541410338
+     ],
+     "animals_positive": 181
+    },
+    "history_drift": {
+     "mean": 0.0029636276441279926,
+     "interval": [
+      0.0025759165422630137,
+      0.003372227586370355
+     ],
+     "animals_positive": 201
+    },
+    "history_switching": {
+     "mean": 0.0017122440051777145,
+     "interval": [
+      0.0012879402362533908,
+      0.0021657526328114447
+     ],
+     "animals_positive": 152
+    },
+    "form": {
+     "mean": -0.005266165376158671,
+     "interval": [
+      -0.005658140921312501,
+      -0.004906036152494797
+     ],
+     "animals_positive": 0
+    }
+   },
+   "best_model_counts": {
+    "fixed": 0,
+    "history": 0,
+    "drift": 12,
+    "drift_history": 201,
+    "switching": 0,
+    "switching_history": 0
+   },
+   "nonconverged_fraction": 0.003129890453834116,
+   "fitted_drift": {
+    "drift": {
+     "rho": 0.9947939797649317,
+     "sd": 0.565356683904582
+    },
+    "drift_history": {
+     "rho": 0.9949535702534034,
+     "sd": 0.5676846674464693
+    }
+   },
+   "true_drift_sd_median": 0.6296827100045611
+  },
+  "switching_history_half": {
+   "animals": 213,
+   "probabilities": {
+    "state": 1.0,
+    "history": 0.1495,
+    "form_switching": 1.0,
+    "form_drift": 0.0
+   },
+   "per_seed_decisions": [
+    {
+     "state": true,
+     "history": false,
+     "form": "switching"
+    },
+    {
+     "state": true,
+     "history": false,
+     "form": "switching"
+    },
+    {
+     "state": true,
+     "history": false,
+     "form": "switching"
+    }
+   ],
+   "mean_gain": {
+    "state_drift": {
+     "mean": 0.009935799655887473,
+     "interval": [
+      0.009752386212919463,
+      0.010122717549337733
+     ],
+     "animals_positive": 213
+    },
+    "state_switching": {
+     "mean": 0.018064085870644658,
+     "interval": [
+      0.01761457261499376,
+      0.018487735900053197
+     ],
+     "animals_positive": 213
+    },
+    "history_drift": {
+     "mean": 0.0027754740539846245,
+     "interval": [
+      0.002350323521853928,
+      0.0032371482309817567
+     ],
+     "animals_positive": 189
+    },
+    "history_switching": {
+     "mean": 0.001411553095446111,
+     "interval": [
+      0.0009320606324251386,
+      0.0019268694669810904
+     ],
+     "animals_positive": 138
+    },
+    "form": {
+     "mean": 0.008128286214757186,
+     "interval": [
+      0.007732352836119844,
+      0.008491998277311778
+     ],
+     "animals_positive": 210
+    }
+   },
+   "best_model_counts": {
+    "fixed": 0,
+    "history": 0,
+    "drift": 0,
+    "drift_history": 1,
+    "switching": 75,
+    "switching_history": 137
+   },
+   "nonconverged_fraction": 0.0,
+   "fitted_drift": {
+    "drift": {
+     "rho": 0.9589636350071811,
+     "sd": 1.1718215438360629
+    },
+    "drift_history": {
+     "rho": 0.9617628585461544,
+     "sd": 1.1036079613112793
+    }
+   },
+   "true_drift_sd_median": 0.0
+  }
+ },
+ "plan_sha256": "5d20c45d58bb409b6737beb65463a967b55fc36ed357e571cb729003c8135a4f"
+}

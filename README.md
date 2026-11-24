@@ -103,6 +103,14 @@ trials with structural rules only, and its gate passed (104 shared sessions,
 73,383 trials, identical to the source-reconciled reference).
 [Conversion protocol and result](docs/DEEP_CONVERSION_PROTOCOL.md).
 
+Milestone 2, a recovery study on simulated animals with the real schedules,
+**did not pass its gate**. Fixed behaviour, trial history, slow drift and
+discrete states were told apart in every simulated cohort, but the largest
+switching model failed to converge in 3.4–3.9% of fits where no state was
+present, above the 2% limit. The held-out comparison waits for a revised
+fitting protocol.
+[Recovery protocol and result](docs/WITHIN_ANIMAL_RECOVERY_PROTOCOL.md).
+
 ## Start here
 
 ```bash
@@ -129,7 +137,7 @@ or model training. The existing scored cohort is protected against overwrite.
 
 | Area | Status |
 |---|---|
-| Deep IBL reference and within-animal state models | Active: conversion, recovery, then held-out comparison |
+| Deep IBL reference and within-animal state models | Active: converted; recovery gate failed on convergence, revision pending |
 | Evidence-dependent history | Replicated and small; not pursued further on its own |
 | Trial logging, schema, metrics, tests | Shared scientific infrastructure |
 | Sticky-Q, Bayes, DDM, PPO, Hybrid, R-DDM | Retained comparison implementations; no new calibration sweeps planned |

@@ -77,6 +77,12 @@ that fails its gate stops the sequence; the failure is the result.
    *Gate:* predeclared false-detection and power thresholds are met for telling
    alternatives 2, 3, 4 and 5 apart. If they are not, no claim about which
    model is right can be made from these data.
+   **Run November 24: gate failed on convergence only.** Detection and
+   discrimination thresholds were met in every cell; the largest switching
+   model did not converge in 3.4–3.9% of fits where no state was simulated
+   (limit 2%). Milestone 3 waits for a new dated protocol that changes that
+   fit and repeats the check.
+   [Protocol and result](WITHIN_ANIMAL_RECOVERY_PROTOCOL.md).
 
 3. **Within-animal comparison on development mice.** Fit each alternative per
    animal on a fixed subset of its sessions and score the remaining sessions.
