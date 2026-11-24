@@ -41,14 +41,21 @@ Nothing changes sign and nothing moves by more than its own interval.
 Gains are choice NLL reductions in nats per trial with subject-bootstrap 95%
 intervals where shown.
 
-## Not complete
+## Generative comparison
 
-The generative comparison (drift and three-state switching models) was being
-refitted on the filtered data and **had not finished when this was written**.
-No conclusion is drawn about it. A subgroup split of the existing fits gives
-history gains of 0.0138 (drift) and 0.0147 (switching) for the standard-session
-animals, against 0.0146 and 0.0143 for all animals; that is a split of old
-predictions, not a refit.
+The drift and three-state switching models were refitted on the filtered data
+(71 animals, 61,825 trials; development fit only, recovery simulations not
+repeated). This refit finished after the rest of this report was first written.
+
+| History gain over | All 120 sessions (83 animals) | Without the 16 (71 animals) |
+|---|---:|---:|
+| Task-only model | 0.0490 [0.0386, 0.0657] | 0.0478 [0.0372, 0.0692] |
+| Slow-drift model | 0.0146 [0.0092, 0.0225] | 0.0139 [0.0086, 0.0229] |
+| Three-state switching model | 0.0143 [0.0086, 0.0229] | 0.0163 [0.0104, 0.0270] |
+
+History still adds prediction beyond both latent models, with overlapping
+intervals. The earlier limits of that comparison are unchanged: its recovery
+study did not pass, so it does not separate history from drift or switching.
 
 ## Limits
 

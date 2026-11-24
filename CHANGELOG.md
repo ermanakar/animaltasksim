@@ -10,6 +10,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## November 23 — deep reference conversion
+
+- Added `eval/ibl_deep_convert.py` and `scripts/convert_ibl_deep_reference.py`:
+  whole-session conversion of raw ALF arrays to schema trials under written
+  structural rules, with no quality filtering. Outputs are local under
+  `runs/ibl_deep_converted_v1` as one file per animal per session family.
+- Gate passed against the source-reconciled reference. No schema change.
+
 ## November 23 — deep reference and change of direction
 
 - Added a staged, hash-bound fetcher for every standard session of the
