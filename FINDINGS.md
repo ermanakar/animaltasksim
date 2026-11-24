@@ -1178,3 +1178,26 @@ synthetic animals and all seven criteria reapplied.
 Milestone 3 may be frozen with these models, endpoints and limit. The first
 failure stays on record.
 [Revision protocol and result](docs/WITHIN_ANIMAL_RECOVERY_REVISION_PROTOCOL.md).
+
+### Milestone 3: state and history both detected within animals (November 24, 2026)
+
+Exploratory. Six models fitted per animal to real choices of 71 development
+mice (2,089 sessions, 1,518,119 committed trials) and scored on held-out
+sessions, under a protocol frozen beforehand. Both run conditions were met.
+Gains in × 10⁻³ nats per trial, 95% interval over animals:
+
+- **State beyond history: detected.** 14.16 [12.33, 16.11] with drift (71 of
+  71 animals), 12.33 [10.65, 14.08] with switching.
+- **History beyond state: detected.** 10.92 [9.67, 12.19] and
+  12.48 [10.77, 14.20], 71 of 71 animals each.
+- **Form: unresolved.** Drift − switching is −1.83 [−3.19, −0.48] in favour of
+  drift, short of the rule.
+- **Mostly shared.** History alone gains 51.9 over a fixed animal and drift
+  alone 55.1; together 66.0. About a fifth of the history gain remains after
+  state (0.21 [0.18, 0.24]).
+- Same decisions with a chronological split and without the largest lab.
+
+The new direction is supported; the stronger idea that history effects are only
+a by-product of slow state is not. The latent variable is a wandering side
+bias and has not been shown to be engagement or any other named state.
+[Report](docs/WITHIN_ANIMAL_COMPARISON.md).

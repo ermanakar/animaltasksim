@@ -111,10 +111,17 @@ present, above the 2% limit.
 [Recovery protocol and result](docs/WITHIN_ANIMAL_RECOVERY_PROTOCOL.md).
 
 A revision written as a new protocol raised the optimiser's iteration limit
-and changed nothing else. **It passed all seven criteria.** The next step is
-to freeze the held-out comparison on the development mice; no model has been
-fitted to real choices yet.
+and changed nothing else. **It passed all seven criteria.**
 [Revision protocol and result](docs/WITHIN_ANIMAL_RECOVERY_REVISION_PROTOCOL.md).
+
+Milestone 3, the first fit to real choices, is exploratory and used a protocol
+frozen beforehand. On held-out sessions of 71 development mice, a slow latent
+state improved prediction beyond trial history (14.2 × 10⁻³ nats per trial,
+71 of 71 animals), and trial history improved it beyond the state (10.9,
+71 of 71). Whether the state drifts or switches is unresolved. The two mostly
+explain the same variation, so this does not show that history effects are a
+by-product of slow state. Nothing is confirmed until untouched animals are
+tested. [Report](docs/WITHIN_ANIMAL_COMPARISON.md).
 
 ## Start here
 
@@ -142,7 +149,7 @@ or model training. The existing scored cohort is protected against overwrite.
 
 | Area | Status |
 |---|---|
-| Deep IBL reference and within-animal state models | Active: converted; recovery gate passed on revision 1; held-out comparison next |
+| Deep IBL reference and within-animal state models | Active: exploratory comparison done (state and history both detected); non-choice predictions next |
 | Evidence-dependent history | Replicated and small; not pursued further on its own |
 | Trial logging, schema, metrics, tests | Shared scientific infrastructure |
 | Sticky-Q, Bayes, DDM, PPO, Hybrid, R-DDM | Retained comparison implementations; no new calibration sweeps planned |

@@ -92,6 +92,11 @@ that fails its gate stops the sequence; the failure is the result.
    The endpoint, the session split, the number of states and all priors are
    fixed in advance.
    *Gate:* the endpoint and decision rule are frozen and hashed before fitting.
+   **Done, November 24 (exploratory).** State detected beyond history, history
+   detected beyond state, form unresolved; unchanged in both planned
+   sensitivity analyses. State and history largely explain the same variation.
+   [Protocol](WITHIN_ANIMAL_COMPARISON_PROTOCOL.md) ·
+   [report](WITHIN_ANIMAL_COMPARISON.md).
 
 4. **Predictions that choice models did not use.** If state models win, test
    what they predict about measures they were not fitted to: response time and
