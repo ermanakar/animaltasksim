@@ -225,6 +225,10 @@ when complete and no result depends on timing.
 
 Portable result: [`results/within_animal_recovery_v1.json`](results/within_animal_recovery_v1.json).
 
+**Follow-up.** [Revision 1](WITHIN_ANIMAL_RECOVERY_REVISION_PROTOCOL.md) raised
+the iteration limit to 5,000 under a new protocol and passed all seven
+criteria. The result above is unchanged and stands as recorded.
+
 ## Reproduction
 
 ```bash

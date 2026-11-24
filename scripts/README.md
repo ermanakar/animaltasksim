@@ -13,6 +13,7 @@ development reference; see the [research plan](../docs/RESEARCH_PLAN.md).
 | Sensitivity to optogenetic and RPE sessions | `exclude_variant_sensitivity.py` (stages `prepare`, `generative`) |
 | Evidence gain split by previous outcome | `split_evidence_by_outcome.py` |
 | Recovery of within-animal models on real schedules | `recover_within_animal.py` (stages `plan`, `run`, `summarize`) |
+| Revision 1 of that recovery study | `recheck_within_animal_recovery.py` (same stages) |
 | Figures for the two reports above | `render_state_direction_figures.py` (reads tracked snapshots only) |
 
 Reports: [protocol](../docs/DEEP_REFERENCE_PROTOCOL.md) ·

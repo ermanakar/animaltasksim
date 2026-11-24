@@ -107,9 +107,14 @@ Milestone 2, a recovery study on simulated animals with the real schedules,
 **did not pass its gate**. Fixed behaviour, trial history, slow drift and
 discrete states were told apart in every simulated cohort, but the largest
 switching model failed to converge in 3.4–3.9% of fits where no state was
-present, above the 2% limit. The held-out comparison waits for a revised
-fitting protocol.
+present, above the 2% limit.
 [Recovery protocol and result](docs/WITHIN_ANIMAL_RECOVERY_PROTOCOL.md).
+
+A revision written as a new protocol raised the optimiser's iteration limit
+and changed nothing else. **It passed all seven criteria.** The next step is
+to freeze the held-out comparison on the development mice; no model has been
+fitted to real choices yet.
+[Revision protocol and result](docs/WITHIN_ANIMAL_RECOVERY_REVISION_PROTOCOL.md).
 
 ## Start here
 
@@ -137,7 +142,7 @@ or model training. The existing scored cohort is protected against overwrite.
 
 | Area | Status |
 |---|---|
-| Deep IBL reference and within-animal state models | Active: converted; recovery gate failed on convergence, revision pending |
+| Deep IBL reference and within-animal state models | Active: converted; recovery gate passed on revision 1; held-out comparison next |
 | Evidence-dependent history | Replicated and small; not pursued further on its own |
 | Trial logging, schema, metrics, tests | Shared scientific infrastructure |
 | Sticky-Q, Bayes, DDM, PPO, Hybrid, R-DDM | Retained comparison implementations; no new calibration sweeps planned |
