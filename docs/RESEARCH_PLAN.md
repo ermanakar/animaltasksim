@@ -66,6 +66,9 @@ that fails its gate stops the sequence; the failure is the result.
    examined and never depend on history or state measures.
    *Gate:* converted biased sessions reproduce the source-reconciled reference
    trial for trial on the sessions they share.
+   **Done, November 23: gate passed** (3,946 sessions converted; 104 shared
+   sessions and 73,383 trials match).
+   [Protocol and result](DEEP_CONVERSION_PROTOCOL.md).
 
 2. **Recovery at the new data depth.** Repeat the generative recovery study with
    the real per-animal session counts and task schedules, synthetic responses,
@@ -120,8 +123,6 @@ that fails its gate stops the sequence; the failure is the result.
 
 ## Open items carried forward
 
-- The generative refit without optogenetic and RPE sessions had not finished on
-  November 23 ([sensitivity check](VARIANT_SENSITIVITY.md)).
 - The adopted reference still contains those 16 variant sessions. Rebuilding it
   is a dated provenance decision, to be taken with milestone 1.
 - 21 of the 45 replication animals come from one lab; cross-lab generalization

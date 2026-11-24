@@ -303,6 +303,44 @@
     "subjects_improved": 54,
     "subjects": 83
    }
+  },
+  "generative": {
+   "gains": {
+    "history": {
+     "mean": 0.04901825374074694,
+     "interval": [
+      0.03858881714502393,
+      0.06571928781924075
+     ],
+     "positive_animals": 79
+    },
+    "drift_history": {
+     "mean": 0.014576505037495224,
+     "interval": [
+      0.009169246259768763,
+      0.02248656778799848
+     ],
+     "positive_animals": 71
+    },
+    "switching_history": {
+     "mean": 0.014342148525086426,
+     "interval": [
+      0.0086223456500962,
+      0.022931282234580578
+     ],
+     "positive_animals": 70
+    }
+   },
+   "equal_animal_nll": {
+    "drift": 0.3755144436943492,
+    "drift_history": 0.36093793865685403,
+    "history": 0.36815109955322056,
+    "switching": 0.3670941988962833,
+    "switching_history": 0.3527520503711969,
+    "task": 0.41716935329396754
+   },
+   "animals": 83,
+   "trials": 73332
   }
  },
  "without_variants": {
@@ -493,9 +531,46 @@
     "subjects_improved": 46,
     "subjects": 71
    }
+  },
+  "generative": {
+   "gains": {
+    "history": {
+     "mean": 0.047796838664703106,
+     "interval": [
+      0.03717275746395767,
+      0.06921160487591736
+     ],
+     "positive_animals": 66
+    },
+    "drift_history": {
+     "mean": 0.013851168771636974,
+     "interval": [
+      0.00864053740430893,
+      0.022856309486624274
+     ],
+     "positive_animals": 60
+    },
+    "switching_history": {
+     "mean": 0.016261794847361313,
+     "interval": [
+      0.010444831956186047,
+      0.026984073835046425
+     ],
+     "positive_animals": 62
+    }
+   },
+   "equal_animal_nll": {
+    "drift": 0.359748460160513,
+    "drift_history": 0.345897291388876,
+    "history": 0.3537662733074397,
+    "switching": 0.3547654651275185,
+    "switching_history": 0.33850367028015715,
+    "task": 0.40156311197214284
+   },
+   "animals": 71,
+   "trials": 61825
   }
  },
- "generative_refit": "not complete when this snapshot was written",
  "script_sha256": {
   "scripts/exclude_variant_sensitivity.py": "ec78fab6b6d35c1ab7906dda962202185e8a89f99f9e9d686263caca9fb90ba6"
  }

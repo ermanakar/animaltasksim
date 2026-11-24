@@ -1100,7 +1100,9 @@ server. [Protocol and result](docs/DEEP_REFERENCE_PROTOCOL.md).
 16 of 120 adopted sessions (15.3% of trials, 12 animals, 2 labs) use
 optogenetic or RPE protocols. Removing them changes no development result in
 sign: retry gap −0.0853 → −0.0913; primary combined-control evidence gain
-0.00044 → 0.00051. The generative refit was unfinished at the time of writing.
+0.00044 → 0.00051. The generative refit, finished later the same day, gives
+history gains of 0.0139 over drift and 0.0163 over switching (0.0146 and 0.0143
+with all sessions).
 [Report](docs/VARIANT_SENSITIVITY.md).
 
 ### First look at the deep data
@@ -1127,3 +1129,13 @@ reproduces a spurious reward term under weak control.
 The project moves from refining the evidence-history effect to modelling slow
 latent state within animals, with gated milestones and a reserved confirmation
 cohort. [Research plan](docs/RESEARCH_PLAN.md).
+
+### Milestone 1: deep reference converted (November 23, 2026)
+
+Rules were written before conversion and use structure only. 3,946 of 3,950
+cached sessions converted (2,537,937 trials, 72 animals); the four failures are
+malformed source files. Gate passed: all 104 sessions shared with the
+source-reconciled reference match on all 73,383 trials. No quality filter was
+applied; 2,561 sessions meet the thresholds frozen for the September
+replication, recorded as a flag only.
+[Protocol and result](docs/DEEP_CONVERSION_PROTOCOL.md).

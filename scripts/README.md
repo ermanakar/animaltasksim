@@ -8,12 +8,14 @@ development reference; see the [research plan](../docs/RESEARCH_PLAN.md).
 | Purpose | Entry point |
 |---|---|
 | Acquire every standard session of the development animals | `fetch_ibl_deep_reference.py` (stages `inventory`, `plan`, `download`, `verify`; needs ONE-api) |
+| Convert the deep reference to schema trials and run its gate | `convert_ibl_deep_reference.py` (stages `convert`, `gate`) |
 | First exploratory look at the deep reference | `explore_deep_reference.py` |
 | Sensitivity to optogenetic and RPE sessions | `exclude_variant_sensitivity.py` (stages `prepare`, `generative`) |
 | Evidence gain split by previous outcome | `split_evidence_by_outcome.py` |
 | Figures for the two reports above | `render_state_direction_figures.py` (reads tracked snapshots only) |
 
 Reports: [protocol](../docs/DEEP_REFERENCE_PROTOCOL.md) ·
+[conversion](../docs/DEEP_CONVERSION_PROTOCOL.md) ·
 [first look](../docs/DEEP_EXPLORATION.md) ·
 [sensitivity](../docs/VARIANT_SENSITIVITY.md) ·
 [outcome split](../docs/OUTCOME_SPLIT.md).

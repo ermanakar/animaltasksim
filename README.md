@@ -73,8 +73,8 @@ half would vanish entirely **failed**. [Outcome split](docs/OUTCOME_SPLIT.md).
 
 **Sixteen reference sessions are not standard protocol.** The adopted reference
 includes 14 optogenetic and 2 altered-reward sessions. Removing them changes no
-development result in sign or beyond its interval; the generative refit is
-still outstanding. [Sensitivity check](docs/VARIANT_SENSITIVITY.md).
+development result in sign or beyond its interval, including the generative
+refit. [Sensitivity check](docs/VARIANT_SENSITIVITY.md).
 
 ## Where the project stands
 
@@ -97,6 +97,11 @@ afterwards. Fixed, drifting and switching models are compared on held-out
 sessions of the same animals, with recovery checks first and a confirmation
 cohort of untouched animals last. This is exploratory so far; no state model
 has been fitted to the deep data. [Research plan](docs/RESEARCH_PLAN.md).
+
+Milestone 1 is complete: the deep reference is converted to schema-valid
+trials with structural rules only, and its gate passed (104 shared sessions,
+73,383 trials, identical to the source-reconciled reference).
+[Conversion protocol and result](docs/DEEP_CONVERSION_PROTOCOL.md).
 
 ## Start here
 
