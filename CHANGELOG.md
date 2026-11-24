@@ -10,6 +10,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## November 24 — within-animal comparison on development mice
+
+- Added `scripts/compare_within_animal.py` (stages `plan`, `run`, `summarize`)
+  and a protocol frozen by hash before any model was fitted to a real choice.
+- Exploratory result on 71 animals: latent state detected beyond trial
+  history, trial history detected beyond state, form of the state unresolved.
+  Same decisions under a chronological split and without the largest lab.
+  [Report](docs/WITHIN_ANIMAL_COMPARISON.md).
+
 ## November 24 — within-animal recovery, revision 1
 
 - Added `scripts/recheck_within_animal_recovery.py`: refits the two switching

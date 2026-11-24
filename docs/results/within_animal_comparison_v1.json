@@ -1,0 +1,443 @@
+{
+ "status": "exploratory: development animals; first fit of within-animal models to real choices",
+ "conditions": {
+  "nonconverged_fraction": 0.0,
+  "numerical_resolution": 7.194342863983838e-05,
+  "met": true
+ },
+ "decisions": {
+  "state": true,
+  "history": true,
+  "form": "unresolved"
+ },
+ "robust": {
+  "state": true,
+  "history": true,
+  "form": true
+ },
+ "primary": {
+  "animals": 71,
+  "decisions": {
+   "state": true,
+   "history": true,
+   "form": "unresolved"
+  },
+  "gains": {
+   "state_drift": {
+    "mean": 0.01415986693700255,
+    "interval": [
+     0.012334746946333418,
+     0.016111484421657864
+    ],
+    "animals_positive": 71
+   },
+   "state_switching": {
+    "mean": 0.01233182366516988,
+    "interval": [
+     0.010652155229080721,
+     0.014079234216647515
+    ],
+    "animals_positive": 69
+   },
+   "history_drift": {
+    "mean": 0.010916604543838871,
+    "interval": [
+     0.009672126702342075,
+     0.012185003999061902
+    ],
+    "animals_positive": 71
+   },
+   "history_switching": {
+    "mean": 0.012482923924088389,
+    "interval": [
+     0.010773226231609373,
+     0.014202885029396073
+    ],
+    "animals_positive": 71
+   },
+   "form": {
+    "mean": -0.001828043271832668,
+    "interval": [
+     -0.003194394094419286,
+     -0.0004779590154957789
+    ],
+    "animals_positive": 29
+   },
+   "history_total": {
+    "mean": 0.05186773483349031,
+    "interval": [
+     0.04494446418711525,
+     0.05984827141699022
+    ],
+    "animals_positive": 71
+   },
+   "drift_total": {
+    "mean": 0.05511099722665399,
+    "interval": [
+     0.04748491825110854,
+     0.06416916365221088
+    ],
+    "animals_positive": 71
+   },
+   "switching_total": {
+    "mean": 0.0517166345745718,
+    "interval": [
+     0.044330591858760184,
+     0.06040967759952364
+    ],
+    "animals_positive": 71
+   }
+  },
+  "shares": {
+   "history_share_after_drift": {
+    "ratio_of_means": 0.2104700461449526,
+    "interval": [
+     0.1797352382966954,
+     0.24253711033057823
+    ]
+   },
+   "history_share_after_switching": {
+    "ratio_of_means": 0.24066838399945567,
+    "interval": [
+     0.20456327365291602,
+     0.2789260716786276
+    ]
+   }
+  }
+ },
+ "sensitivity": {
+  "chronological": {
+   "animals": 71,
+   "decisions": {
+    "state": true,
+    "history": true,
+    "form": "unresolved"
+   },
+   "gains": {
+    "state_drift": {
+     "mean": 0.015580906943572123,
+     "interval": [
+      0.013128716243938486,
+      0.018279583330922396
+     ],
+     "animals_positive": 71
+    },
+    "state_switching": {
+     "mean": 0.0128438113144065,
+     "interval": [
+      0.010681022499032891,
+      0.01518648235390267
+     ],
+     "animals_positive": 67
+    },
+    "history_drift": {
+     "mean": 0.009904931684546883,
+     "interval": [
+      0.008701461720253751,
+      0.011113252195113405
+     ],
+     "animals_positive": 70
+    },
+    "history_switching": {
+     "mean": 0.012238311156722732,
+     "interval": [
+      0.01022066732464306,
+      0.014359509353952084
+     ],
+     "animals_positive": 65
+    },
+    "form": {
+     "mean": -0.0027370956291656243,
+     "interval": [
+      -0.004844047950117146,
+      -0.0005965341288947362
+     ],
+     "animals_positive": 23
+    },
+    "history_total": {
+     "mean": 0.054485015910501575,
+     "interval": [
+      0.04630708956185454,
+      0.06471559034578903
+     ],
+     "animals_positive": 71
+    },
+    "drift_total": {
+     "mean": 0.060160991169526806,
+     "interval": [
+      0.05065259308356955,
+      0.07245679376117271
+     ],
+     "animals_positive": 71
+    },
+    "switching_total": {
+     "mean": 0.055090516068185345,
+     "interval": [
+      0.04612485654011437,
+      0.06677520162998617
+     ],
+     "animals_positive": 71
+    }
+   },
+   "shares": {
+    "history_share_after_drift": {
+     "ratio_of_means": 0.18179184715329746,
+     "interval": [
+      0.148919300048828,
+      0.2159603375436138
+     ]
+    },
+    "history_share_after_switching": {
+     "ratio_of_means": 0.22461792388618704,
+     "interval": [
+      0.1781899669925145,
+      0.27233479995354054
+     ]
+    }
+   }
+  },
+  "without_largest_lab": {
+   "lab_removed": "angelakilab",
+   "animals": 38,
+   "decisions": {
+    "state": true,
+    "history": true,
+    "form": "unresolved"
+   },
+   "gains": {
+    "state_drift": {
+     "mean": 0.012482106362118479,
+     "interval": [
+      0.010147600013204599,
+      0.01510002904009614
+     ],
+     "animals_positive": 38
+    },
+    "state_switching": {
+     "mean": 0.011516419526613782,
+     "interval": [
+      0.009460210281605406,
+      0.013718834440119827
+     ],
+     "animals_positive": 37
+    },
+    "history_drift": {
+     "mean": 0.013087993138149913,
+     "interval": [
+      0.0113613305902247,
+      0.014781734906734739
+     ],
+     "animals_positive": 38
+    },
+    "history_switching": {
+     "mean": 0.015071494948811664,
+     "interval": [
+      0.01268848523101519,
+      0.017507471065905417
+     ],
+     "animals_positive": 38
+    },
+    "form": {
+     "mean": -0.0009656868355046968,
+     "interval": [
+      -0.0028592124805253624,
+      0.0008846480750716796
+     ],
+     "animals_positive": 19
+    },
+    "history_total": {
+     "mean": 0.058252433690643354,
+     "interval": [
+      0.047648768705744374,
+      0.0711887756179613
+     ],
+     "animals_positive": 38
+    },
+    "drift_total": {
+     "mean": 0.05764654691461194,
+     "interval": [
+      0.045955083190214394,
+      0.0723481456891111
+     ],
+     "animals_positive": 38
+    },
+    "switching_total": {
+     "mean": 0.05469735826844547,
+     "interval": [
+      0.0433279553428405,
+      0.06904245196328838
+     ],
+     "animals_positive": 38
+    }
+   },
+   "shares": {
+    "history_share_after_drift": {
+     "ratio_of_means": 0.2246771904441846,
+     "interval": [
+      0.17760368535441345,
+      0.2763862341437806
+     ]
+    },
+    "history_share_after_switching": {
+     "ratio_of_means": 0.258727301057509,
+     "interval": [
+      0.20367619487595445,
+      0.32083222631119634
+     ]
+    }
+   }
+  }
+ },
+ "mean_nll": {
+  "fixed": 0.4076963847125367,
+  "history": 0.3558286498790465,
+  "drift": 0.3525853874858828,
+  "drift_history": 0.3416687829420439,
+  "switching": 0.35597975013796496,
+  "switching_history": 0.3434968262138765
+ },
+ "best_model_counts": {
+  "fixed": 0,
+  "history": 0,
+  "drift": 0,
+  "drift_history": 42,
+  "switching": 0,
+  "switching_history": 29
+ },
+ "nonconverged_by_model": {
+  "fixed": 0,
+  "history": 0,
+  "drift": 0,
+  "drift_history": 0,
+  "switching": 0,
+  "switching_history": 0
+ },
+ "fitted_drift": {
+  "drift": {
+   "rho": [
+    0.9305658274693641,
+    0.9639990909107621,
+    0.9799496289122809
+   ],
+   "sd": [
+    1.3317694895731287,
+    1.5484420768310376,
+    1.7914940582311025
+   ]
+  },
+  "drift_history": {
+   "rho": [
+    0.9917915461168203,
+    0.9965715777012467,
+    0.9979245399268589
+   ],
+   "sd": [
+    0.7127095427647658,
+    0.8171940357197438,
+    1.0397177208214656
+   ]
+  }
+ },
+ "by_lab": {
+  "angelakilab": {
+   "animals": 33,
+   "state_drift": 0.01609183365959633,
+   "state_switching": 0.013270773885325387,
+   "history_drift": 0.008416217677662515,
+   "history_switching": 0.00950214516834643,
+   "form": -0.002821059774270938,
+   "history_total": 0.04451565736161709,
+   "drift_total": 0.0521912733435509,
+   "switching_total": 0.04828428607859604
+  },
+  "churchlandlab": {
+   "animals": 7,
+   "state_drift": 0.015257668033319793,
+   "state_switching": 0.012818309782057693,
+   "history_drift": 0.014531236039885344,
+   "history_switching": 0.01636774092547735,
+   "form": -0.002439358251262101,
+   "history_total": 0.07758093706733453,
+   "drift_total": 0.07830736906076899,
+   "switching_total": 0.07403150592391487
+  },
+  "cortexlab": {
+   "animals": 8,
+   "state_drift": 0.011420064867843478,
+   "state_switching": 0.01351372113219159,
+   "history_drift": 0.014028047133459808,
+   "history_switching": 0.016636073574387823,
+   "form": 0.002093656264348112,
+   "history_total": 0.05789240155678198,
+   "drift_total": 0.05528441929116565,
+   "switching_total": 0.054770049114585745
+  },
+  "danlab": {
+   "animals": 4,
+   "state_drift": 0.015423365373502057,
+   "state_switching": 0.017471293154883286,
+   "history_drift": 0.012997231455384353,
+   "history_switching": 0.021130556858212843,
+   "form": 0.0020479277813812286,
+   "history_total": 0.09587276529966117,
+   "drift_total": 0.09829889921777887,
+   "switching_total": 0.09221350159633161
+  },
+  "hoferlab": {
+   "animals": 2,
+   "state_drift": 0.012933786872049796,
+   "state_switching": 0.00953070172287529,
+   "history_drift": 0.01114857327792737,
+   "history_switching": 0.009458705053060373,
+   "form": -0.0034030851491745062,
+   "history_total": 0.050543649795174034,
+   "drift_total": 0.05232886338929646,
+   "switching_total": 0.05061564646498895
+  },
+  "mainenlab": {
+   "animals": 5,
+   "state_drift": 0.007017540653010024,
+   "state_switching": 0.005333394193134189,
+   "history_drift": 0.014660220088460352,
+   "history_switching": 0.014941547300311131,
+   "form": -0.001684146459875835,
+   "history_total": 0.0464173123517254,
+   "drift_total": 0.03877463291627507,
+   "switching_total": 0.03680915924454846
+  },
+  "mrsicflogellab": {
+   "animals": 1,
+   "state_drift": 0.02311277136451323,
+   "state_switching": 0.010761328403348536,
+   "history_drift": 0.008085737556753292,
+   "history_switching": 0.007282079811350317,
+   "form": -0.012351442961164694,
+   "history_total": 0.040889432992653574,
+   "drift_total": 0.05591646680041351,
+   "switching_total": 0.04436868158465179
+  },
+  "wittenlab": {
+   "animals": 6,
+   "state_drift": 0.009416730097382059,
+   "state_switching": 0.011461766804090417,
+   "history_drift": 0.01441909936896905,
+   "history_switching": 0.01773691045058971,
+   "form": 0.0020450367067083586,
+   "history_total": 0.04845716594599128,
+   "drift_total": 0.04345479667440429,
+   "switching_total": 0.04218202229949199
+  },
+  "zadorlab": {
+   "animals": 5,
+   "state_drift": 0.014778791226510457,
+   "state_switching": 0.008928105644108286,
+   "history_drift": 0.008242640662511864,
+   "history_switching": 0.0066406232851965894,
+   "form": -0.005850685582402171,
+   "history_total": 0.03181787142052585,
+   "drift_total": 0.038354021984524436,
+   "switching_total": 0.03410535377943754
+  }
+ },
+ "plan_sha256": "df97cca28dce8f80c68a0edc7007eb06def99819a204b1c84dd80b1e0753c458"
+}

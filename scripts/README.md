@@ -14,11 +14,13 @@ development reference; see the [research plan](../docs/RESEARCH_PLAN.md).
 | Evidence gain split by previous outcome | `split_evidence_by_outcome.py` |
 | Recovery of within-animal models on real schedules | `recover_within_animal.py` (stages `plan`, `run`, `summarize`) |
 | Revision 1 of that recovery study | `recheck_within_animal_recovery.py` (same stages) |
+| Within-animal comparison on real choices | `compare_within_animal.py` (same stages) |
 | Figures for the two reports above | `render_state_direction_figures.py` (reads tracked snapshots only) |
 
 Reports: [protocol](../docs/DEEP_REFERENCE_PROTOCOL.md) ·
 [conversion](../docs/DEEP_CONVERSION_PROTOCOL.md) ·
 [recovery](../docs/WITHIN_ANIMAL_RECOVERY_PROTOCOL.md) ·
+[within-animal comparison](../docs/WITHIN_ANIMAL_COMPARISON.md) ·
 [first look](../docs/DEEP_EXPLORATION.md) ·
 [sensitivity](../docs/VARIANT_SENSITIVITY.md) ·
 [outcome split](../docs/OUTCOME_SPLIT.md).
