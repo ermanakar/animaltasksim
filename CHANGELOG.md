@@ -10,6 +10,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## November 24 — within-animal recovery, revision 1
+
+- Added `scripts/recheck_within_animal_recovery.py`: refits the two switching
+  models under an iteration limit of 5,000 on the same synthetic animals and
+  reapplies the unchanged gate. Protocol written after a disclosed pilot on a
+  seed outside the study.
+- **Gate passed on all seven criteria**; no fit failed to converge. Milestone 3
+  may be frozen.
+  [Protocol and result](docs/WITHIN_ANIMAL_RECOVERY_REVISION_PROTOCOL.md).
+
 ## November 24 — within-animal recovery study
 
 - Added `eval/within_animal.py` (fixed, history, fitted-drift and switching

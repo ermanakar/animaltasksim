@@ -1160,3 +1160,21 @@ Milestone 3 is not frozen. The comparison separates the alternatives at this
 depth; the fitting of the largest model must be revised in a new dated protocol
 and the check repeated. Recovery on synthetic data says nothing yet about the
 mice. [Protocol and result](docs/WITHIN_ANIMAL_RECOVERY_PROTOCOL.md).
+
+### Milestone 2, revision 1: recovery gate passed (November 24, 2026)
+
+A pilot on a seed outside the study confirmed that the failing fits had stopped
+at the 500-iteration limit. A new protocol raised the limit to 5,000 and
+changed nothing else; the two switching models were refitted on the same
+synthetic animals and all seven criteria reapplied.
+
+- **Passed, all seven.** No fit failed to converge. Detection probabilities
+  are unchanged to the reported precision.
+- Held-out scores of `switching_history` moved by at most 6.3 × 10⁻⁴ nats per
+  trial for any animal. The four other models reproduced exactly.
+- Still true: history at half the development strength was detected in only
+  0.51 and 0.15 of cohorts.
+
+Milestone 3 may be frozen with these models, endpoints and limit. The first
+failure stays on record.
+[Revision protocol and result](docs/WITHIN_ANIMAL_RECOVERY_REVISION_PROTOCOL.md).

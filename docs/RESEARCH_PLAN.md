@@ -83,6 +83,9 @@ that fails its gate stops the sequence; the failure is the result.
    (limit 2%). Milestone 3 waits for a new dated protocol that changes that
    fit and repeats the check.
    [Protocol and result](WITHIN_ANIMAL_RECOVERY_PROTOCOL.md).
+   **Revision 1, November 24: gate passed** on all seven criteria with the
+   iteration limit raised to 5,000 and nothing else changed.
+   [Revision protocol and result](WITHIN_ANIMAL_RECOVERY_REVISION_PROTOCOL.md).
 
 3. **Within-animal comparison on development mice.** Fit each alternative per
    animal on a fixed subset of its sessions and score the remaining sessions.
