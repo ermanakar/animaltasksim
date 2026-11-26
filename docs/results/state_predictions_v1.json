@@ -1,0 +1,99 @@
+{
+ "status": "exploratory: development animals; associations between a fitted latent bias and measures not used in fitting",
+ "nonconverged_animals": 0,
+ "readings": {
+  "p1_congruence": {
+   "animals": 71,
+   "mean": -0.08823192775557637,
+   "interval": [
+    -0.10691308434662321,
+    -0.07023194870176515
+   ],
+   "animals_in_predicted_direction": 61,
+   "reading": "supported"
+  },
+  "p2_magnitude": {
+   "animals": 71,
+   "mean": 0.1327013689618283,
+   "interval": [
+    0.10358156195899076,
+    0.16096845197909115
+   ],
+   "animals_in_predicted_direction": 62,
+   "reading": "supported"
+  },
+  "p3_omission": {
+   "animals": 57,
+   "mean": 0.10832651406286284,
+   "interval": [
+    0.07044198870465809,
+    0.14560183446461405
+   ],
+   "animals_in_predicted_direction": 50,
+   "reading": "supported"
+  },
+  "d1_block_lag": {
+   "animals": 71,
+   "mean": -0.024454213878986147,
+   "interval": [
+    -0.031702109215025455,
+    -0.017541128215876764
+   ],
+   "animals_in_predicted_direction": 59,
+   "reading": "not supported at the size of interest"
+  }
+ },
+ "without_largest_lab": {
+  "lab_removed": "angelakilab",
+  "p1_congruence": {
+   "animals": 38,
+   "mean": -0.07753916295432048,
+   "interval": [
+    -0.09870932800331902,
+    -0.05613485833971701
+   ],
+   "animals_in_predicted_direction": 34,
+   "reading": "supported"
+  },
+  "p2_magnitude": {
+   "animals": 38,
+   "mean": 0.14392728282201328,
+   "interval": [
+    0.10998349394689,
+    0.17821544858966465
+   ],
+   "animals_in_predicted_direction": 35,
+   "reading": "supported"
+  },
+  "p3_omission": {
+   "animals": 29,
+   "mean": 0.11336427214919109,
+   "interval": [
+    0.056417623053392006,
+    0.16430565813746661
+   ],
+   "animals_in_predicted_direction": 26,
+   "reading": "supported"
+  },
+  "d1_block_lag": {
+   "animals": 38,
+   "mean": -0.03705794015461091,
+   "interval": [
+    -0.047467624670996016,
+    -0.027376422849497865
+   ],
+   "animals_in_predicted_direction": 35,
+   "reading": "not supported at the size of interest"
+  }
+ },
+ "block_late": {
+  "mean": 0.02345396923957163
+ },
+ "totals": {
+  "rt_trials": 1412034,
+  "omissions": 2733,
+  "block_changes": 24969
+ },
+ "check_passed": true,
+ "plan_sha256": "4f27c9cafa6d21e7dd90a89f90fe671fad98d8d9bea8cb824169d9ee9a210e7f"
+}

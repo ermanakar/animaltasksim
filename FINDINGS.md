@@ -1201,3 +1201,30 @@ The new direction is supported; the stronger idea that history effects are only
 a by-product of slow state is not. The latent variable is a wandering side
 bias and has not been shown to be engagement or any other named state.
 [Report](docs/WITHIN_ANIMAL_COMPARISON.md).
+
+### Milestone 4: the latent state predicts response time and omissions (November 26, 2026)
+
+Exploratory. The side bias of `drift_history` before each trial (b̂, from the
+other half of sessions and earlier choices only) was related to measures no
+model was fitted to. Four predictions were written with their direction and a
+smallest size of interest before any was checked, and the analysis first
+passed a synthetic method check (no false positives where nothing was planted;
+planted effects found). 71 animals, 1,412,034 response-time trials, 2,733
+omissions, 24,969 block changes; equal-animal means, 95% interval over animals:
+
+- **P1 supported.** Choice × b̂ on log response time −0.088 [−0.107, −0.070]:
+  choices with the state are faster (61 of 71 animals).
+- **P2 supported.** |b̂| on log response time 0.133 [0.104, 0.161]: stronger
+  lean, slower response (62 of 71).
+- **P3 supported.** Adjusted |b̂| is 0.108 [0.070, 0.146] higher before omitted
+  trials (50 of 57 animals with enough omissions).
+- **D1 not supported at the size of interest.** After a block change b̂ lags
+  by −0.024 [−0.032, −0.018] log-odds; real but below the 0.05 set in advance.
+- Same four readings without the largest lab.
+
+The latent bias carries information about response vigour and engagement
+beyond choices. It is not shown to be a named internal state: b̂ rises during
+runs of same-side choices, so "slower and more omissions during one-sided
+runs" describes the result equally well. The block-lag concern raised after
+milestone 3 is reduced, not removed.
+[Report](docs/STATE_PREDICTIONS.md).

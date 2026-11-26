@@ -1,0 +1,90 @@
+{
+ "passed": true,
+ "sets": {
+  "null": {
+   "p1_congruence": {
+    "animals": 71,
+    "mean": -0.00177237520765137,
+    "interval": [
+     -0.0041339552167634006,
+     0.0006170659355549241
+    ],
+    "animals_in_predicted_direction": 43,
+    "reading": "not supported at the size of interest"
+   },
+   "p2_magnitude": {
+    "animals": 71,
+    "mean": -2.13450711153281e-06,
+    "interval": [
+     -0.0055253061186144444,
+     0.006191654622702722
+    ],
+    "animals_in_predicted_direction": 29,
+    "reading": "not supported at the size of interest"
+   },
+   "p3_omission": {
+    "animals": 71,
+    "mean": -5.480765499804526e-05,
+    "interval": [
+     -0.006553181319292986,
+     0.006577544238112322
+    ],
+    "animals_in_predicted_direction": 35,
+    "reading": "not supported at the size of interest"
+   },
+   "d1_block_lag": {
+    "animals": 71,
+    "mean": -0.0013854452757427747,
+    "interval": [
+     -0.0034534170885510743,
+     0.0006602782958651284
+    ],
+    "animals_in_predicted_direction": 42,
+    "reading": "not supported at the size of interest"
+   }
+  },
+  "effect": {
+   "p1_congruence": {
+    "animals": 71,
+    "mean": -0.05936250383370034,
+    "interval": [
+     -0.06213285872447296,
+     -0.05667791466586461
+    ],
+    "animals_in_predicted_direction": 71,
+    "reading": "supported"
+   },
+   "p2_magnitude": {
+    "animals": 71,
+    "mean": 0.03183182850614267,
+    "interval": [
+     0.02440993075683653,
+     0.039710239967600564
+    ],
+    "animals_in_predicted_direction": 61,
+    "reading": "supported"
+   },
+   "p3_omission": {
+    "animals": 71,
+    "mean": 0.04162296421898059,
+    "interval": [
+     0.03067640430939087,
+     0.05403239877560891
+    ],
+    "animals_in_predicted_direction": 61,
+    "reading": "supported"
+   },
+   "d1_block_lag": {
+    "animals": 71,
+    "mean": -0.0007131157783358998,
+    "interval": [
+     -0.0027066813171096856,
+     0.0012093636072940557
+    ],
+    "animals_in_predicted_direction": 35,
+    "reading": "not supported at the size of interest"
+   }
+  }
+ },
+ "plan_sha256": "4f27c9cafa6d21e7dd90a89f90fe671fad98d8d9bea8cb824169d9ee9a210e7f"
+}
