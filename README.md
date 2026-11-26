@@ -123,6 +123,17 @@ explain the same variation, so this does not show that history effects are a
 by-product of slow state. Nothing is confirmed until untouched animals are
 tested. [Report](docs/WITHIN_ANIMAL_COMPARISON.md).
 
+Milestone 4 asked what that state predicts about measures it was never fitted
+to, with each prediction and its direction written first and the method
+checked on synthetic animals. Also exploratory. Choices towards the side the
+state favours are faster; the more strongly the state leans, the slower the
+response; and it leans more strongly just before omitted trials. All three
+were supported. A lag of the state behind block changes was present but
+smaller than the size fixed in advance. These are associations, and the state
+estimate is built from recent choices, so they do not yet show a hidden
+variable separate from the choice pattern.
+[Report](docs/STATE_PREDICTIONS.md).
+
 ## Start here
 
 ```bash

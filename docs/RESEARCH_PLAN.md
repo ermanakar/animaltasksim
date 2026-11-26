@@ -103,6 +103,12 @@ that fails its gate stops the sequence; the failure is the result.
    omissions by inferred state, clustering of easy-trial errors, and state
    occupancy across a session and across training.
    *Gate:* each prediction is written with its direction before it is checked.
+   **First part done, November 26 (exploratory).** Response time and omissions
+   only. Three predictions supported; a block-change lag was below the size of
+   interest. Easy-trial error clustering and state occupancy across training
+   are not yet examined.
+   [Protocol](STATE_PREDICTIONS_PROTOCOL.md) ·
+   [report](STATE_PREDICTIONS.md).
 
 5. **Confirmation on untouched animals.** Animals in neither the development
    set nor the completed replication cohort remain unlisted and undownloaded.

@@ -10,6 +10,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## November 26 — predictions from the latent state
+
+- Added `eval/within_animal_state.py` and `scripts/predict_from_state.py`
+  (stages `plan`, `check`, `run`, `summarize`). `run` refuses to start unless
+  the synthetic method check has passed.
+- Exploratory result on 71 animals: the fitted latent bias predicts response
+  time (two predictions) and omissions; a block-change lag is below the size
+  of interest. [Report](docs/STATE_PREDICTIONS.md).
+
 ## November 24 — within-animal comparison on development mice
 
 - Added `scripts/compare_within_animal.py` (stages `plan`, `run`, `summarize`)
