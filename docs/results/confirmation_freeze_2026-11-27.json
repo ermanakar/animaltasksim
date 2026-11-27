@@ -1,0 +1,146 @@
+{
+ "frozen": "2026-11-27",
+ "code_commit": "4472b9a",
+ "plan_sha256": "c5f09792adba8188bdb3457e2c0a361d359a6537afe13a7f7cd7b75ecc0023cd",
+ "note": "Frozen before any trial of a confirmation animal was requested.",
+ "plan": {
+  "status": "confirmatory, internally frozen: animals whose trials were never downloaded by this project",
+  "protocol": "docs/CONFIRMATION_PROTOCOL.md",
+  "protocol_sha256": "5c6aac375d34920e19e1fbf249f2601c025a32f5ee9fba5af0832a10d13a189f",
+  "cohort_sha256": "ce343a863d9b65b0b642ed929a97b2d2ef13d336d6b041ee442f52e0412f8163",
+  "cohort_counts": {
+   "animals": 43,
+   "animals_by_lab": {
+    "angelakilab": 23,
+    "churchlandlab": 6,
+    "cortexlab": 2,
+    "danlab": 2,
+    "mainenlab": 5,
+    "mrsicflogellab": 1,
+    "wittenlab": 2,
+    "zadorlab": 2
+   },
+   "sessions": 855
+  },
+  "claims": {
+   "c1_state_beyond_history": [
+    "score",
+    [
+     "state_drift",
+     "state_switching"
+    ],
+    "any"
+   ],
+   "c2_history_beyond_state": [
+    "score",
+    [
+     "history_drift",
+     "history_switching"
+    ],
+    "all"
+   ],
+   "p1_congruence": [
+    "state",
+    [
+     "p1_congruence"
+    ],
+    "all"
+   ],
+   "p2_magnitude": [
+    "state",
+    [
+     "p2_magnitude"
+    ],
+    "all"
+   ],
+   "p3_omission": [
+    "state",
+    [
+     "p3_omission"
+    ],
+    "all"
+   ]
+  },
+  "level": 0.99,
+  "delta": 0.001,
+  "sizes_of_interest": {
+   "p1_congruence": 0.02,
+   "p2_magnitude": 0.02,
+   "p3_omission": 0.02,
+   "d1_block_lag": 0.05
+  },
+  "directions": {
+   "p1_congruence": -1,
+   "p2_magnitude": 1,
+   "p3_omission": 1,
+   "d1_block_lag": -1
+  },
+  "minimum_animals": 30,
+  "eligibility": {
+   "family": "biased",
+   "min_trials": 150,
+   "min_sessions": 6
+  },
+  "models": [
+   "fixed",
+   "history",
+   "drift",
+   "drift_history",
+   "switching",
+   "switching_history"
+  ],
+  "maxiter": 5000,
+  "resamples": 10000,
+  "seed": 20261126,
+  "jobs": {
+   "alternating": [
+    "alternating",
+    41,
+    [
+     "fixed",
+     "history",
+     "drift",
+     "drift_history",
+     "switching",
+     "switching_history"
+    ]
+   ],
+   "chronological": [
+    "chronological",
+    41,
+    [
+     "fixed",
+     "history",
+     "drift",
+     "drift_history",
+     "switching",
+     "switching_history"
+    ]
+   ],
+   "alternating_states81": [
+    "alternating",
+    81,
+    [
+     "drift",
+     "drift_history"
+    ]
+   ]
+  },
+  "check_sets": {
+   "null": false,
+   "effect": true
+  },
+  "code_sha256": {
+   "scripts/confirm_within_animal.py": "bac37170a39f7cdb639d32dc35c62b784b3719df914ffe5b52a11be0992661b8",
+   "scripts/compare_within_animal.py": "b3cef33b4dfb59dee452b5723f5bf0c94e21347f08f1b79bb943be3f28779459",
+   "scripts/predict_from_state.py": "8e1127c2c82f78d7ef3394ca0f6efc37eda456f7edbf84c9dd833153745d3e55",
+   "scripts/fetch_ibl_deep_reference.py": "08a16a830833fcaa47af0f9924effdf365e2c43d4e89e5bd6e5ed5776844afd4",
+   "scripts/convert_ibl_deep_reference.py": "e8318d9f5a3124ed5e82572e8b47f39f3132c2c837a2349d1418a9428354fa98",
+   "eval/within_animal.py": "b287f4e6774301f4a8e384a74486f190a8d190a8f5bc5f824a90f7bde89e92cd",
+   "eval/within_animal_recovery.py": "42388cb21041bfeb2ccb6fa5f273d4675aeb5a563fa4c8fb7424461b2f757dc2",
+   "eval/within_animal_state.py": "78004824acb83329afaa1818cc8aa2b383c08323d8329d7a84b224b1d50b96c6",
+   "eval/ibl_deep_convert.py": "27515c7b2a0527338e3b75690df54a96023e69f8296c6cf6eed15420e3318ad6",
+   "eval/schema_validator.py": "09ba2e04018acce8c285a4ab348abbad4a7ae9e3eeea41f4d3aae56785a0a15c"
+  }
+ }
+}
