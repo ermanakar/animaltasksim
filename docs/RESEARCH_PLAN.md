@@ -115,6 +115,12 @@ that fails its gate stops the sequence; the failure is the result.
    A confirmation protocol with sample size, eligibility and stopping rules is
    frozen before any of them is accessed. Development animals cannot confirm
    anything.
+   **Protocol drafted and pipeline built, November 26; not yet frozen, no
+   animal accessed.**
+   43 animals qualify from session metadata held since September (the frame
+   saved for the replication; no trial or performance field). Two primary and
+   three secondary claims, 99% intervals, one run, no interim look.
+   [Protocol](CONFIRMATION_PROTOCOL.md).
 
 6. **Consequences for agents.** Only after milestone 3: define state-level
    fingerprints and ask whether any agent reproduces them. Until then no

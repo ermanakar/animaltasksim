@@ -10,6 +10,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## November 26 — confirmation protocol and pipeline
+
+- Added `docs/CONFIRMATION_PROTOCOL.md` (draft until hashed by the `plan`
+  stage) and `scripts/confirm_within_animal.py`, which selects the untouched
+  cohort from saved session metadata and reuses the acquisition, conversion,
+  comparison and state-prediction code unchanged. No confirmation trial has
+  been requested.
+
 ## November 26 — predictions from the latent state
 
 - Added `eval/within_animal_state.py` and `scripts/predict_from_state.py`

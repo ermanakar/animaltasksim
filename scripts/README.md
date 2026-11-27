@@ -16,6 +16,7 @@ development reference; see the [research plan](../docs/RESEARCH_PLAN.md).
 | Revision 1 of that recovery study | `recheck_within_animal_recovery.py` (same stages) |
 | Within-animal comparison on real choices | `compare_within_animal.py` (same stages) |
 | What the latent state predicts about response time and omissions | `predict_from_state.py` (stages `plan`, `check`, `run`, `summarize`) |
+| Confirmation on animals never downloaded | `confirm_within_animal.py` (stages `cohort`, `plan`, `download`, `convert`, `check`, `run`, `summarize`; `download` needs ONE-api) |
 | Figures for the two reports above | `render_state_direction_figures.py` (reads tracked snapshots only) |
 
 Reports: [protocol](../docs/DEEP_REFERENCE_PROTOCOL.md) ·
@@ -23,6 +24,7 @@ Reports: [protocol](../docs/DEEP_REFERENCE_PROTOCOL.md) ·
 [recovery](../docs/WITHIN_ANIMAL_RECOVERY_PROTOCOL.md) ·
 [within-animal comparison](../docs/WITHIN_ANIMAL_COMPARISON.md) ·
 [state predictions](../docs/STATE_PREDICTIONS.md) ·
+[confirmation protocol](../docs/CONFIRMATION_PROTOCOL.md) ·
 [first look](../docs/DEEP_EXPLORATION.md) ·
 [sensitivity](../docs/VARIANT_SENSITIVITY.md) ·
 [outcome split](../docs/OUTCOME_SPLIT.md).
