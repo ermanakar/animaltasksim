@@ -115,8 +115,9 @@ that fails its gate stops the sequence; the failure is the result.
    A confirmation protocol with sample size, eligibility and stopping rules is
    frozen before any of them is accessed. Development animals cannot confirm
    anything.
-   **Protocol drafted and pipeline built, November 26; not yet frozen, no
-   animal accessed.**
+   **Protocol frozen November 27 (code at commit 4472b9a); no animal accessed
+   yet.** Hashes of the protocol, code and cohort are in
+   [`results/confirmation_freeze_2026-11-27.json`](results/confirmation_freeze_2026-11-27.json).
    43 animals qualify from session metadata held since September (the frame
    saved for the replication; no trial or performance field). Two primary and
    three secondary claims, 99% intervals, one run, no interim look.

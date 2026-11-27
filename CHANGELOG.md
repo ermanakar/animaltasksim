@@ -10,6 +10,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## November 27 — confirmation protocol frozen
+
+- The `plan` stage recorded the hashes of `docs/CONFIRMATION_PROTOCOL.md`, the
+  analysis code and the 43-animal cohort
+  (`docs/results/confirmation_freeze_2026-11-27.json`). The protocol is no
+  longer edited. No confirmation trial had been requested at the freeze.
+
 ## November 26 — confirmation protocol and pipeline
 
 - Added `docs/CONFIRMATION_PROTOCOL.md` (draft until hashed by the `plan`
